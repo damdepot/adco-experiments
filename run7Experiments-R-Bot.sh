@@ -5,6 +5,9 @@ set -e
 rm -rf results/r-bot
 mkdir -p results/r-bot
 
+export iteration=5
+export result_dir="results/r-bot"
+
 CMDBaselineRBot=./explocal/exp2_Baselines/runExperiment2-R-Bot.sh
 CMDRunRBotVerify=./explocal/exp2_Baselines/runExperiment2-Workload-Verify-R-Bot.sh
 CMDRunWorkload=./explocal/exp2_Baselines/runExperiment2-Workload.sh

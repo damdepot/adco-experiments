@@ -225,3 +225,4 @@ opencode.json
 data/
 catalog/
 results/
+*.dat

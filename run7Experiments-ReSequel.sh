@@ -5,6 +5,7 @@ rm -rf results/resequel;
 mkdir -p results/resequel;
 
 export iteration=5
+export result_dir="results/resequel"
 
 CMDReSequel=./explocal/exp1_ReSequel/runExperiment1.sh
 CMDBaseline=./explocal/exp2_Baselines/runExperiment2-Baseline.sh

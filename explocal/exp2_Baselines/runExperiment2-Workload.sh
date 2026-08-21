@@ -5,7 +5,7 @@ dbms=$2
 llm_model=$3
 
 exp_path="$(pwd)"
-log_fname="${exp_path}/results/resequel/runExperiment2-${dataset}-${dbms}-${llm_model}"
+log_fname="${exp_path}/${result_dir}/runExperiment2-${dataset}-${dbms}-${llm_model}"
 query_log_fname="${exp_path}/log-baseline/${dbms}/${dataset}-${llm_model}"
 
 workload_path="${exp_path}/workload/${dbms}/${dataset}-${llm_model}-select"
