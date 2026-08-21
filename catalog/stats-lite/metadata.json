@@ -1,0 +1,414 @@
+{
+    "dataset_name": "stats-lite",
+    "number_of_tables": 8,
+    "table_names": [
+        "users",
+        "badges",
+        "posts",
+        "tags",
+        "postlinks",
+        "comments",
+        "posthistory",
+        "votes"
+    ],
+    "table_indexes": {
+        "users": [
+            "id"
+        ],
+        "badges": [
+            "id",
+            "userid"
+        ],
+        "posts": [
+            "id",
+            "parentid",
+            "owneruserid",
+            "lasteditoruserid"
+        ],
+        "tags": [
+            "id",
+            "excerptpostid"
+        ],
+        "postlinks": [
+            "id",
+            "postid",
+            "relatedpostid"
+        ],
+        "comments": [
+            "id",
+            "userid",
+            "postid"
+        ],
+        "posthistory": [
+            "id",
+            "userid",
+            "postid"
+        ],
+        "votes": [
+            "id",
+            "userid",
+            "postid"
+        ]
+    },
+    "dependency": {
+        "users": {
+            "primary_key": [
+                "id"
+            ],
+            "foreign_key": []
+        },
+        "badges": {
+            "primary_key": [
+                "id"
+            ],
+            "foreign_key": [
+                {
+                    "column_name": "userid",
+                    "foreign_table_name": "users",
+                    "foreign_column_name": "id"
+                }
+            ]
+        },
+        "posts": {
+            "primary_key": [
+                "id"
+            ],
+            "foreign_key": [
+                {
+                    "column_name": "lasteditoruserid",
+                    "foreign_table_name": "users",
+                    "foreign_column_name": "id"
+                },
+                {
+                    "column_name": "owneruserid",
+                    "foreign_table_name": "users",
+                    "foreign_column_name": "id"
+                },
+                {
+                    "column_name": "parentid",
+                    "foreign_table_name": "posts",
+                    "foreign_column_name": "id"
+                }
+            ]
+        },
+        "tags": {
+            "primary_key": [
+                "id"
+            ],
+            "foreign_key": [
+                {
+                    "column_name": "excerptpostid",
+                    "foreign_table_name": "posts",
+                    "foreign_column_name": "id"
+                }
+            ]
+        },
+        "postlinks": {
+            "primary_key": [
+                "id"
+            ],
+            "foreign_key": [
+                {
+                    "column_name": "postid",
+                    "foreign_table_name": "posts",
+                    "foreign_column_name": "id"
+                },
+                {
+                    "column_name": "relatedpostid",
+                    "foreign_table_name": "posts",
+                    "foreign_column_name": "id"
+                }
+            ]
+        },
+        "comments": {
+            "primary_key": [
+                "id"
+            ],
+            "foreign_key": [
+                {
+                    "column_name": "postid",
+                    "foreign_table_name": "posts",
+                    "foreign_column_name": "id"
+                },
+                {
+                    "column_name": "userid",
+                    "foreign_table_name": "users",
+                    "foreign_column_name": "id"
+                }
+            ]
+        },
+        "posthistory": {
+            "primary_key": [
+                "id"
+            ],
+            "foreign_key": [
+                {
+                    "column_name": "postid",
+                    "foreign_table_name": "posts",
+                    "foreign_column_name": "id"
+                },
+                {
+                    "column_name": "userid",
+                    "foreign_table_name": "users",
+                    "foreign_column_name": "id"
+                }
+            ]
+        },
+        "votes": {
+            "primary_key": [
+                "id"
+            ],
+            "foreign_key": [
+                {
+                    "column_name": "postid",
+                    "foreign_table_name": "posts",
+                    "foreign_column_name": "id"
+                },
+                {
+                    "column_name": "userid",
+                    "foreign_table_name": "users",
+                    "foreign_column_name": "id"
+                }
+            ]
+        }
+    },
+    "profile": {
+        "users": {
+            "rows": 0,
+            "upvotes": {
+                "distinct_count": 0
+            },
+            "downvotes": {
+                "distinct_count": 0
+            },
+            "accountid": {
+                "distinct_count": 0
+            },
+            "age": {
+                "distinct_count": 0
+            },
+            "reputation": {
+                "distinct_count": 0
+            },
+            "views": {
+                "distinct_count": 0
+            },
+            "id": {
+                "distinct_count": 0
+            },
+            "creationdate": {
+                "distinct_count": 0
+            },
+            "lastaccessdate": {
+                "distinct_count": 0
+            },
+            "profileimageurl": {
+                "distinct_count": 0
+            },
+            "displayname": {
+                "distinct_count": 0
+            },
+            "websiteurl": {
+                "distinct_count": 0
+            },
+            "location": {
+                "distinct_count": 0
+            },
+            "aboutme": {
+                "distinct_count": 0
+            }
+        },
+        "badges": {
+            "rows": 0,
+            "userid": {
+                "distinct_count": 0
+            },
+            "id": {
+                "distinct_count": 0
+            },
+            "date": {
+                "distinct_count": 0
+            },
+            "name": {
+                "distinct_count": 0
+            }
+        },
+        "posts": {
+            "rows": 0,
+            "parentid": {
+                "distinct_count": 0
+            },
+            "score": {
+                "distinct_count": 0
+            },
+            "viewcount": {
+                "distinct_count": 0
+            },
+            "posttypeid": {
+                "distinct_count": 0
+            },
+            "owneruserid": {
+                "distinct_count": 0
+            },
+            "acceptedanswerid": {
+                "distinct_count": 0
+            },
+            "answercount": {
+                "distinct_count": 0
+            },
+            "commentcount": {
+                "distinct_count": 0
+            },
+            "favoritecount": {
+                "distinct_count": 0
+            },
+            "lasteditoruserid": {
+                "distinct_count": 0
+            },
+            "communityowneddate": {
+                "distinct_count": 0
+            },
+            "closeddate": {
+                "distinct_count": 0
+            },
+            "id": {
+                "distinct_count": 0
+            },
+            "lasactivitydate": {
+                "distinct_count": 0
+            },
+            "creationdate": {
+                "distinct_count": 0
+            },
+            "lasteditdate": {
+                "distinct_count": 0
+            },
+            "lasteditordisplayname": {
+                "distinct_count": 0
+            },
+            "body": {
+                "distinct_count": 0
+            },
+            "title": {
+                "distinct_count": 0
+            },
+            "tags": {
+                "distinct_count": 0
+            },
+            "ownerdisplayname": {
+                "distinct_count": 0
+            }
+        },
+        "tags": {
+            "rows": 0,
+            "count": {
+                "distinct_count": 0
+            },
+            "excerptpostid": {
+                "distinct_count": 0
+            },
+            "wikipostid": {
+                "distinct_count": 0
+            },
+            "id": {
+                "distinct_count": 0
+            },
+            "tagname": {
+                "distinct_count": 0
+            }
+        },
+        "postlinks": {
+            "rows": 0,
+            "postid": {
+                "distinct_count": 0
+            },
+            "relatedpostid": {
+                "distinct_count": 0
+            },
+            "linktypeid": {
+                "distinct_count": 0
+            },
+            "id": {
+                "distinct_count": 0
+            },
+            "creationdate": {
+                "distinct_count": 0
+            }
+        },
+        "comments": {
+            "rows": 0,
+            "userid": {
+                "distinct_count": 0
+            },
+            "postid": {
+                "distinct_count": 0
+            },
+            "id": {
+                "distinct_count": 0
+            },
+            "creationdate": {
+                "distinct_count": 0
+            },
+            "text": {
+                "distinct_count": 0
+            },
+            "score": {
+                "distinct_count": 0
+            },
+            "userdisplayname": {
+                "distinct_count": 0
+            }
+        },
+        "posthistory": {
+            "rows": 0,
+            "posthistorytypeid": {
+                "distinct_count": 0
+            },
+            "postid": {
+                "distinct_count": 0
+            },
+            "userid": {
+                "distinct_count": 0
+            },
+            "id": {
+                "distinct_count": 0
+            },
+            "creationdate": {
+                "distinct_count": 0
+            },
+            "userdisplayname": {
+                "distinct_count": 0
+            },
+            "text": {
+                "distinct_count": 0
+            },
+            "revisionguid": {
+                "distinct_count": 0
+            },
+            "comment": {
+                "distinct_count": 0
+            }
+        },
+        "votes": {
+            "rows": 0,
+            "postid": {
+                "distinct_count": 0
+            },
+            "votetypeid": {
+                "distinct_count": 0
+            },
+            "userid": {
+                "distinct_count": 0
+            },
+            "bountyamount": {
+                "distinct_count": 0
+            },
+            "id": {
+                "distinct_count": 0
+            },
+            "creationdate": {
+                "distinct_count": 0
+            }
+        }
+    }
+}

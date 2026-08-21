@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:17
+    container_name: adcoexp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  adcoexp:
+    build: .
+    image: adcoexp-image
+    container_name: adcoexp
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    volumes:
+      - .:/app # root-level download and experiment scripts
+    healthcheck:
+      # Probe the remote PostgreSQL service from the adcoexp container.
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import psycopg2, os; psycopg2.connect(host=os.environ['PGHOST'], port=int(os.environ['PGPORT']), user=os.environ['PGUSER'], password=os.environ['PGPASSWORD'], dbname='postgres').close()"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
