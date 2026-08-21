@@ -12,8 +12,8 @@ cd "${data_path}"
 rm -rf part-1 part-2 part-1.zip part-2.zip
 
 echo '-------------------<< Downloading STATS dataset >>-------------------'
-wget -q https://raw.githubusercontent.com/dannykhant/benchmark-datasets/main/stats/part-1.zip
-wget -q https://raw.githubusercontent.com/dannykhant/benchmark-datasets/main/stats/part-2.zip
+wget -q https://github.com/dannykhant/benchmark-datasets/raw/refs/heads/main/stats/part-1.zip
+wget -q https://github.com/dannykhant/benchmark-datasets/raw/refs/heads/main/stats/part-2.zip
 unzip -q part-1.zip
 unzip -q part-2.zip
 
