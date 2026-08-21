@@ -224,3 +224,4 @@ baselines/*
 opencode.json
 data/
 catalog/
+results/
