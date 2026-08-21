@@ -222,4 +222,5 @@ __marimo__/
 # Project-specific
 baselines/*
 opencode.json
-data/*
+data/
+catalog/
