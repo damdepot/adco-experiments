@@ -6,7 +6,7 @@ exp_path="$(pwd)"
 
 log_file_name="${exp_path}/results/resequel/Experiment1_Catalog.dat"
 
-cd "${exp_path}/baselines/ReSequel"
+cd "${exp_path}/baselines/ReSequel/src/main/python"
 source venv/bin/activate
 
 SCRIPT="python main.py --dataset-name ${dataset} \

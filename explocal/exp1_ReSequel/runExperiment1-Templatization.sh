@@ -21,7 +21,7 @@ if [ $dataset == "publickbibenchmark" ]; then
     workload_path="${workload_path}/queries"
 fi
 
-cd "${exp_path}/baselines/ReSequel"
+cd "${exp_path}/baselines/ReSequel/src/main/python"
 source venv/bin/activate
 
 SCRIPT="python main.py --dataset-name ${dataset} \

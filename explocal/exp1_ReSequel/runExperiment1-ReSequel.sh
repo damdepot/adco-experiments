@@ -23,7 +23,7 @@ mkdir -p "${exp_path}/ReSequel-results/workload/${dbms}"
 mkdir -p "${exp_path}/ReSequel-results/workload/${dbms}/${dataset}"
 mkdir -p "${exp_path}/ReSequel-results/workload/${dbms}/${dataset}/${llm_model}"
 
-cd "${exp_path}/baselines/ReSequel"
+cd "${exp_path}/baselines/ReSequel/src/main/python"
 source venv/bin/activate
 
 SCRIPT="python main.py --dataset-name ${dataset} \

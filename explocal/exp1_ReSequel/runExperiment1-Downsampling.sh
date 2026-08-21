@@ -23,7 +23,7 @@ if [ ! -f $log_file_name ]; then
     echo "dataset_name,dbms,llm_model,time" > $log_file_name
 fi
 
-cd "${exp_path}/baselines/ReSequel"
+cd "${exp_path}/baselines/ReSequel/src/main/python"
 source venv/bin/activate
 
 

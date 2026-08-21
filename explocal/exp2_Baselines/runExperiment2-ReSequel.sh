@@ -19,8 +19,10 @@ for itr in $(seq 1 "$iteration"); do
     cd ${exp_path}
 
     if [ $dbms == "PostgreSQL" ]; then
-        ./initpgSQL.sh  
-        sleep 10
+     if [ -z "$PGHOST" ] || [[ "$PGHOST" == "localhost" || "$PGHOST" == "127.0.0.1" ]]; then
+      ./initpgSQL.sh
+      sleep 10
+     fi
 
     elif [ $dbms == "MySQL" ]; then  
         ./initMySQL.sh   
