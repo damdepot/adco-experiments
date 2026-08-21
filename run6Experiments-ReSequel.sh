@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # clean original results
-rm -rf results/*;
-mkdir -p results;
+rm -rf results/resequel;
+mkdir -p results/resequel;
 
 export iteration=10
 
