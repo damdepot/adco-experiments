@@ -11,7 +11,6 @@ query_log_fname="${exp_path}/log-baseline/${dbms}/${dataset}"
 workload_path="${exp_path}/workload/${dbms}/${dataset}"
 database_path="${exp_path}/data/duckdb"
 
-
 for itr in $(seq 1 "$iteration"); do
     sync
     echo 3 | tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true
@@ -21,15 +20,16 @@ for itr in $(seq 1 "$iteration"); do
     if [ $dbms == "PostgreSQL" ]; then
      if [ -z "$PGHOST" ] || [[ "$PGHOST" == "localhost" || "$PGHOST" == "127.0.0.1" ]]; then
       ./initpgSQL.sh
+      sleep 10
      fi
 
     elif [ $dbms == "MySQL" ]; then  
-        ./initMySQL.sh    
+        ./initMySQL.sh   
+        sleep 10 
     fi 
 
     cd "${exp_path}/workload_generator"
     source venv/bin/activate
-    echo "---------------------------------------------"
 
     CMD="python main.py --workload-path ${workload_path} \
                         --database-name ${dataset} \

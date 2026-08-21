@@ -8,9 +8,8 @@ exp_path="$(pwd)"
 log_fname="${exp_path}/results/resequel/runExperiment2-${dataset}-${dbms}-${llm_model}"
 query_log_fname="${exp_path}/log-baseline/${dbms}/${dataset}-${llm_model}"
 
-database_path="${exp_path}/data/duckdb"
 workload_path="${exp_path}/workload/${dbms}/${dataset}-${llm_model}-select"
-
+database_path="${exp_path}/data/duckdb"
 
 for itr in $(seq 1 "$iteration"); do
     sync
@@ -41,5 +40,4 @@ for itr in $(seq 1 "$iteration"); do
                         --output-path ${log_fname}"
 
     $CMD
-
 done

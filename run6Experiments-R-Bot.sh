@@ -2,33 +2,26 @@
 
 set -e
 
-cd "$(dirname "$0")"
-
-mkdir -p setup/Baselines
-ln -sfn "../../baselines/R-Bot" setup/Baselines/R-Bot
-ln -sfn "../../workload_runner" setup/Baselines/Workload
-
-if [ ! -x workload/venv/bin/python ]; then
-    uv venv workload/venv --system-site-packages
-fi
-
-rm -rf results/*
-mkdir -p results
+rm -rf results/r-bot
+mkdir -p results/r-bot
 
 CMDBaselineRBot=./explocal/exp2_Baselines/runExperiment2-R-Bot.sh
 CMDRunRBotVerify=./explocal/exp2_Baselines/runExperiment2-Verify-R-Bot.sh
-CMDRunQueries=./explocal/exp2_Baselines/runExperiment2-ReSequel.sh
+CMDRunWorkload=./explocal/exp2_Baselines/runExperiment2-Workload.sh
 
-llm_model=gemini-3.5-flash-lite
+model=gemini-3.5-flash-lite
 
 ### Rewrite Stats with R-Bot
-echo "Running R-Bot rewrite for Stats dataset with LLM model: ${llm_model}"
-"${CMDBaselineRBot}" stats-lite PostgreSQL R-Bot "${llm_model}"
+#**************************
+echo "-------------------<< Running Stats-Lite R-Bot rewrites >>-------------------"
+$CMDBaselineRBot stats-lite PostgreSQL R-Bot ${llm_model}
 
 ### Verify Stats R-Bot rewrites
-echo "Verifying R-Bot rewrites for Stats dataset with LLM model: ${llm_model}"
-"${CMDRunRBotVerify}" stats-lite PostgreSQL "${llm_model}"
+#**************************
+echo "-------------------<< Verifying R-Bot rewrites for Stats-Lite dataset >>-------------------"
+$CMDRunRBotVerify stats-lite PostgreSQL ${llm_model}
 
-### Run Stats R-Bot rewrites
-echo "Running Stats R-Bot rewrites for Stats dataset"
-"${CMDRunQueries}" stats-lite PostgreSQL R-Bot-Gemini
+### Run Stats R-Bot workload
+#**************************
+echo "-------------------<< Running Stats-Lite R-Bot workload >>-------------------"
+$CMDRunWorkload stats-lite PostgreSQL R-Bot-Gemini
