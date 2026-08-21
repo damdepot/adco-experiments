@@ -26,5 +26,6 @@ unzip -oq stackoverflow-rewrite-embed.zip
 ### ReSequel
 echo '-------------------<< Setting up ReSequel baseline >>-------------------'
 resql_path="${root_path}/baselines/ReSequel"
-cd ${resql_path}
-setup_venv "${resql_path}"
+resql_python_src="${resql_path}/src/main/python"
+cd ${resql_python_src}
+setup_venv "${resql_python_src}"
