@@ -226,3 +226,5 @@ data/
 catalog/
 results/
 *.dat
+R-Bot-results/
+ReSequel-results/
