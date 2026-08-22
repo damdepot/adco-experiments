@@ -9,19 +9,18 @@ template_path=$5
 exp_path="$(pwd)"
 
 date=$(date '+%Y-%m-%d-%H-%M-%S')
-system_log="${exp_path}/system-log-${date}.dat"
+system_log="${exp_path}/ReSequel-results/system-log-${date}.dat"
 
-output_path="${exp_path}/ReSequel-results/Rewrite/${dataset}"
+output_path="${exp_path}/ReSequel-results/Rewrite/${dbms}/${dataset}-${llm_model}"
 mkdir -p "${exp_path}/ReSequel-results/Rewrite"
 mkdir -p ${output_path}
 
 result_log_path="${exp_path}/results/resequel/Experiment1-LLM-Rewrite-${dataset}-${dbms}.dat"
 
-workload_output="${exp_path}/ReSequel-results/workload/${dbms}/${dataset}/${llm_model}"
-mkdir -p "${exp_path}/ReSequel-results/workload"
-mkdir -p "${exp_path}/ReSequel-results/workload/${dbms}"
-mkdir -p "${exp_path}/ReSequel-results/workload/${dbms}/${dataset}"
-mkdir -p "${exp_path}/ReSequel-results/workload/${dbms}/${dataset}/${llm_model}"
+workload_output="${exp_path}/ReSequel-results/Rewrite-Template/${dbms}/${dataset}/${llm_model}"
+rm -rf "${workload_output}"
+mkdir -p "${exp_path}/ReSequel-results/Rewrite-Template/${dbms}/${dataset}"
+mkdir -p "${workload_output}"
 
 cd "${exp_path}/baselines/ReSequel/src/main/python"
 source venv/bin/activate

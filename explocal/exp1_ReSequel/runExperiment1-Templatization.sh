@@ -7,7 +7,7 @@ exp_path="$(pwd)"
 
 date=$(date '+%Y-%m-%d-%H-%M-%S')
 
-workload_output="${exp_path}/workload/${dbms}/${dataset}-template"
+workload_output="${exp_path}/ReSequel-results/Template/${dbms}/${dataset}-template"
 rm -rf $workload_output
 mkdir -p ${workload_output}
 

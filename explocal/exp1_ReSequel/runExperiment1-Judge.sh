@@ -10,10 +10,11 @@ template_path=$5
 exp_path="$(pwd)"
 
 date=$(date '+%Y-%m-%d-%H-%M-%S')
-system_log="${exp_path}/system-log-${date}.dat"
+system_log="${exp_path}/ReSequel-results/system-log-${date}.dat"
 
-template_rewrite_path="${exp_path}/workload/${dbms}/${dataset}-template-${llm_model}"
-workload_output="${exp_path}/workload/${dbms}/${dataset}-${llm_model}-Judge"
+template_rewrite_path="${exp_path}/ReSequel-results/Rewrite-Template/${dbms}/${dataset}/${llm_model}"
+workload_output="${exp_path}/ReSequel-results/Judge/${dbms}/${dataset}-${llm_model}-Judge"
+
 rm -rf $workload_output
 mkdir -p ${workload_output}
 

@@ -11,9 +11,9 @@ runner_dbms=$5
 
 exp_path="$(pwd)"
 
-rewrite_path="${exp_path}/workload/${dbms}/${dataset}-${llm_model}"
-output_path_verify="${exp_path}/workload/${dbms}/${dataset}-${llm_model}-verify"
-output_path_select="${exp_path}/workload/${dbms}/${dataset}-${llm_model}-select"
+rewrite_path="${exp_path}/ReSequel-results/Reconstruct/${dbms}/${dataset}-${llm_model}"
+output_path_verify="${exp_path}/ReSequel-results/Verify/${dbms}/${dataset}-${llm_model}-verify"
+output_path_select="${exp_path}/ReSequel-results/Select/${dbms}/${dataset}-${llm_model}-select"
 database_path="${exp_path}/data/duckdb"
 
 rm -rf ${output_path_verify}
@@ -27,8 +27,10 @@ if [ $dataset == "publicbibenchmark" ]; then
 fi    
 
 if [ $dbms == "PostgreSQL" ]; then
-    ./initpgSQL.sh  
-    sleep 10
+    if [ -z "$PGHOST" ] || [[ "$PGHOST" == "localhost" || "$PGHOST" == "127.0.0.1" ]]; then
+        ./initpgSQL.sh
+        sleep 10
+    fi
 
 elif [ $dbms == "MySQL" ]; then  
     ./initMySQL.sh   

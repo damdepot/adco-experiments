@@ -8,7 +8,7 @@ exp_path="$(pwd)"
 log_fname="${exp_path}/${result_dir}/runExperiment2-${dataset}-${dbms}-${llm_model}"
 query_log_fname="${exp_path}/log-baseline/${dbms}/${dataset}-${llm_model}"
 
-workload_path="${exp_path}/workload/${dbms}/${dataset}-${llm_model}-select"
+workload_path="${exp_path}/${result_output_path}/Select/${dbms}/${dataset}-${llm_model}-select"
 database_path="${exp_path}/data/duckdb"
 
 for itr in $(seq 1 "$iteration"); do

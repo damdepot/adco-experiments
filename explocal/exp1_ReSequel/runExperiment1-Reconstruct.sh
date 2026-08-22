@@ -9,9 +9,9 @@ exp_path="$(pwd)"
 
 date=$(date '+%Y-%m-%d-%H-%M-%S')
 
-template_path="${exp_path}/workload/${dbms}/${dataset}-template"
-template_rewrite_path="${exp_path}/rewrite-results/resequel/workload/${dbms}/${dataset}/${llm_model}"
-workload_output="${exp_path}/workload/${dbms}/${dataset}-${llm_model}"
+template_path="${exp_path}/ReSequel-results/Template/${dbms}/${dataset}-template"
+template_rewrite_path="${exp_path}/ReSequel-results/Rewrite-Template/${dbms}/${dataset}/${llm_model}"
+workload_output="${exp_path}/ReSequel-results/Reconstruct/${dbms}/${dataset}-${llm_model}"
 
 rm -rf $workload_output
 mkdir -p ${workload_output}

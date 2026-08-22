@@ -42,8 +42,8 @@ elif [ $op == "Templatization" ]; then
 
 elif [ $op == "Generate" ]; then
     export generate_list="--query-list"
-    workload_path="${exp_path}/workload/${dbms}/${dataset}-template"
-    $CMDReSequel ${workload_path}
+    template_path="${exp_path}/ReSequel-results/Template/${dbms}/${dataset}-template"
+    $CMDReSequel ${template_path}
 
 elif [ $op == "Reconstruct" ]; then  
     $CMDReconstruct ${dataset} ${workload_path} ${dbms} ${llm_model} 
@@ -61,14 +61,14 @@ elif [ $op == "Downsampling" ]; then
     $CMDDownsampling ${dataset} ${workload_path} ${dbms} ${llm_model} ${catalog_path} ${sample_fraction}
 
 elif [ $op == "Judge" ]; then  
-    workload_path="${exp_path}/workload/${dbms}/${dataset}-template"
-    $CMDJudge  ${dataset} ${catalog_path} ${llm_model} ${dbms}  ${workload_path}   
+    template_path="${exp_path}/ReSequel-results/Template/${dbms}/${dataset}-template"
+    $CMDJudge  ${dataset} ${catalog_path} ${llm_model} ${dbms}  ${template_path}
 
 elif [ $op == "Implement" ]; then
      $CMDImplement ${llm_model}
 
 else     
     export generate_list=""
-    $CMDReSQL ${llm_model}
+    $CMDReSequel ${llm_model}
 fi 
 

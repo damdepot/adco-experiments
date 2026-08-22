@@ -8,10 +8,11 @@ llm_model=$4
 exp_path="$(pwd)"
 
 date=$(date '+%Y-%m-%d-%H-%M-%S')
-system_log="${exp_path}/system-log-${date}.dat"
+system_log="${exp_path}/ReSequel-results/system-log-${date}.dat"
 
-output_path="${exp_path}/ReSQL-results/implement/${dataset}"
+output_path="${exp_path}/ReSequel-results/Implement/${dataset}"
 mkdir -p ${output_path}
+
 result_log_path="${exp_path}/results/resequel/Experiment1_LLM_Implement.dat"
 
 cd "${exp_path}/baselines/ReSequel/src/main/python"

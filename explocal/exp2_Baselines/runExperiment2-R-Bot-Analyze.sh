@@ -9,7 +9,7 @@ exp_path="$(pwd)"
 
 
 date=$(date '+%Y-%m-%d-%H-%M-%S')
-system_log="${exp_path}/system-log-${date}.dat"
+system_log="${exp_path}/R-Bot-results/system-log-${date}.dat"
 
 output_path="${exp_path}/R-Bot-results/Rewrite/${dbms}/${dataset}/${llm_model}"
 log_dir="${exp_path}/R-Bot-results/Rewrite/${dbms}/${dataset}/${llm_model}-LOG"
