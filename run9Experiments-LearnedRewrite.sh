@@ -23,4 +23,4 @@ echo "-------------------<< Verifying LearnedRewrite rewrites for Stats-Lite dat
 $CMDRunLRVerify stats-lite PostgreSQL
 
 echo "-------------------<< Running Workload for Stats-Lite dataset >>-------------------"
-$CMDRunWorkload stats-lite PostgreSQL
+$CMDRunWorkload stats-lite PostgreSQL LearnedRewrite
