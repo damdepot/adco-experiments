@@ -220,11 +220,13 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Project-specific
-baselines/*
 opencode.json
+AGENTS.md
+baselines/*
 data/
 catalog/
 results/
 *.dat
 R-Bot-results/
 ReSequel-results/
+LearnedRewrite-results/

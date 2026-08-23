@@ -12,6 +12,13 @@ setup_venv() {
     uv pip install --python venv/bin/python -r requirements.txt
 }
 
+### ReSequel
+echo '-------------------<< Setting up ReSequel baseline >>-------------------'
+resql_path="${root_path}/baselines/ReSequel"
+resql_python_src="${resql_path}/src/main/python"
+cd ${resql_python_src}
+setup_venv "${resql_python_src}"
+
 ### R-Bot
 echo '-------------------<< Setting up R-Bot baseline >>-------------------'
 rbot_path="${root_path}/baselines/R-Bot"
@@ -23,9 +30,8 @@ unzip -oq stackoverflow-rewrite-embed.zip
 # Build structure-semantics Q&A index.
 ../venv/bin/python rag_gen.py
 
-### ReSequel
-echo '-------------------<< Setting up ReSequel baseline >>-------------------'
-resql_path="${root_path}/baselines/ReSequel"
-resql_python_src="${resql_path}/src/main/python"
-cd ${resql_python_src}
-setup_venv "${resql_python_src}"
+### LearnedRewrite
+echo '-------------------<< Setting up LearnedRewrite baseline >>-------------------'
+lr_path="${root_path}/baselines/LearnedRewrite"
+cd ${lr_path}
+setup_venv "${lr_path}"
