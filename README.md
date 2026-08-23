@@ -1,7 +1,8 @@
 # adco-experiments
 
 Experiment harness for evaluating LLM-based SQL query rewriting approaches
-([ReSequel](https://github.com/dannykhant/resequel), [R-Bot](https://github.com/dannykhant/r-bot))
+([ReSequel](https://github.com/dannykhant/resequel), [R-Bot](https://github.com/dannykhant/r-bot),
+[LearnedRewrite](https://github.com/dannykhant/learnedrewrite))
 against baseline execution on the STATS benchmark, using PostgreSQL or MySQL.
 
 ## Repository layout
@@ -9,14 +10,20 @@ against baseline execution on the STATS benchmark, using PostgreSQL or MySQL.
 | Path | Purpose |
 |------|---------|
 | `run1SetupDependencies.sh` | Install system build dependencies |
-| `run2DownloadBaselines.sh` | Clone R-Bot and ReSequel into `baselines/` |
+| `run2DownloadBaselines.sh` | Clone ReSequel, R-Bot, and LearnedRewrite into `baselines/` |
 | `run3SetupBaselines.sh` | Create venvs and build artifacts for each baseline |
 | `run4DownloadData.sh` | Download the STATS dataset CSVs into `data/stats/` |
 | `run5PrepareData-*.sh` | Create and load the `stats` / `stats-lite` databases (local or remote PostgreSQL, MySQL) |
-| `run6Experiments-*.sh` | Run the end-to-end experiments (catalog build, rewrite, verify, baseline runs) |
+| `run6UpdateConfigs.sh` | Regenerate the baselines' `APIKeys.yaml` / `DBConfig.yaml` from `.env` |
+| `run7Experiments-ReSequel.sh` | Run the ReSequel pipeline (catalog build, rewrite, verify) + baselines |
+| `run8Experiments-R-Bot.sh` | Run the R-Bot pipeline (rewrite, verify) + workload |
+| `run9Experiments-LearnedRewrite.sh` | Run the LearnedRewrite pipeline (rewrite, verify) + workload |
+| `.env-example` | Template for API keys and Postgres credentials; copy to `.env` |
 | `workload/` | Per-DBMS workload SQL: schemas, indexes, queries, import scripts |
 | `workload_generator/` | Python harness that replays workloads and logs results (`DBConfig.yaml` holds its DB credentials) |
-| `explocal/` | Individual experiment driver scripts called by the `run6*` entry points |
+| `explocal/` | Individual experiment driver scripts called by the `run7*`–`run9*` entry points |
+| `catalog/` | Generated ReSequel catalog files (per-dataset JSONs) |
+| `results/` | Benchmark results per approach (`results/resequel`, `results/r-bot`, `results/learnedrewrite`) |
 | `docker-compose.yml` | `db` (PostgreSQL 17) service plus the experiment container |
 
 ## Setup
@@ -29,47 +36,41 @@ against baseline execution on the STATS benchmark, using PostgreSQL or MySQL.
 ./run5PrepareData-PostgreSQL-Remote.sh   # or -Local.sh / MySQL variant
 ```
 
-## Configuring ReSequel
+## Configuring baselines
 
-ReSequel is cloned to `baselines/ReSequel`; its config lives in
-`baselines/ReSequel/src/main/python/`.
+Copy `.env-example` to `.env` and fill in your API keys and Postgres credentials:
 
-### 1. API keys — `APIKeys.yaml`
-
-Add your key under the LLM platform you use (OpenAI, Groq, Google):
-
-```yaml
----
-
-- llm_platform: OpenAI
-  key_1: '<your-openai-api-key>'
-
-- llm_platform: Groq
-  key_1: '<your-groq-api-key>'
-
-- llm_platform: Google
-  key_1: '<your-google-api-key>'
+```bash
+cp .env-example .env
 ```
 
-### 2. Database — `DBConfig.yaml`
+```dotenv
+OPENAI_API_KEY=sk-your-openai-key
+GROQ_API_KEY=gsk_your-groq-key
+GOOGLE_API_KEY=your-google-api-key
 
-Point ReSequel at your database:
-
-```yaml
----
-
-- database: Postgres
-  user: postgres
-  password: postgres
-  host: db        # 'db' for the docker-compose service, 127.0.0.1 for local
-  port: 5432
+PGUSER=postgres
+PGPASSWORD=postgres
+PGHOST=127.0.0.1   # 'db' for the docker-compose service, 127.0.0.1 for local
+PGPORT=5432
 ```
+
+Then regenerate the `APIKeys.yaml` / `DBConfig.yaml` files for ReSequel and R-Bot:
+
+```bash
+./run6UpdateConfigs.sh
+```
+
+The workload harness's own credentials live separately in
+`workload_generator/DBConfig.yaml`.
 
 ## Running experiments
 
 ```bash
-./run6Experiments-ReSequel.sh   # ReSequel pipeline + baselines
-./run6Experiments-R-Bot.sh      # R-Bot pipeline + baselines
+./run7Experiments-ReSequel.sh       # ReSequel pipeline + baselines
+./run8Experiments-R-Bot.sh          # R-Bot pipeline + workload
+./run9Experiments-LearnedRewrite.sh # LearnedRewrite pipeline + workload
 ```
 
-Results are written to `results/`.
+Results are written to `results/`, with rewritten queries in
+`ReSequel-results/`, `R-Bot-results/`, and `LearnedRewrite-results/`.
