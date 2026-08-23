@@ -1,27 +1,20 @@
 SELECT
     COUNT(*)
 FROM
-    comments as c,
+    tags as t,
     posts as p,
-    postLinks as pl,
-    postHistory as ph,
+    users as u,
     votes as v,
-    users as u
+    badges as b
 WHERE
-    p.Id = pl.PostId
-    AND p.Id = ph.PostId
-    AND p.Id = c.PostId
-    AND u.Id = c.UserId
+    p.Id = t.ExcerptPostId
     AND u.Id = v.UserId
-    AND c.Score = 0
-    AND c.CreationDate >= '2010-08-02 20:27:48' :: timestamp
-    AND c.CreationDate <= '2014-09-10 16:09:23' :: timestamp
-    AND p.PostTypeId = 1
-    AND p.Score = 4
-    AND p.ViewCount <= 4937
-    AND pl.CreationDate >= '2011-11-03 05:09:35' :: timestamp
-    AND ph.PostHistoryTypeId = 1
-    AND u.Reputation <= 270
+    AND u.Id = b.UserId
+    AND u.Id = p.OwnerUserId
     AND u.Views >= 0
-    AND u.Views <= 51
-    AND u.DownVotes >= 0;
+    AND u.Views <= 515
+    AND u.UpVotes >= 0
+    AND u.CreationDate <= '2014-09-07 13:46:41' :: timestamp
+    AND v.BountyAmount >= 0
+    AND v.BountyAmount <= 200
+    AND b.Date <= '2014-09-12 12:56:22' :: timestamp;
