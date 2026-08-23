@@ -13,7 +13,7 @@ export result_dir="results/learnedrewrite"
 export result_output_path="LearnedRewrite-results"
 
 CMDLearnedRewrite=./explocal/exp2_Baselines/runExperiment2-LearnedRewrite.sh
-CMDRunLRVerify=./explocal/exp2_Baselines/runExperiment2-Verify-LearnedRewrite.sh
+CMDRunLRVerify=./explocal/exp2_Baselines/runExperiment2-Workload-Verify-LearnedRewrite.sh
 CMDRunWorkload=./explocal/exp2_Baselines/runExperiment2-Workload.sh
 
 echo "-------------------<< Running Stats-Lite LearnedRewrite rewrites >>-------------------"
