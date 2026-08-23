@@ -2,13 +2,14 @@
 
 # clean original results
 rm -rf results/resequel
-mkdir -p results/resequel
+mkdir -p results/resequel/benchmarks
 
 rm -rf ReSequel-results
 mkdir -p ReSequel-results
 
 export iteration=5
 export result_dir="results/resequel"
+export result_benchmark_path="results/resequel/benchmarks"
 export result_output_path="ReSequel-results"
 
 CMDReSequel=./explocal/exp1_ReSequel/runExperiment1.sh

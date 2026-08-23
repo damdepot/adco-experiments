@@ -3,13 +3,14 @@
 set -e
 
 rm -rf results/r-bot
-mkdir -p results/r-bot
+mkdir -p results/r-bot/benchmarks
 
 rm -rf R-Bot-results
 mkdir -p R-Bot-results
 
 export iteration=5
 export result_dir="results/r-bot"
+export result_benchmark_path="results/r-bot/benchmarks"
 export result_output_path="R-Bot-results"
 
 CMDBaselineRBot=./explocal/exp2_Baselines/runExperiment2-R-Bot.sh

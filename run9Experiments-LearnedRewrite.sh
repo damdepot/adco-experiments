@@ -3,13 +3,14 @@
 set -e
 
 rm -rf results/learnedrewrite
-mkdir -p results/learnedrewrite
+mkdir -p results/learnedrewrite/benchmarks
 
 rm -rf LearnedRewrite-results
 mkdir -p LearnedRewrite-results
 
 export iteration=5
 export result_dir="results/learnedrewrite"
+export result_benchmark_path="results/learnedrewrite/benchmarks"
 export result_output_path="LearnedRewrite-results"
 
 CMDLearnedRewrite=./explocal/exp2_Baselines/runExperiment2-LearnedRewrite.sh
