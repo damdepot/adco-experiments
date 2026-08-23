@@ -7,6 +7,10 @@ mkdir -p results/resequel/benchmarks
 rm -rf ReSequel-results
 mkdir -p ReSequel-results
 
+# clean baseline results
+rm -rf results/baseline
+mkdir -p results/baseline/benchmarks
+
 export iteration=5
 export result_dir="results/resequel"
 export result_benchmark_path="results/resequel/benchmarks"
