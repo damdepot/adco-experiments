@@ -6,8 +6,8 @@ baseline_name='LearnedRewrite'
 
 exp_path="$(pwd)"
 
-output_path="${exp_path}/LearnedRewrite-results/${dataset}-${baseline_name}"
-mkdir -p "${exp_path}/LearnedRewrite-results"
+output_path="${exp_path}/LearnedRewrite-results/Rewrite/${dbms}/${dataset}-${baseline_name}"
+mkdir -p "${exp_path}/LearnedRewrite-results/Rewrite/${dbms}"
 
 rm -rf ${output_path}
 mkdir -p ${output_path}
@@ -22,9 +22,8 @@ fi
 
 cd "${exp_path}/baselines/LearnedRewrite"
 source venv/bin/activate
-cd my_rewriter
 
-CMD="python main.py --workload-path ${workload_path} \
+CMD="python my_rewriter/main.py --workload-path ${workload_path} \
                     --schema-path ${schema_path} \
                     --database-name ${dataset} \
                     --dbms ${dbms} \

@@ -5,7 +5,7 @@ dbms=$2
 
 exp_path="$(pwd)"
 
-workload_path="${exp_path}/LearnedRewrite-results/${dbms}/${dataset}"
+workload_path="${exp_path}/workload/${dbms}/${dataset}"
 rewrite_path="${exp_path}/LearnedRewrite-results/Rewrite/${dbms}/${dataset}-LearnedRewrite"
 output_path_verify="${exp_path}/LearnedRewrite-results/Select/${dbms}/${dataset}-LearnedRewrite-select"
 
