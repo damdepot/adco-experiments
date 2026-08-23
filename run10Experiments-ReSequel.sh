@@ -7,17 +7,12 @@ mkdir -p results/resequel/benchmarks
 rm -rf ReSequel-results
 mkdir -p ReSequel-results
 
-# clean baseline results
-rm -rf results/baseline
-mkdir -p results/baseline/benchmarks
-
 export iteration=5
 export result_dir="results/resequel"
 export result_benchmark_path="results/resequel/benchmarks"
 export result_output_path="ReSequel-results"
 
 CMDReSequel=./explocal/exp1_ReSequel/runExperiment1.sh
-CMDBaseline=./explocal/exp2_Baselines/runExperiment2-Baseline.sh
 CMDRunWorkload=./explocal/exp2_Baselines/runExperiment2-Workload.sh
 
 model="gemini-3.5-flash-lite"
@@ -47,12 +42,7 @@ $CMDReSequel Reconstruct stats-lite PostgreSQL 1 ${model}
 echo '-------------------<< Verifying rewrite queries for Stats-Lite dataset >>-------------------'
 $CMDReSequel Verify stats-lite PostgreSQL 1 ${model} PostgreSQL
 
-## Run Rewrite Queries
+## Run Workload
 #********************
 echo '-------------------<< Running workload for Stats-Lite dataset >>-------------------'
 $CMDRunWorkload stats-lite PostgreSQL ${model}
-
-## Run Baselines
-#***************
-echo '-------------------<< Running baselines for Stats-Lite dataset >>-------------------'
-$CMDBaseline stats-lite PostgreSQL 1
