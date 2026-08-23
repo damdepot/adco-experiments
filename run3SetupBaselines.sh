@@ -12,6 +12,11 @@ setup_venv() {
     uv pip install --python venv/bin/python -r requirements.txt
 }
 
+### Workload generator
+echo '-------------------<< Setting up workload generator >>-------------------'
+workload_path="${root_path}/workload_generator"
+setup_venv "${workload_path}"
+
 ### ReSequel
 echo '-------------------<< Setting up ReSequel baseline >>-------------------'
 resql_path="${root_path}/baselines/ReSequel"
