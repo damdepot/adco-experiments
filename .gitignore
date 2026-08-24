@@ -158,6 +158,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.venv_hash
 
 # Spyder project settings
 .spyderproject
@@ -230,4 +231,5 @@ results/
 R-Bot-results/
 ReSequel-results/
 LearnedRewrite-results/
+ADCo-results/
 reports/
