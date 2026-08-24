@@ -11,4 +11,4 @@ python3 "$SCRIPT_DIR/report.py" \
     --dataset "$DATASET" \
     --dbms "$DBMS" \
     --results-dir "$REPO_ROOT/results" \
-    --output-dir "$REPO_ROOT/results/reports"
+    --output-dir "$REPO_ROOT/reports"
