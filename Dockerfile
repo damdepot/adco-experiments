@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         unzip \
         wget \
         postgresql-client \
+        build-essential \
+        pkg-config \
+        default-libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY workload/src/requirements.txt /tmp/requirements.txt
