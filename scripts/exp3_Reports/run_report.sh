@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-# Get the repository root directory (where run_report.sh is placed in explocal/exp_Reports/)
+# Get the repository root directory (where run_report.sh is placed in scripts/exp3_Reports/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 

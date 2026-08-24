@@ -4,7 +4,7 @@ set -e
 
 root_path="$(cd "$(dirname "$0")" && pwd)"
 data_path="${root_path}/data/stats"
-workload_path="${root_path}/workload/PostgreSQL/stats"
+workload_path="${root_path}/workload/databases/PostgreSQL/stats"
 
 export PGHOST="${PGHOST:-db}"
 export PGPORT="${PGPORT:-5432}"

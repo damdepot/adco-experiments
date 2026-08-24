@@ -4,7 +4,7 @@ set -e
 
 root_path="$(cd "$(dirname "$0")" && pwd)"
 stats_path="${root_path}/Experiments/data/stats"
-workload_path="${root_path}/Experiments/workload/MySQL/stats"
+workload_path="${root_path}/workload/databases/MySQL/stats"
 
 STATS_PATH="${stats_path}" SCHEMA_PATH="${workload_path}/schema.sql" \
 IMPORT_PATH="${workload_path}/import.sql" \

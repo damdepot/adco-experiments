@@ -20,18 +20,18 @@ fi
 
 mkdir -p ${catalog_path}
 
-workload_path="${exp_path}/workload/${dbms}/${dataset}"
+workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 
-CMDBuildCatalog=./explocal/exp1_ReSequel/runExperiment1-BuildCatalog.sh
-CMDTemplatization=./explocal/exp1_ReSequel/runExperiment1-Templatization.sh
-CMDReconstruct=./explocal/exp1_ReSequel/runExperiment1-Reconstruct.sh
-CMDLabeling=./explocal/exp1_ReSequel/runExperiment1-Label.sh
-CMDVerify=./explocal/exp1_ReSequel/runExperiment1-Verify.sh
-CMDVerifyOR=./explocal/exp1_ReSequel/runExperiment1-Verify-OR.sh
-CMDDownsampling=./explocal/exp1_ReSequel/runExperiment1-Downsampling.sh
-CMDJudge=./explocal/exp1_ReSequel/runExperiment1-Judge.sh
-CMDImplement="./explocal/exp1_ReSequel/runExperiment1-Implement.sh ${dataset} ${catalog_path} ${dbms}"
-CMDReSequel="./explocal/exp1_ReSequel/runExperiment1-ReSequel.sh ${dataset} ${catalog_path} ${llm_model} ${dbms}"
+CMDBuildCatalog=./scripts/exp1_ReSequel/runExperiment1-BuildCatalog.sh
+CMDTemplatization=./scripts/exp1_ReSequel/runExperiment1-Templatization.sh
+CMDReconstruct=./scripts/exp1_ReSequel/runExperiment1-Reconstruct.sh
+CMDLabeling=./scripts/exp1_ReSequel/runExperiment1-Label.sh
+CMDVerify=./scripts/exp1_ReSequel/runExperiment1-Verify.sh
+CMDVerifyOR=./scripts/exp1_ReSequel/runExperiment1-Verify-OR.sh
+CMDDownsampling=./scripts/exp1_ReSequel/runExperiment1-Downsampling.sh
+CMDJudge=./scripts/exp1_ReSequel/runExperiment1-Judge.sh
+CMDImplement="./scripts/exp1_ReSequel/runExperiment1-Implement.sh ${dataset} ${catalog_path} ${dbms}"
+CMDReSequel="./scripts/exp1_ReSequel/runExperiment1-ReSequel.sh ${dataset} ${catalog_path} ${llm_model} ${dbms}"
 
 
 if [ $op == "BuildCatalog" ]; then

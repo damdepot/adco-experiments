@@ -6,7 +6,7 @@ llm_model=$3
 
 exp_path="$(pwd)"
 
-workload_path="${exp_path}/workload/${dbms}/${dataset}"
+workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 rewrite_path="${exp_path}/R-Bot-results/Rewrite/${dbms}/${dataset}/${llm_model}"
 output_path_verify="${exp_path}/R-Bot-results/Select/${dbms}/${dataset}-${llm_model}-select"
 
@@ -20,7 +20,7 @@ fi
 verify_log_path="${exp_path}/results/r-bot/Experiment2_RBot_Verify_${dbms}_${dataset}.dat"
 mkdir -p "${exp_path}/results/r-bot"
 
-cd "${exp_path}/workload_generator"
+cd "${exp_path}/workload/src"
 source venv/bin/activate
 
 CMD="python main_verify_LR.py --workload-path ${workload_path} \

@@ -14,7 +14,7 @@ setup_venv() {
 
 ### Workload generator
 echo '-------------------<< Setting up workload generator >>-------------------'
-workload_path="${root_path}/workload_generator"
+workload_path="${root_path}/workload/src"
 setup_venv "${workload_path}"
 
 ### ReSequel

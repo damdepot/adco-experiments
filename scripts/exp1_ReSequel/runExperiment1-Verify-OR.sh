@@ -11,18 +11,15 @@ runner_dbms=$5
 
 exp_path="$(pwd)"
 
-rewrite_path="${exp_path}/ReSequel-results/Reconstruct/${dbms}/${dataset}-${llm_model}"
+rewrite_path="${exp_path}/ReSequel-results/Select/${dbms}/${dataset}-${llm_model}-select"
 output_path_verify="${exp_path}/ReSequel-results/Verify/${dbms}/${dataset}-${llm_model}-verify"
-output_path_select="${exp_path}/ReSequel-results/Select/${dbms}/${dataset}-${llm_model}-select"
+output_path_select="${exp_path}/ReSequel-results/Select/${dbms}/${dataset}-${llm_model}-select-OR"
 database_path="${exp_path}/data/duckdb"
 
-rm -rf ${output_path_verify}
 rm -rf ${output_path_select}
-mkdir -p ${output_path_verify}
 mkdir -p ${output_path_select}
 
 if [ $dataset == "publicbibenchmark" ]; then
-    mkdir -p "${output_path_verify}/queries"
     mkdir -p "${output_path_select}/queries"
 fi    
 
@@ -35,21 +32,21 @@ if [ $dbms == "PostgreSQL" ]; then
 elif [ $dbms == "MySQL" ]; then  
     ./initMySQL.sh   
     sleep 10 
-fi 
+fi  
 
-verify_log_path="${exp_path}/results/resequel/Experiment1_Verify.dat"
+verify_log_path="${exp_path}/results/resequel/Experiment1_Verify_${dbms}_${dataset}.dat"
 
-cd "${exp_path}/workload_generator"
+cd "${exp_path}/workload/src"
 source venv/bin/activate
 
-CMD="python main_verify.py --workload-path ${workload_path} \
+CMD="python main_verify_OR.py --workload-path ${workload_path} \
                     --database-name ${dataset} \
                     --database-path ${database_path} \
                     --dbms ${dbms} \
                     --runner-dbms ${runner_dbms} \
                     --rewrite-path ${rewrite_path} \
                     --verify-log-path ${verify_log_path} \
-                    --output-path-verify ${output_path_verify} \
+                    --output-path-verify NX \
                     --output-path-select ${output_path_select}"
 
 $CMD

@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-COPY workload_generator/requirements.txt /tmp/requirements.txt
+COPY workload/src/requirements.txt /tmp/requirements.txt
 RUN uv pip install --system -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 

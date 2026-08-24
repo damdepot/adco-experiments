@@ -13,9 +13,9 @@ export result_dir="results/learnedrewrite"
 export result_benchmark_path="results/learnedrewrite/benchmarks"
 export result_output_path="LearnedRewrite-results"
 
-CMDLearnedRewrite=./explocal/exp2_Baselines/runExperiment2-LearnedRewrite.sh
-CMDRunLRVerify=./explocal/exp2_Baselines/runExperiment2-Workload-Verify-LearnedRewrite.sh
-CMDRunWorkload=./explocal/exp2_Baselines/runExperiment2-Workload.sh
+CMDLearnedRewrite=./scripts/exp2_Baselines/runExperiment2-LearnedRewrite.sh
+CMDRunLRVerify=./scripts/exp2_Baselines/runExperiment2-Workload-Verify-LearnedRewrite.sh
+CMDRunWorkload=./scripts/exp2_Baselines/runExperiment2-Workload.sh
 
 echo "-------------------<< Running Stats-Lite LearnedRewrite rewrites >>-------------------"
 $CMDLearnedRewrite stats-lite PostgreSQL

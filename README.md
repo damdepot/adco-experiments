@@ -19,9 +19,9 @@ against baseline execution on the STATS benchmark, using PostgreSQL or MySQL.
 | `run8Experiments-R-Bot.sh` | Run the R-Bot pipeline (rewrite, verify) + workload |
 | `run9Experiments-LearnedRewrite.sh` | Run the LearnedRewrite pipeline (rewrite, verify) + workload |
 | `.env-example` | Template for API keys and Postgres credentials; copy to `.env` |
-| `workload/` | Per-DBMS workload SQL: schemas, indexes, queries, import scripts |
-| `workload_generator/` | Python harness that replays workloads and logs results (`DBConfig.yaml` holds its DB credentials) |
-| `explocal/` | Individual experiment driver scripts called by the `run7*`–`run9*` entry points |
+| `workload/databases/` | Per-DBMS workload SQL: schemas, indexes, queries, import scripts |
+| `workload/src/` | Python harness that replays workloads and logs results (`DBConfig.yaml` holds its DB credentials) |
+| `scripts/` | Individual experiment driver scripts called by the `run7*`–`run9*` entry points |
 | `catalog/` | Generated ReSequel catalog files (per-dataset JSONs) |
 | `results/` | Benchmark results per approach (`results/resequel`, `results/r-bot`, `results/learnedrewrite`) |
 | `docker-compose.yml` | `db` (PostgreSQL 17) service plus the experiment container |
@@ -62,7 +62,7 @@ Then regenerate the `APIKeys.yaml` / `DBConfig.yaml` files for ReSequel and R-Bo
 ```
 
 The workload harness's own credentials live separately in
-`workload_generator/DBConfig.yaml`.
+`workload/src/DBConfig.yaml`.
 
 ## Running experiments
 

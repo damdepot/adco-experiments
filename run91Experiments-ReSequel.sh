@@ -12,8 +12,8 @@ export result_dir="results/resequel"
 export result_benchmark_path="results/resequel/benchmarks"
 export result_output_path="ReSequel-results"
 
-CMDReSequel=./explocal/exp1_ReSequel/runExperiment1.sh
-CMDRunWorkload=./explocal/exp2_Baselines/runExperiment2-Workload.sh
+CMDReSequel=./scripts/exp1_ReSequel/runExperiment1.sh
+CMDRunWorkload=./scripts/exp2_Baselines/runExperiment2-Workload.sh
 
 model="gemini-3.5-flash-lite"
 

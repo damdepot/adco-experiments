@@ -5,7 +5,7 @@ rm -rf results/baseline
 mkdir -p results/baseline/benchmarks
 
 export iteration=5
-CMDBaseline=./explocal/exp2_Baselines/runExperiment2-Baseline.sh
+CMDBaseline=./scripts/exp2_Baselines/runExperiment2-Baseline.sh
 
 ## Run the baseline experiments
 #***************

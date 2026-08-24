@@ -13,9 +13,9 @@ export result_dir="results/r-bot"
 export result_benchmark_path="results/r-bot/benchmarks"
 export result_output_path="R-Bot-results"
 
-CMDBaselineRBot=./explocal/exp2_Baselines/runExperiment2-R-Bot.sh
-CMDRunRBotVerify=./explocal/exp2_Baselines/runExperiment2-Workload-Verify-R-Bot.sh
-CMDRunWorkload=./explocal/exp2_Baselines/runExperiment2-Workload.sh
+CMDBaselineRBot=./scripts/exp2_Baselines/runExperiment2-R-Bot.sh
+CMDRunRBotVerify=./scripts/exp2_Baselines/runExperiment2-Workload-Verify-R-Bot.sh
+CMDRunWorkload=./scripts/exp2_Baselines/runExperiment2-Workload.sh
 
 model=gemini-3.5-flash-lite
 

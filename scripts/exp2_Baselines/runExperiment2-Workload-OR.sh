@@ -5,15 +5,16 @@ dbms=$2
 llm_model=$3
 
 exp_path="$(pwd)"
-log_fname="${exp_path}/${result_benchmark_path}/runExperiment2-${dataset}-${dbms}-${llm_model}"
+log_fname="${exp_path}/results/runExperiment2-${dataset}-${dbms}-${llm_model}"
 query_log_fname="${exp_path}/log-baseline/${dbms}/${dataset}-${llm_model}"
 
-workload_path="${exp_path}/${result_output_path}/Select/${dbms}/${dataset}-${llm_model}-select"
 database_path="${exp_path}/data/duckdb"
+workload_path="${exp_path}/workload/databases/${dbms}/${dataset}-${llm_model}-select-OR"
+
 
 for itr in $(seq 1 "$iteration"); do
     sync
-    echo 3 | tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true
+    echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
 
     cd ${exp_path}
 
@@ -26,9 +27,9 @@ for itr in $(seq 1 "$iteration"); do
     elif [ $dbms == "MySQL" ]; then  
         ./initMySQL.sh   
         sleep 10 
-    fi   
+    fi  
 
-    cd "${exp_path}/workload_generator"
+    cd "${exp_path}/workload/src"
     source venv/bin/activate
 
     CMD="python main.py --workload-path ${workload_path} \
@@ -40,4 +41,5 @@ for itr in $(seq 1 "$iteration"); do
                         --output-path ${log_fname}"
 
     $CMD
+
 done

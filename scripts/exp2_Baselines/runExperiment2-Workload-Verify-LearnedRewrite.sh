@@ -5,7 +5,7 @@ dbms=$2
 
 exp_path="$(pwd)"
 
-workload_path="${exp_path}/workload/${dbms}/${dataset}"
+workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 rewrite_path="${exp_path}/LearnedRewrite-results/Rewrite/${dbms}/${dataset}-LearnedRewrite"
 output_path_verify="${exp_path}/LearnedRewrite-results/Select/${dbms}/${dataset}-LearnedRewrite-select"
 
@@ -18,7 +18,7 @@ fi
 
 verify_log_path="${exp_path}/LearnedRewrite-results/Experiment1_Verify.dat"
 
-cd "${exp_path}/workload_generator"
+cd "${exp_path}/workload/src"
 source venv/bin/activate
 
 CMD="python main_verify_LR.py --workload-path ${workload_path} \
