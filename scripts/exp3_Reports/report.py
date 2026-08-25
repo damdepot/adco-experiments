@@ -45,9 +45,10 @@ def main():
     parser.add_argument('--output-dir', default='results/reports', help='Output directory for the report')
     args = parser.parse_args()
 
-    systems = ['baseline', 'learnedrewrite', 'r-bot', 'resequel']
+    systems = ['baseline', 'adco', 'learnedrewrite', 'r-bot', 'resequel']
     system_display_names = {
         'baseline': 'Baseline',
+        'adco': 'ADCo',
         'learnedrewrite': 'LearnedRewrite',
         'r-bot': 'R-Bot',
         'resequel': 'ReSequel'
@@ -144,7 +145,8 @@ def main():
     header = f"{'Query ID':<15}"
     header += f"{'Baseline (ms)':<15}"
     for sys in systems[1:]:
-        header += f"{sys.capitalize()[:10]} (ms) | Speedup"
+        sys_name = system_display_names.get(sys, sys.capitalize())
+        header += f"{sys_name[:10]} (ms) | Speedup"
         header += " " * 4
     lines.append(header)
     lines.append("-" * len(header))
