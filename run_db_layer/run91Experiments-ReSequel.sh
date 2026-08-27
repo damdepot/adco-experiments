@@ -4,16 +4,16 @@
 rm -rf results/db_layer/resequel
 mkdir -p results/db_layer/resequel/benchmarks
 
-rm -rf ReSequel-results
-mkdir -p ReSequel-results
+rm -rf out/db_layer/ReSequel-results
+mkdir -p out/db_layer/ReSequel-results
 
 export iteration=5
 export result_dir="results/db_layer/resequel"
 export result_benchmark_path="results/db_layer/resequel/benchmarks"
-export result_output_path="ReSequel-results"
+export result_output_path="out/db_layer/ReSequel-results"
 
-CMDReSequel=./scripts/exp1_ReSequel/runExperiment1.sh
-CMDRunWorkload=./scripts/exp2_Baselines/runExperiment2-Workload.sh
+CMDReSequel=./scripts/db_layer/exp1_ReSequel/runExperiment1.sh
+CMDRunWorkload=./scripts/db_layer/exp2_Baselines/runExperiment2-Workload.sh
 
 model="gemini-3.5-flash-lite"
 

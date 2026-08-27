@@ -5,17 +5,17 @@ set -e
 rm -rf results/db_layer/r-bot
 mkdir -p results/db_layer/r-bot/benchmarks
 
-rm -rf R-Bot-results
-mkdir -p R-Bot-results
+rm -rf out/db_layer/R-Bot-results
+mkdir -p out/db_layer/R-Bot-results
 
 export iteration=5
 export result_dir="results/db_layer/r-bot"
 export result_benchmark_path="results/db_layer/r-bot/benchmarks"
-export result_output_path="R-Bot-results"
+export result_output_path="out/db_layer/R-Bot-results"
 
-CMDBaselineRBot=./scripts/exp2_Baselines/runExperiment2-R-Bot.sh
-CMDRunRBotVerify=./scripts/exp2_Baselines/runExperiment2-Workload-Verify-R-Bot.sh
-CMDRunWorkload=./scripts/exp2_Baselines/runExperiment2-Workload.sh
+CMDBaselineRBot=./scripts/db_layer/exp2_Baselines/runExperiment2-R-Bot.sh
+CMDRunRBotVerify=./scripts/db_layer/exp2_Baselines/runExperiment2-Workload-Verify-R-Bot.sh
+CMDRunWorkload=./scripts/db_layer/exp2_Baselines/runExperiment2-Workload.sh
 
 model=gemini-3.5-flash-lite
 
