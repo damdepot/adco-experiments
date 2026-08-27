@@ -9,18 +9,18 @@ against baseline execution on the STATS benchmark, using PostgreSQL or MySQL.
 
 | Path | Purpose |
 |------|---------|
-| `run1SetupDependencies.sh` | Install system build dependencies |
-| `run2DownloadBaselines.sh` | Clone ReSequel, R-Bot, and LearnedRewrite into `baselines/` |
-| `run3SetupBaselines.sh` | Create venvs and build artifacts for each baseline |
-| `run4DownloadData.sh` | Download the STATS dataset CSVs into `data/stats/` |
-| `run5PrepareData-*.sh` | Create and load the `stats` / `stats-lite` databases (local or remote PostgreSQL, MySQL) |
-| `run6UpdateConfigs.sh` | Regenerate the baselines' `APIKeys.yaml` / `DBConfig.yaml` and ADCo's `.env` from `.env` |
-| `run7Experiments-ADCo.sh` | Run the ADCo pipeline (compile, rewrite, decompile, select, verify) + workload |
-| `run8Experiments-Baseline.sh` | Run the baseline (unrewritten) workload |
-| `run91Experiments-ReSequel.sh` | Run the ReSequel pipeline (catalog build, templatization, rewrite, verify) + workload |
-| `run92Experiments-R-Bot.sh` | Run the R-Bot pipeline (rewrite, verify) + workload |
-| `run9Experiments-LearnedRewrite.sh` | Run the LearnedRewrite pipeline (rewrite, verify) + workload |
-| `run93Reports.sh` | Generate comparison reports into `reports/` |
+| `run_db_layer/run1SetupDependencies.sh` | Install system build dependencies |
+| `run_db_layer/run2DownloadBaselines.sh` | Clone ReSequel, R-Bot, and LearnedRewrite into `baselines/` |
+| `run_db_layer/run3SetupBaselines.sh` | Create venvs and build artifacts for each baseline |
+| `run_db_layer/run4DownloadData.sh` | Download the STATS dataset CSVs into `data/stats/` |
+| `run_db_layer/run5PrepareData-*.sh` | Create and load the `stats` / `stats-lite` databases (local or remote PostgreSQL, MySQL) |
+| `run_db_layer/run6UpdateConfigs.sh` | Regenerate the baselines' `APIKeys.yaml` / `DBConfig.yaml` and ADCo's `.env` from `.env` |
+| `run_db_layer/run7Experiments-ADCo.sh` | Run the ADCo pipeline (compile, rewrite, decompile, select, verify) + workload |
+| `run_db_layer/run8Experiments-Baseline.sh` | Run the baseline (unrewritten) workload |
+| `run_db_layer/run91Experiments-ReSequel.sh` | Run the ReSequel pipeline (catalog build, templatization, rewrite, verify) + workload |
+| `run_db_layer/run92Experiments-R-Bot.sh` | Run the R-Bot pipeline (rewrite, verify) + workload |
+| `run_db_layer/run9Experiments-LearnedRewrite.sh` | Run the LearnedRewrite pipeline (rewrite, verify) + workload |
+| `run_db_layer/run93Reports.sh` | Generate comparison reports into `reports/` |
 | `.env-example` | Template for API keys, Postgres credentials, and Vertex AI settings; copy to `.env` |
 | `workload/databases/` | Per-DBMS workload SQL: schemas, indexes, queries, import scripts |
 | `workload/src/` | Python harness that replays workloads and logs results (`DBConfig.yaml` holds its DB credentials) |
@@ -28,17 +28,17 @@ against baseline execution on the STATS benchmark, using PostgreSQL or MySQL.
 | `catalog/` | Generated ReSequel catalog files (per-dataset JSONs) |
 | `results/` | Benchmark results per approach (`results/adco`, `results/resequel`, `results/r-bot`, `results/learnedrewrite`, `results/baseline`) |
 | `*-results/` | Rewritten queries per approach (`ADCo-results/`, `ReSequel-results/`, `R-Bot-results/`, `LearnedRewrite-results/`) |
-| `reports/` | Generated comparison reports (`run93Reports.sh`) |
+| `reports/` | Generated comparison reports (`run_db_layer/run93Reports.sh`) |
 | `docker-compose.yml` | `db` (PostgreSQL 17) service plus the experiment container |
 
 ## Setup
 
 ```bash
-./run1SetupDependencies.sh
-./run2DownloadBaselines.sh
-./run3SetupBaselines.sh
-./run4DownloadData.sh
-./run5PrepareData-PostgreSQL-Remote.sh   # or -Local.sh / MySQL variant
+./run_db_layer/run1SetupDependencies.sh
+./run_db_layer/run2DownloadBaselines.sh
+./run_db_layer/run3SetupBaselines.sh
+./run_db_layer/run4DownloadData.sh
+./run_db_layer/run5PrepareData-PostgreSQL-Remote.sh   # or -Local.sh / MySQL variant
 ```
 
 ## Configuring baselines
@@ -68,18 +68,18 @@ Then regenerate the `APIKeys.yaml` / `DBConfig.yaml` files for ReSequel and
 R-Bot, and the `.env` for ADCo:
 
 ```bash
-./run6UpdateConfigs.sh
+./run_db_layer/run6UpdateConfigs.sh
 ```
 
 ## Running experiments
 
 ```bash
-./run7Experiments-ADCo.sh           # ADCo pipeline + workload
-./run8Experiments-Baseline.sh       # baseline (unrewritten) workload
-./run91Experiments-ReSequel.sh      # ReSequel pipeline + workload
-./run92Experiments-R-Bot.sh         # R-Bot pipeline + workload
-./run9Experiments-LearnedRewrite.sh # LearnedRewrite pipeline + workload
-./run93Reports.sh                   # comparison reports into reports/
+./run_db_layer/run7Experiments-ADCo.sh           # ADCo pipeline + workload
+./run_db_layer/run8Experiments-Baseline.sh       # baseline (unrewritten) workload
+./run_db_layer/run91Experiments-ReSequel.sh      # ReSequel pipeline + workload
+./run_db_layer/run92Experiments-R-Bot.sh         # R-Bot pipeline + workload
+./run_db_layer/run9Experiments-LearnedRewrite.sh # LearnedRewrite pipeline + workload
+./run_db_layer/run93Reports.sh                   # comparison reports into reports/
 ```
 
 Results are written to `results/`, with rewritten queries in `ADCo-results/`,

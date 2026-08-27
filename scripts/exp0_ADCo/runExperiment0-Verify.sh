@@ -24,7 +24,7 @@ fi
 
 if [ "$dbms" == "PostgreSQL" ]; then
     if [ -z "$PGHOST" ] || [[ "$PGHOST" == "localhost" || "$PGHOST" == "127.0.0.1" ]]; then
-        ./initpgSQL.sh
+        ../../run_db_layer/initpgSQL.sh
         sleep 10
     fi
 

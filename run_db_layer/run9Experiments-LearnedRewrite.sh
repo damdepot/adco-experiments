@@ -2,15 +2,15 @@
 
 set -e
 
-rm -rf results/learnedrewrite
-mkdir -p results/learnedrewrite/benchmarks
+rm -rf results/db_layer/learnedrewrite
+mkdir -p results/db_layer/learnedrewrite/benchmarks
 
 rm -rf LearnedRewrite-results
 mkdir -p LearnedRewrite-results
 
 export iteration=5
-export result_dir="results/learnedrewrite"
-export result_benchmark_path="results/learnedrewrite/benchmarks"
+export result_dir="results/db_layer/learnedrewrite"
+export result_benchmark_path="results/db_layer/learnedrewrite/benchmarks"
 export result_output_path="LearnedRewrite-results"
 
 CMDLearnedRewrite=./scripts/exp2_Baselines/runExperiment2-LearnedRewrite.sh

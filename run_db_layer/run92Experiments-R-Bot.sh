@@ -2,15 +2,15 @@
 
 set -e
 
-rm -rf results/r-bot
-mkdir -p results/r-bot/benchmarks
+rm -rf results/db_layer/r-bot
+mkdir -p results/db_layer/r-bot/benchmarks
 
 rm -rf R-Bot-results
 mkdir -p R-Bot-results
 
 export iteration=5
-export result_dir="results/r-bot"
-export result_benchmark_path="results/r-bot/benchmarks"
+export result_dir="results/db_layer/r-bot"
+export result_benchmark_path="results/db_layer/r-bot/benchmarks"
 export result_output_path="R-Bot-results"
 
 CMDBaselineRBot=./scripts/exp2_Baselines/runExperiment2-R-Bot.sh

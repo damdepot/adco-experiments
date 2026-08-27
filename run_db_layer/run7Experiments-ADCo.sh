@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # clean original results
-rm -rf results/adco
-mkdir -p results/adco/benchmarks
+rm -rf results/db_layer/adco
+mkdir -p results/db_layer/adco/benchmarks
 
 rm -rf ADCo-results
 mkdir -p ADCo-results
 
 export iteration=5
-export result_dir="results/adco"
-export result_benchmark_path="results/adco/benchmarks"
+export result_dir="results/db_layer/adco"
+export result_benchmark_path="results/db_layer/adco/benchmarks"
 export result_output_path="ADCo-results"
 
 CMDADCo=./scripts/exp0_ADCo/runExperiment0.sh

@@ -1,15 +1,15 @@
 #!/bin/bash
 
 # clean original results
-rm -rf results/resequel
-mkdir -p results/resequel/benchmarks
+rm -rf results/db_layer/resequel
+mkdir -p results/db_layer/resequel/benchmarks
 
 rm -rf ReSequel-results
 mkdir -p ReSequel-results
 
 export iteration=5
-export result_dir="results/resequel"
-export result_benchmark_path="results/resequel/benchmarks"
+export result_dir="results/db_layer/resequel"
+export result_benchmark_path="results/db_layer/resequel/benchmarks"
 export result_output_path="ReSequel-results"
 
 CMDReSequel=./scripts/exp1_ReSequel/runExperiment1.sh
