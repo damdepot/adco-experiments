@@ -5,7 +5,8 @@ source_file=$2
 dbms=$3
 benchmark=$4
 
-exp_path="$(pwd)"
+exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+
 source="${exp_path}/${source_path}/${source_file}"
 
 # Rewrite

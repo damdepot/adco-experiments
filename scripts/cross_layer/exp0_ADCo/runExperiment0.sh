@@ -5,7 +5,8 @@ llm_model=$2
 dbms=$3
 benchmark=$4
 
-exp_path="$(pwd)"
+exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+
 codebase_path="${exp_path}/workload/apps/${benchmark}"
 
 CMDADCo=./scripts/cross_layer/exp0_ADCo/runExperiment0-ADCo.sh

@@ -5,7 +5,8 @@ accounts=$2
 transactions=$3
 benchmark=$4
 
-exp_path="$(pwd)"
+exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+
 
 cd "${exp_path}/workload/apps/smallbank"
 source venv/bin/activate
