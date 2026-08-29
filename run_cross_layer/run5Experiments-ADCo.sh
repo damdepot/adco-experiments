@@ -14,7 +14,6 @@ export result_output_path="out/cross_layer/ADCo-results"
 
 CMDADCo=./scripts/cross_layer/exp0_ADCo/runExperiment0.sh
 CMDRunSmallbank=./scripts/cross_layer/exp0_ADCo/runExperiment0-Workload-Smallbank-ADCo.sh
-CMDLoadSmallbank=./scripts/cross_layer/exp1_Baselines/runExperiment1-Workload-Smallbank-Load.sh
 
 model="gemini-3.5-flash-lite"
 
@@ -27,5 +26,4 @@ $CMDADCo Rewrite ${model} postgres smallbank
 ### Workload: Smallbank
 ### **********
 echo '-------------------<< Running the Smallbank workload >>-------------------'
-$CMDLoadSmallbank postgres 1000
-$CMDRunSmallbank ${model} postgres 1000 10000 smallbank
+$CMDRunSmallbank ${model} postgres 50000 10000 smallbank

@@ -28,4 +28,4 @@ $CMDPyDBridge ${workload_path} ${source_file} postgres smallbank
 ### Workload: Smallbank
 ### **********
 echo '-------------------<< Running the Smallbank workload >>-------------------'
-$CMDRunSmallbank postgres 1000 10000 smallbank
+$CMDRunSmallbank postgres 50000 10000 smallbank

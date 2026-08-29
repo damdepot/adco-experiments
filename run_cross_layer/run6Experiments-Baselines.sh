@@ -10,4 +10,4 @@ CMDBaseline=./scripts/cross_layer/exp1_Baselines/runExperiment1-Workload-Smallba
 ### Workload: Smallbank
 ### **********
 echo '-------------------<< Running the Smallbank workload >>-------------------'
-$CMDBaseline postgres 1000 10000 smallbank
+$CMDBaseline postgres 50000 10000 smallbank
