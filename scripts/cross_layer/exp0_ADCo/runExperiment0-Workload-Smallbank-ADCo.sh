@@ -14,7 +14,7 @@ source venv/bin/activate
 
 cd "${exp_path}/out/cross_layer/ADCo-results/Rewrite/${dbms}/${benchmark}-${llm_model}"
 
-CMD="python main.py run \
+CMD="python main.py test \
                     --driver ${dbms} \
                     --accounts ${accounts} \
                     --transactions ${transactions}"

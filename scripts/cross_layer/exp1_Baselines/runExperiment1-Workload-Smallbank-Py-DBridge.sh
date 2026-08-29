@@ -13,7 +13,7 @@ source venv/bin/activate
 
 cd "${exp_path}/out/cross_layer/Py-DBridge-results/Rewrite/${dbms}/${benchmark}-Py-DBridge"
 
-CMD="python main.py run \
+CMD="python main.py test \
                     --driver ${dbms} \
                     --accounts ${accounts} \
                     --transactions ${transactions}"
