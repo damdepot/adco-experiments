@@ -14,6 +14,7 @@ export result_output_path="out/cross_layer/ADCo-results"
 
 CMDADCo=./scripts/cross_layer/exp0_ADCo/runExperiment0.sh
 CMDRunSmallbank=./scripts/cross_layer/exp0_ADCo/runExperiment0-Workload-Smallbank-ADCo.sh
+CMDRunTPCC=./scripts/cross_layer/exp0_ADCo/runExperiment0-Workload-TPCC-ADCo.sh
 
 model="gemini-3.5-flash-lite"
 
@@ -22,8 +23,12 @@ model="gemini-3.5-flash-lite"
 ### **********
 echo '-------------------<< Generating rewrite app >>-------------------'
 $CMDADCo Rewrite ${model} postgres smallbank
+$CMDADCo Rewrite ${model} postgres tpcc
 
-### Workload: Smallbank
+### Workload
 ### **********
 echo '-------------------<< Running the Smallbank workload >>-------------------'
 $CMDRunSmallbank ${model} postgres 50000 10000 smallbank
+
+echo '-------------------<< Running the TPCC workload >>-------------------'
+$CMDRunTPCC ${model} postgres 1 1 tpcc

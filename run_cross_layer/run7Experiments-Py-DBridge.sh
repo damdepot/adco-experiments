@@ -14,8 +14,7 @@ export result_output_path="out/cross_layer/Py-DBridge-results"
 
 CMDPyDBridge=./scripts/cross_layer/exp1_Baselines/runExperiment1-Py-DBridge.sh
 CMDRunSmallbank=./scripts/cross_layer/exp1_Baselines/runExperiment1-Workload-Smallbank-Py-DBridge.sh
-
-model="gemini-3.5-flash-lite"
+CMDRunTPCC=./scripts/cross_layer/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh
 
 
 ###  Rewrite
@@ -25,7 +24,14 @@ workload_path="workload/apps/smallbank"
 source_file="drivers/postgresdriver.py"
 $CMDPyDBridge ${workload_path} ${source_file} postgres smallbank
 
+workload_path="workload/apps/tpcc"
+source_file="drivers/postgresdriver.py"
+$CMDPyDBridge ${workload_path} ${source_file} postgres tpcc
+
 ### Workload: Smallbank
 ### **********
 echo '-------------------<< Running the Smallbank workload >>-------------------'
 $CMDRunSmallbank postgres 50000 10000 smallbank
+
+echo '-------------------<< Running the TPCC workload >>-------------------'
+$CMDRunTPCC postgres 1 1 tpcc

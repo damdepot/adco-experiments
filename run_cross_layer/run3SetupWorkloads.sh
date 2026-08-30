@@ -38,7 +38,12 @@ setup_venv_uv() {
 
 echo '-------------------<< Downloading workload generator >>-------------------'
 download https://github.com/dannykhant/py-smallbank.git smallbank
+download https://github.com/dannykhant/py-tpcc-python3.git tpcc
 
-echo '-------------------<< Setting up ADCo baseline >>-------------------'
+echo '-------------------<< Setting up Smallbank >>-------------------'
 smallbank_path="${workload_path}/smallbank"
 setup_venv_uv "${smallbank_path}"
+
+echo '-------------------<< Setting up TPC-C >>-------------------'
+tpcc-path="${workload_path}/tpcc"
+setup_venv_uv "${tpcc-path}"
