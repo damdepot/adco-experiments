@@ -12,10 +12,11 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")"
+root_path="$(cd "$(dirname "$0")/.." && pwd)"
+cd "${root_path}"
 
 if [ ! -f .env ]; then
-    echo "Error: .env not found in $(pwd). See README.md." >&2
+    echo "Error: .env not found in ${root_path}. See README.md." >&2
     exit 1
 fi
 
@@ -70,10 +71,10 @@ write_dbconfig() {
 ---
 
 - database: Postgres
-  user: '$(esc "$PGUSER")'
-  password: '$(esc "$PGPASSWORD")'
-  host: '$(esc "$PGHOST")'
-  port: ${PGPORT:-5432}
+  user: '$(esc "$POSTGRES_USER")'
+  password: '$(esc "$POSTGRES_PASSWORD")'
+  host: '$(esc "$POSTGRES_HOST")'
+  port: ${POSTGRES_PORT:-5432}
 EOF
 }
 
@@ -87,10 +88,15 @@ GOOGLE_API_KEY=$GOOGLE_API_KEY
 EOF
 }
 
+echo '-------------------<< Updating ReSequel db.config and API keys >>-------------------'
 write_apikeys baselines/ReSequel/src/main/python/APIKeys.yaml
-write_apikeys baselines/R-Bot/my_rewriter/APIKeys.yaml
 write_dbconfig baselines/ReSequel/src/main/python/DBConfig.yaml
+
+echo '-------------------<< Updating R-Bot db.config and API keys >>-------------------'
+write_apikeys baselines/R-Bot/my_rewriter/APIKeys.yaml
 write_dbconfig baselines/R-Bot/my_rewriter/DBConfig.yaml
+
+echo '-------------------<< Updating ADCo .env >>-------------------'
 write_adco_env baselines/ADCo/src/rewriter/.env
 
 echo "Updated API keys and DB configs for ReSequel and R-Bot, and .env for ADCo."
