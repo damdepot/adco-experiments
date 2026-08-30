@@ -5,8 +5,8 @@ dbms=$2
 scale=$3
 
 exp_path="$(pwd)"
-log_fname="${exp_path}/results/baseline/benchmarks/runExperiment2-${dataset}-${dbms}"
-query_log_fname="${exp_path}/results/baseline/${dbms}/${dataset}"
+log_fname="${exp_path}/results/db_layer/baseline/benchmarks/runExperiment2-${dataset}-${dbms}"
+query_log_fname="${exp_path}/results/db_layer/baseline/${dbms}/${dataset}"
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 database_path="${exp_path}/data/duckdb"
