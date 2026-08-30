@@ -7,12 +7,12 @@ benchmark=$4
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/${benchmark}"
-log_fname="${exp_path}/results/cross_layer/py-dbridge/benchmarks/runExperiment1-${benchmark}-${dbms}"
+log_fname="${exp_path}/results/app_layer/py-dbridge/benchmarks/runExperiment1-${benchmark}-${dbms}"
 
 cd "${workload_path}"
 source venv/bin/activate
 
-cd "${exp_path}/out/cross_layer/Py-DBridge-results/Rewrite/${dbms}/${benchmark}-Py-DBridge"
+cd "${exp_path}/out/app_layer/Py-DBridge-results/Rewrite/${dbms}/${benchmark}-Py-DBridge"
 
 CMD="python tpcc.py ${dbms} \
                 --config=${workload_path}/db.config \

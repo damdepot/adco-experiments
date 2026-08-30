@@ -10,7 +10,7 @@ exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 source="${exp_path}/${source_path}/${source_file}"
 
 # Rewrite
-output_path="${exp_path}/out/cross_layer/Py-DBridge-results/Rewrite/${dbms}/${benchmark}-Py-DBridge"
+output_path="${exp_path}/out/app_layer/Py-DBridge-results/Rewrite/${dbms}/${benchmark}-Py-DBridge"
 mkdir -p ${output_path}
 
 cp -r ${source_path}/* ${output_path}/

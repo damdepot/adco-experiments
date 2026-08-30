@@ -9,7 +9,7 @@ exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 
 
 # Rewrite
-output_path="${exp_path}/out/cross_layer/ADCo-results/Rewrite/${dbms}/${benchmark}-${llm_model}"
+output_path="${exp_path}/out/app_layer/ADCo-results/Rewrite/${dbms}/${benchmark}-${llm_model}"
 mkdir -p ${output_path}
 
 cd "${exp_path}/baselines/ADCo"

@@ -9,7 +9,7 @@ exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 
 codebase_path="${exp_path}/workload/apps/${benchmark}"
 
-CMDADCo=./scripts/cross_layer/exp0_ADCo/runExperiment0-ADCo.sh
+CMDADCo=./scripts/app_layer/exp0_ADCo/runExperiment0-ADCo.sh
 
 
 if [ "$op" == "Rewrite" ]; then  

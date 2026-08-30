@@ -5,7 +5,7 @@ accounts=$2
 transactions=$3
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
-log_fname="${exp_path}/results/cross_layer/baseline/benchmarks/runExperiment1-smallbank-${dbms}"
+log_fname="${exp_path}/results/app_layer/baseline/benchmarks/runExperiment1-smallbank-${dbms}"
 
 cd "${exp_path}/workload/apps/smallbank"
 source venv/bin/activate

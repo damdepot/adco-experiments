@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # clean baseline results
-rm -rf results/cross_layer/baseline
-mkdir -p results/cross_layer/baseline/benchmarks
+rm -rf results/app_layer/baseline
+mkdir -p results/app_layer/baseline/benchmarks
 
 export iteration=5
-CMDRunSmallbank=./scripts/cross_layer/exp1_Baselines/runExperiment1-Workload-Smallbank.sh
-CMDRunTPCC=./scripts/cross_layer/exp1_Baselines/runExperiment1-Workload-TPCC.sh
+CMDRunSmallbank=./scripts/app_layer/exp1_Baselines/runExperiment1-Workload-Smallbank.sh
+CMDRunTPCC=./scripts/app_layer/exp1_Baselines/runExperiment1-Workload-TPCC.sh
 
 ### Workload: Smallbank
 ### **********
