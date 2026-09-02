@@ -117,7 +117,7 @@ def load_work_load_queries(dataset_name: str = None, workload_path: str = None):
         query_ids = ["query18", "query17","query13","query20","query1","query22"]
         query_ids_verify = ["query18", "query17","query13","query20","query1","query22"]
 
-    elif dataset_name in {"stats", "stats-lite"}:
+    elif dataset_name in {"stats"}:
         # Discover available query files from the workload directory instead of
         # hardcoding all 146 query IDs, so lite / partial workloads work too.
         # Match Template_*.sql (ReSequel verify) as well as query*.sql (baseline).
@@ -125,7 +125,7 @@ def load_work_load_queries(dataset_name: str = None, workload_path: str = None):
         query_ids = sorted(
             [os.path.splitext(os.path.basename(p))[0]
              for p in _glob.glob(f"{workload_path}/*.sql")
-             if not os.path.basename(p).startswith("schema")],
+             if os.path.basename(p).startswith(("query", "Template_"))],
             key=lambda q: int(q.replace("query", "").replace("Template_", "")),
         )
         query_ids_verify = list(query_ids)
