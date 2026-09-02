@@ -6,6 +6,24 @@ root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 stats_path="${root_path}/Experiments/data/stats"
 workload_path="${root_path}/workload/databases/MySQL/stats"
 
+env_file="${root_path}/.env"
+if [ ! -f "$env_file" ]; then
+    echo "Error: .env not found in ${root_path}. See README.md." >&2
+    exit 1
+fi
+while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    case "$line" in ''|\#*) continue ;; esac
+    key="${line%%=*}"
+    value="${line#*=}"
+    case "$value" in
+        \"*\") value="${value#\"}"; value="${value%\"}" ;;
+        \'*\') value="${value#\'}"; value="${value%\'}" ;;
+    esac
+    printf -v "$key" '%s' "$value"
+    export "$key"
+done < "$env_file"
+
 STATS_PATH="${stats_path}" SCHEMA_PATH="${workload_path}/schema.sql" \
 IMPORT_PATH="${workload_path}/import.sql" \
 python3 - <<'PY'
