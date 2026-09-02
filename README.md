@@ -6,7 +6,7 @@ Experiment harness for evaluating LLM-based SQL query rewriting approaches
 [Py-DBridge](https://github.com/dannykhant/py-dbridge)) against baseline execution,
 run on two layers:
 
-- **DB layer** — batch SQL workloads (STATS, stats-lite, and other
+- **DB layer** — batch SQL workloads (STATS, stats, and other
   `workload/databases` datasets) on PostgreSQL or MySQL.
 - **App layer** — OLTP application workloads (Smallbank, TPC-C) on PostgreSQL or MySQL.
 
@@ -18,7 +18,7 @@ run on two layers:
 | `run/query_layer/run2DownloadBaselines.sh` | Clone ADCo, ReSequel, R-Bot, and LearnedRewrite into `baselines/` |
 | `run/query_layer/run3SetupBaselines.sh` | Create venvs and build artifacts for each baseline |
 | `run/query_layer/run4DownloadData.sh` | Download the STATS dataset CSVs into `data/stats/` |
-| `run/query_layer/run5PrepareData-*.sh` | Create and load the `stats` / `stats-lite` databases (local or remote PostgreSQL, MySQL) |
+| `run/query_layer/run5PrepareData-*.sh` | Create and load the `stats` / `stats` databases (local or remote PostgreSQL, MySQL) |
 | `run/query_layer/initpgSQL.sh` | Start the locally compiled PostgreSQL instance used by the workload runner |
 | `run/query_layer/run6UpdateConfigs.sh` | Regenerate the baselines' `APIKeys.yaml` / `DBConfig.yaml` and ADCo's `.env` from `.env` |
 | `run/query_layer/run7Experiments-ADCo.sh` | Run the ADCo pipeline (compile, rewrite, decompile, verify) + workload |
@@ -40,7 +40,7 @@ run on two layers:
 | `workload/apps/` | Cloned OLTP workload apps (Smallbank, TPC-C) with their own drivers and `db.config` |
 | `scripts/query_layer/` | DB-layer experiment drivers called by `run/query_layer` entry points (`exp0_ADCo`, `exp1_ReSequel`, `exp2_Baselines`, `exp3_Reports`) |
 | `scripts/app_layer/` | App-layer experiment drivers called by `run/app_layer` entry points (`exp0_ADCo`, `exp1_Baselines`) |
-| `catalog/` | Generated ReSequel catalog files (per-dataset JSONs, e.g. `catalog/stats-lite/`) |
+| `catalog/` | Generated ReSequel catalog files (per-dataset JSONs, e.g. `catalog/stats/`) |
 | `results/query_layer/` | DB-layer results per approach (`results/query_layer/adco`, `resequel`, `r-bot`, `learnedrewrite`, `baseline`) |
 | `results/app_layer/` | App-layer results per approach (`results/app_layer/adco`, `py-dbridge`, `baseline`) |
 | `out/query_layer/` | Rewritten queries for the DB layer (`ADCo-results/`, `ReSequel-results/`, `R-Bot-results/`, `LearnedRewrite-results/`) |

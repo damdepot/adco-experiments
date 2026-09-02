@@ -10,4 +10,4 @@ CMDBaseline=./scripts/query_layer/exp2_Baselines/runExperiment2-Baseline.sh
 ## Run the baseline experiments
 #***************
 echo '-------------------<< Running the baseline experiments for Stats-Lite dataset >>-------------------'
-$CMDBaseline stats-lite PostgreSQL 1
+$CMDBaseline stats PostgreSQL 1

@@ -39,7 +39,7 @@ def geometric_mean(values):
 
 def main():
     parser = argparse.ArgumentParser(description='Parse benchmark results and output performance comparisons.')
-    parser.add_argument('--dataset', default='stats-lite', help='Dataset name')
+    parser.add_argument('--dataset', default='stats', help='Dataset name')
     parser.add_argument('--dbms', default='PostgreSQL', help='DBMS name')
     parser.add_argument('--results-dir', default='results', help='Base results directory')
     parser.add_argument('--output-dir', default='results/reports', help='Output directory for the report')

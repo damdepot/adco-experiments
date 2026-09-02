@@ -22,14 +22,14 @@ model=gemini-3.5-flash-lite
 ### Rewrite Stats with R-Bot
 #**************************
 echo "-------------------<< Running Stats-Lite R-Bot rewrites >>-------------------"
-$CMDBaselineRBot stats-lite PostgreSQL R-Bot ${model}
+$CMDBaselineRBot stats PostgreSQL R-Bot ${model}
 
 ### Verify Stats R-Bot rewrites
 #**************************
 echo "-------------------<< Verifying R-Bot rewrites for Stats-Lite dataset >>-------------------"
-$CMDRunRBotVerify stats-lite PostgreSQL ${model}
+$CMDRunRBotVerify stats PostgreSQL ${model}
 
 ### Run Stats R-Bot workload
 #**************************
 echo "-------------------<< Running Stats-Lite R-Bot workload >>-------------------"
-$CMDRunWorkload stats-lite PostgreSQL ${model}
+$CMDRunWorkload stats PostgreSQL ${model}

@@ -18,10 +18,10 @@ CMDRunLRVerify=./scripts/query_layer/exp2_Baselines/runExperiment2-Workload-Veri
 CMDRunWorkload=./scripts/query_layer/exp2_Baselines/runExperiment2-Workload.sh
 
 echo "-------------------<< Running Stats-Lite LearnedRewrite rewrites >>-------------------"
-$CMDLearnedRewrite stats-lite PostgreSQL
+$CMDLearnedRewrite stats PostgreSQL
 
 echo "-------------------<< Verifying LearnedRewrite rewrites for Stats-Lite dataset >>-------------------"
-$CMDRunLRVerify stats-lite PostgreSQL
+$CMDRunLRVerify stats PostgreSQL
 
 echo "-------------------<< Running Workload for Stats-Lite dataset >>-------------------"
-$CMDRunWorkload stats-lite PostgreSQL LearnedRewrite
+$CMDRunWorkload stats PostgreSQL LearnedRewrite

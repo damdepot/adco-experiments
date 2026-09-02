@@ -20,15 +20,4 @@ psql -d stats -f "${workload_path}/schema.sql"
 psql -d stats -f "${workload_path}/import.sql"
 psql -d stats -f "${workload_path}/index.sql"
 
-echo '-------------------<< STATS database (remote Compose PostgreSQL service) is ready >>-------------------'
-
-echo '-------------------<< Preparing STATS-LITE database >>-------------------'
-dropdb --if-exists stats-lite
-createdb stats-lite
-
-cd "${data_path}"
-psql -d stats-lite -f "${workload_path}/schema.sql"
-psql -d stats-lite -f "${workload_path}/import.sql"
-psql -d stats-lite -f "${workload_path}/index.sql"
-
-echo '-------------------<< STATS-LITE database (remote Compose PostgreSQL service) is ready >>-------------------'
+echo '-------------------<< STATS database (Local PostgreSQL service) is ready >>-------------------'

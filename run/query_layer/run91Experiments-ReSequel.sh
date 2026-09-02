@@ -20,29 +20,29 @@ model="gemini-3.5-flash-lite"
 ## Build Catalog
 #***************
 echo '-------------------<< Building Catalog for Stats-Lite dataset >>-------------------'
-$CMDReSequel BuildCatalog stats-lite PostgreSQL 1
+$CMDReSequel BuildCatalog stats PostgreSQL 1
 
 ## Templatization
 #****************
 echo '-------------------<< Templatizing Stats-Lite dataset >>-------------------'
-$CMDReSequel Templatization stats-lite PostgreSQL 1
+$CMDReSequel Templatization stats PostgreSQL 1
 
 ###  Rewrite
 ### **********
 echo '-------------------<< Generating rewrite queries for Stats-Lite dataset >>-------------------'
-$CMDReSequel Generate stats-lite PostgreSQL 1 ${model}
+$CMDReSequel Generate stats PostgreSQL 1 ${model}
 
 ###  Reconstruct
 ### ***********
 echo '-------------------<< Reconstructing rewrite queries for Stats-Lite dataset >>-------------------'
-$CMDReSequel Reconstruct stats-lite PostgreSQL 1 ${model}
+$CMDReSequel Reconstruct stats PostgreSQL 1 ${model}
 
 ###  Verify
 ### *******
 echo '-------------------<< Verifying rewrite queries for Stats-Lite dataset >>-------------------'
-$CMDReSequel Verify stats-lite PostgreSQL 1 ${model} PostgreSQL
+$CMDReSequel Verify stats PostgreSQL 1 ${model} PostgreSQL
 
 ## Run Workload
 #********************
 echo '-------------------<< Running workload for Stats-Lite dataset >>-------------------'
-$CMDRunWorkload stats-lite PostgreSQL ${model}
+$CMDRunWorkload stats PostgreSQL ${model}

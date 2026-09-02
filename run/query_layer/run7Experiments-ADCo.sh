@@ -20,24 +20,24 @@ model="gemini-3.5-flash-lite"
 ### Compile
 #****************
 echo '-------------------<< Compiling Stats-Lite dataset >>-------------------'
-$CMDADCo Compile stats-lite PostgreSQL 1 ${model}
+$CMDADCo Compile stats PostgreSQL 1 ${model}
 
 ###  Rewrite
 ### **********
 echo '-------------------<< Generating rewrite queries for Stats-Lite dataset >>-------------------'
-$CMDADCo Rewrite stats-lite PostgreSQL 1 ${model}
+$CMDADCo Rewrite stats PostgreSQL 1 ${model}
 
 ###  Decompile
 ### ***********
 echo '-------------------<< Decompiling rewrite queries for Stats-Lite dataset >>-------------------'
-$CMDADCo Decompile stats-lite PostgreSQL 1 ${model}
+$CMDADCo Decompile stats PostgreSQL 1 ${model}
 
 ###  Verify
 ### *******
 echo '-------------------<< Verifying rewrite queries for Stats-Lite dataset >>-------------------'
-$CMDADCo Verify stats-lite PostgreSQL 1 ${model} PostgreSQL
+$CMDADCo Verify stats PostgreSQL 1 ${model} PostgreSQL
 
 ## Run Workload
 #********************
 echo '-------------------<< Running workload for Stats-Lite dataset >>-------------------'
-$CMDRunWorkload stats-lite PostgreSQL ${model}
+$CMDRunWorkload stats PostgreSQL ${model}
