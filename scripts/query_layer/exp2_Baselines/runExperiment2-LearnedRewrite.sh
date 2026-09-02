@@ -6,15 +6,15 @@ baseline_name='LearnedRewrite'
 
 exp_path="$(pwd)"
 
-output_path="${exp_path}/out/db_layer/LearnedRewrite-results/Rewrite/${dbms}/${dataset}-${baseline_name}"
-mkdir -p "${exp_path}/out/db_layer/LearnedRewrite-results/Rewrite/${dbms}"
+output_path="${exp_path}/out/query_layer/LearnedRewrite-results/Rewrite/${dbms}/${dataset}-${baseline_name}"
+mkdir -p "${exp_path}/out/query_layer/LearnedRewrite-results/Rewrite/${dbms}"
 
 rm -rf ${output_path}
 mkdir -p ${output_path}
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 schema_path="${exp_path}/catalog/${dataset}/schema.json"
-log_file_name="${exp_path}/results/db_layer/learnedrewrite/runExperiment2-${dataset}-${dbms}-${baseline_name}.dat"
+log_file_name="${exp_path}/results/query_layer/learnedrewrite/runExperiment2-${dataset}-${dbms}-${baseline_name}.dat"
 mkdir -p "$(dirname "$log_file_name")"
 
 if [ $dataset == "publicbibenchmark" ]; then

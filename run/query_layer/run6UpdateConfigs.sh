@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Regenerate the API-keys and DB-config YAMLs of both baselines from .env.
-# Edit .env first, then: ./run_db_layer/run6UpdateConfigs.sh
+# Edit .env first, then: ./run/query_layer/run6UpdateConfigs.sh
 #
 # Files rewritten (they are untracked templates, safe to regenerate):
 #   baselines/ReSequel/src/main/python/APIKeys.yaml
@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-root_path="$(cd "$(dirname "$0")/.." && pwd)"
+root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "${root_path}"
 
 if [ ! -f .env ]; then

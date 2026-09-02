@@ -8,8 +8,8 @@ dbms=$4
 exp_path="$(pwd)"
 
 # Rewrite
-output_path="${exp_path}/out/db_layer/ADCo-results/Rewrite/${dbms}/${dataset}-${llm_model}"
-mkdir -p "${exp_path}/out/db_layer/ADCo-results/Rewrite"
+output_path="${exp_path}/out/query_layer/ADCo-results/Rewrite/${dbms}/${dataset}-${llm_model}"
+mkdir -p "${exp_path}/out/query_layer/ADCo-results/Rewrite"
 mkdir -p ${output_path}
 
 cd "${exp_path}/baselines/ADCo"

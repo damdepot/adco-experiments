@@ -5,8 +5,8 @@ dbms=$2
 scale=$3
 
 exp_path="$(pwd)"
-log_fname="${exp_path}/results/db_layer/baseline/benchmarks/runExperiment2-${dataset}-${dbms}"
-query_log_fname="${exp_path}/results/db_layer/baseline/${dbms}/${dataset}"
+log_fname="${exp_path}/results/query_layer/baseline/benchmarks/runExperiment2-${dataset}-${dbms}"
+query_log_fname="${exp_path}/results/query_layer/baseline/${dbms}/${dataset}"
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 database_path="${exp_path}/data/duckdb"
@@ -19,7 +19,7 @@ for itr in $(seq 1 "$iteration"); do
 
     if [ $dbms == "PostgreSQL" ]; then
      if [ -z "$PGHOST" ] || [[ "$PGHOST" == "localhost" || "$PGHOST" == "127.0.0.1" ]]; then
-      ../../run_db_layer/initpgSQL.sh
+      ./run/query_layer/initpgSQL.sh
       sleep 10
      fi
 

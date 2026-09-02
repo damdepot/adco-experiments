@@ -2,7 +2,7 @@
 
 set -e
 
-root_path="$(cd "$(dirname "$0")" && pwd)"
+root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 
 venv_ok() {
     [ -x "${1}/venv/bin/python" ] \

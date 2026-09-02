@@ -7,8 +7,8 @@ llm_model=$3
 exp_path="$(pwd)"
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
-rewrite_path="${exp_path}/out/db_layer/R-Bot-results/Rewrite/${dbms}/${dataset}/${llm_model}"
-output_path_verify="${exp_path}/out/db_layer/R-Bot-results/Select/${dbms}/${dataset}-${llm_model}-select"
+rewrite_path="${exp_path}/out/query_layer/R-Bot-results/Rewrite/${dbms}/${dataset}/${llm_model}"
+output_path_verify="${exp_path}/out/query_layer/R-Bot-results/Select/${dbms}/${dataset}-${llm_model}-select"
 
 rm -rf ${output_path_verify}
 mkdir -p ${output_path_verify}
@@ -17,8 +17,8 @@ if [ $dataset == "publicbibenchmark" ]; then
     mkdir -p "${output_path_verify}/queries"
 fi    
 
-verify_log_path="${exp_path}/results/r-bot/Experiment2_RBot_Verify_${dbms}_${dataset}.dat"
-mkdir -p "${exp_path}/results/r-bot"
+verify_log_path="${exp_path}/results/query_layer/r-bot/Experiment2_RBot_Verify_${dbms}_${dataset}.dat"
+mkdir -p "${exp_path}/results/query_layer/r-bot"
 
 cd "${exp_path}/workload/src"
 source venv/bin/activate

@@ -4,7 +4,7 @@ dataset=$1
 catalog_path=$2
 exp_path="$(pwd)"
 
-log_file_name="${exp_path}/results/resequel/Experiment1_Catalog.dat"
+log_file_name="${exp_path}/results/query_layer/resequel/Experiment1_Catalog.dat"
 
 cd "${exp_path}/baselines/ReSequel/src/main/python"
 source venv/bin/activate

@@ -2,20 +2,20 @@
 
 set -e
 
-rm -rf results/db_layer/r-bot
-mkdir -p results/db_layer/r-bot/benchmarks
+rm -rf results/query_layer/r-bot
+mkdir -p results/query_layer/r-bot/benchmarks
 
-rm -rf out/db_layer/R-Bot-results
-mkdir -p out/db_layer/R-Bot-results
+rm -rf out/query_layer/R-Bot-results
+mkdir -p out/query_layer/R-Bot-results
 
 export iteration=5
-export result_dir="results/db_layer/r-bot"
-export result_benchmark_path="results/db_layer/r-bot/benchmarks"
-export result_output_path="out/db_layer/R-Bot-results"
+export result_dir="results/query_layer/r-bot"
+export result_benchmark_path="results/query_layer/r-bot/benchmarks"
+export result_output_path="out/query_layer/R-Bot-results"
 
-CMDBaselineRBot=./scripts/db_layer/exp2_Baselines/runExperiment2-R-Bot.sh
-CMDRunRBotVerify=./scripts/db_layer/exp2_Baselines/runExperiment2-Workload-Verify-R-Bot.sh
-CMDRunWorkload=./scripts/db_layer/exp2_Baselines/runExperiment2-Workload.sh
+CMDBaselineRBot=./scripts/query_layer/exp2_Baselines/runExperiment2-R-Bot.sh
+CMDRunRBotVerify=./scripts/query_layer/exp2_Baselines/runExperiment2-Workload-Verify-R-Bot.sh
+CMDRunWorkload=./scripts/query_layer/exp2_Baselines/runExperiment2-Workload.sh
 
 model=gemini-3.5-flash-lite
 

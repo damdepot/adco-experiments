@@ -7,11 +7,11 @@ exp_path="$(pwd)"
 
 date=$(date '+%Y-%m-%d-%H-%M-%S')
 
-workload_output="${exp_path}/out/db_layer/ReSequel-results/Template/${dbms}/${dataset}-template"
+workload_output="${exp_path}/out/query_layer/ReSequel-results/Template/${dbms}/${dataset}-template"
 rm -rf $workload_output
 mkdir -p ${workload_output}
 
-log_file_name="${exp_path}/results/resequel/Experiment1_Templatization.dat"
+log_file_name="${exp_path}/results/query_layer/resequel/Experiment1_Templatization.dat"
 
 if [ ! -f $log_file_name ]; then
     echo "dataset_name,dbms,time" > $log_file_name

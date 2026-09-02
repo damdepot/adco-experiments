@@ -8,11 +8,11 @@ dbms=$4
 exp_path="$(pwd)"
 date=$(date '+%Y-%m-%d-%H-%M-%S')
 
-output_path="${exp_path}/out/db_layer/ADCo-results/Compile/${dbms}/${dataset}-${llm_model}"
+output_path="${exp_path}/out/query_layer/ADCo-results/Compile/${dbms}/${dataset}-${llm_model}"
 rm -rf $output_path
 mkdir -p ${output_path}
 
-log_file_name="${exp_path}/results/adco/Experiment0_Compile.dat"
+log_file_name="${exp_path}/results/query_layer/adco/Experiment0_Compile.dat"
 
 if [ ! -f "$log_file_name" ]; then
     echo "dataset_name,dbms,time" > $log_file_name

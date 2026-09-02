@@ -22,16 +22,16 @@ mkdir -p ${catalog_path}
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 
-CMDBuildCatalog=./scripts/db_layer/exp1_ReSequel/runExperiment1-BuildCatalog.sh
-CMDTemplatization=./scripts/db_layer/exp1_ReSequel/runExperiment1-Templatization.sh
-CMDReconstruct=./scripts/db_layer/exp1_ReSequel/runExperiment1-Reconstruct.sh
-CMDLabeling=./scripts/db_layer/exp1_ReSequel/runExperiment1-Label.sh
-CMDVerify=./scripts/db_layer/exp1_ReSequel/runExperiment1-Verify.sh
-CMDVerifyOR=./scripts/db_layer/exp1_ReSequel/runExperiment1-Verify-OR.sh
-CMDDownsampling=./scripts/db_layer/exp1_ReSequel/runExperiment1-Downsampling.sh
-CMDJudge=./scripts/db_layer/exp1_ReSequel/runExperiment1-Judge.sh
-CMDImplement="./scripts/db_layer/exp1_ReSequel/runExperiment1-Implement.sh ${dataset} ${catalog_path} ${dbms}"
-CMDReSequel="./scripts/db_layer/exp1_ReSequel/runExperiment1-ReSequel.sh ${dataset} ${catalog_path} ${llm_model} ${dbms}"
+CMDBuildCatalog=./scripts/query_layer/exp1_ReSequel/runExperiment1-BuildCatalog.sh
+CMDTemplatization=./scripts/query_layer/exp1_ReSequel/runExperiment1-Templatization.sh
+CMDReconstruct=./scripts/query_layer/exp1_ReSequel/runExperiment1-Reconstruct.sh
+CMDLabeling=./scripts/query_layer/exp1_ReSequel/runExperiment1-Label.sh
+CMDVerify=./scripts/query_layer/exp1_ReSequel/runExperiment1-Verify.sh
+CMDVerifyOR=./scripts/query_layer/exp1_ReSequel/runExperiment1-Verify-OR.sh
+CMDDownsampling=./scripts/query_layer/exp1_ReSequel/runExperiment1-Downsampling.sh
+CMDJudge=./scripts/query_layer/exp1_ReSequel/runExperiment1-Judge.sh
+CMDImplement="./scripts/query_layer/exp1_ReSequel/runExperiment1-Implement.sh ${dataset} ${catalog_path} ${dbms}"
+CMDReSequel="./scripts/query_layer/exp1_ReSequel/runExperiment1-ReSequel.sh ${dataset} ${catalog_path} ${llm_model} ${dbms}"
 
 
 if [ $op == "BuildCatalog" ]; then
@@ -42,7 +42,7 @@ elif [ $op == "Templatization" ]; then
 
 elif [ $op == "Generate" ]; then
     export generate_list="--query-list"
-    template_path="${exp_path}/out/db_layer/ReSequel-results/Template/${dbms}/${dataset}-template"
+    template_path="${exp_path}/out/query_layer/ReSequel-results/Template/${dbms}/${dataset}-template"
     $CMDReSequel ${template_path}
 
 elif [ $op == "Reconstruct" ]; then  
@@ -61,7 +61,7 @@ elif [ $op == "Downsampling" ]; then
     $CMDDownsampling ${dataset} ${workload_path} ${dbms} ${llm_model} ${catalog_path} ${sample_fraction}
 
 elif [ $op == "Judge" ]; then  
-    template_path="${exp_path}/out/db_layer/ReSequel-results/Template/${dbms}/${dataset}-template"
+    template_path="${exp_path}/out/query_layer/ReSequel-results/Template/${dbms}/${dataset}-template"
     $CMDJudge  ${dataset} ${catalog_path} ${llm_model} ${dbms}  ${template_path}
 
 elif [ $op == "Implement" ]; then

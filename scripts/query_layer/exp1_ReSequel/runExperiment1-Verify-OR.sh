@@ -11,9 +11,9 @@ runner_dbms=$5
 
 exp_path="$(pwd)"
 
-rewrite_path="${exp_path}/out/db_layer/ReSequel-results/Select/${dbms}/${dataset}-${llm_model}-select"
-output_path_verify="${exp_path}/out/db_layer/ReSequel-results/Verify/${dbms}/${dataset}-${llm_model}-verify"
-output_path_select="${exp_path}/out/db_layer/ReSequel-results/Select/${dbms}/${dataset}-${llm_model}-select-OR"
+rewrite_path="${exp_path}/out/query_layer/ReSequel-results/Select/${dbms}/${dataset}-${llm_model}-select"
+output_path_verify="${exp_path}/out/query_layer/ReSequel-results/Verify/${dbms}/${dataset}-${llm_model}-verify"
+output_path_select="${exp_path}/out/query_layer/ReSequel-results/Select/${dbms}/${dataset}-${llm_model}-select-OR"
 database_path="${exp_path}/data/duckdb"
 
 rm -rf ${output_path_select}
@@ -25,7 +25,7 @@ fi
 
 if [ $dbms == "PostgreSQL" ]; then
     if [ -z "$PGHOST" ] || [[ "$PGHOST" == "localhost" || "$PGHOST" == "127.0.0.1" ]]; then
-        ../../run_db_layer/initpgSQL.sh
+        ./run/query_layer/initpgSQL.sh
         sleep 10
     fi
 
@@ -34,7 +34,7 @@ elif [ $dbms == "MySQL" ]; then
     sleep 10 
 fi  
 
-verify_log_path="${exp_path}/results/resequel/Experiment1_Verify_${dbms}_${dataset}.dat"
+verify_log_path="${exp_path}/results/query_layer/resequel/Experiment1_Verify_${dbms}_${dataset}.dat"
 
 cd "${exp_path}/workload/src"
 source venv/bin/activate

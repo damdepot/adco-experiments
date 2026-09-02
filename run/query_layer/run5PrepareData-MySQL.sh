@@ -2,7 +2,7 @@
 
 set -e
 
-root_path="$(cd "$(dirname "$0")" && pwd)"
+root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 stats_path="${root_path}/Experiments/data/stats"
 workload_path="${root_path}/workload/databases/MySQL/stats"
 

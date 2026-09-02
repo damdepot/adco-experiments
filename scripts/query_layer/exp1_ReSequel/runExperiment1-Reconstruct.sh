@@ -9,9 +9,9 @@ exp_path="$(pwd)"
 
 date=$(date '+%Y-%m-%d-%H-%M-%S')
 
-template_path="${exp_path}/out/db_layer/ReSequel-results/Template/${dbms}/${dataset}-template"
-template_rewrite_path="${exp_path}/out/db_layer/ReSequel-results/Rewrite-Template/${dbms}/${dataset}/${llm_model}"
-workload_output="${exp_path}/out/db_layer/ReSequel-results/Reconstruct/${dbms}/${dataset}-${llm_model}"
+template_path="${exp_path}/out/query_layer/ReSequel-results/Template/${dbms}/${dataset}-template"
+template_rewrite_path="${exp_path}/out/query_layer/ReSequel-results/Rewrite-Template/${dbms}/${dataset}/${llm_model}"
+workload_output="${exp_path}/out/query_layer/ReSequel-results/Reconstruct/${dbms}/${dataset}-${llm_model}"
 
 rm -rf $workload_output
 mkdir -p ${workload_output}
@@ -21,7 +21,7 @@ if [ $dataset == "publicbibenchmark" ]; then
     mkdir -p "${workload_output}"
 fi 
 
-log_file_name="${exp_path}/results/resequel/Experiment1_Reconstruct.dat"
+log_file_name="${exp_path}/results/query_layer/resequel/Experiment1_Reconstruct.dat"
 
 if [ ! -f $log_file_name ]; then
     echo "dataset_name,dbms,llm_model,time" > $log_file_name

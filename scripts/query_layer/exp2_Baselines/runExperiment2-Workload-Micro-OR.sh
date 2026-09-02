@@ -6,8 +6,8 @@ llm_model=$3
 main_dataset=$4
 
 exp_path="$(pwd)"
-log_fname="${exp_path}/results/runExperiment2-${dataset}-${dbms}-${llm_model}"
-query_log_fname="${exp_path}/out/db_layer/log-baseline/${dbms}/${dataset}-${llm_model}"
+log_fname="${exp_path}/results/query_layer/runExperiment2-${dataset}-${dbms}-${llm_model}"
+query_log_fname="${exp_path}/out/query_layer/log-baseline/${dbms}/${dataset}-${llm_model}"
 
 database_path="${exp_path}/data/duckdb"
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}-${llm_model}-select-OR"
@@ -21,7 +21,7 @@ for itr in $(seq 1 "$iteration"); do
 
     if [ $dbms == "PostgreSQL" ]; then
      if [ -z "$PGHOST" ] || [[ "$PGHOST" == "localhost" || "$PGHOST" == "127.0.0.1" ]]; then
-      ../../run_db_layer/initpgSQL.sh
+      ./run/query_layer/initpgSQL.sh
       sleep 10
      fi
 

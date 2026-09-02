@@ -14,19 +14,19 @@ run on two layers:
 
 | Path | Purpose |
 |------|---------|
-| `run/db_layer/run1SetupDependencies.sh` | Install system build dependencies |
-| `run/db_layer/run2DownloadBaselines.sh` | Clone ADCo, ReSequel, R-Bot, and LearnedRewrite into `baselines/` |
-| `run/db_layer/run3SetupBaselines.sh` | Create venvs and build artifacts for each baseline |
-| `run/db_layer/run4DownloadData.sh` | Download the STATS dataset CSVs into `data/stats/` |
-| `run/db_layer/run5PrepareData-*.sh` | Create and load the `stats` / `stats-lite` databases (local or remote PostgreSQL, MySQL) |
-| `run/db_layer/initpgSQL.sh` | Start the locally compiled PostgreSQL instance used by the workload runner |
-| `run/db_layer/run6UpdateConfigs.sh` | Regenerate the baselines' `APIKeys.yaml` / `DBConfig.yaml` and ADCo's `.env` from `.env` |
-| `run/db_layer/run7Experiments-ADCo.sh` | Run the ADCo pipeline (compile, rewrite, decompile, verify) + workload |
-| `run/db_layer/run8Experiments-Baseline.sh` | Run the baseline (unrewritten) workload |
-| `run/db_layer/run91Experiments-ReSequel.sh` | Run the ReSequel pipeline (catalog build, templatization, rewrite, verify) + workload |
-| `run/db_layer/run92Experiments-R-Bot.sh` | Run the R-Bot pipeline (rewrite, verify) + workload |
-| `run/db_layer/run9Experiments-LearnedRewrite.sh` | Run the LearnedRewrite pipeline (rewrite, verify) + workload |
-| `run/db_layer/run93Reports.sh` | Generate comparison reports into `reports/` |
+| `run/query_layer/run1SetupDependencies.sh` | Install system build dependencies |
+| `run/query_layer/run2DownloadBaselines.sh` | Clone ADCo, ReSequel, R-Bot, and LearnedRewrite into `baselines/` |
+| `run/query_layer/run3SetupBaselines.sh` | Create venvs and build artifacts for each baseline |
+| `run/query_layer/run4DownloadData.sh` | Download the STATS dataset CSVs into `data/stats/` |
+| `run/query_layer/run5PrepareData-*.sh` | Create and load the `stats` / `stats-lite` databases (local or remote PostgreSQL, MySQL) |
+| `run/query_layer/initpgSQL.sh` | Start the locally compiled PostgreSQL instance used by the workload runner |
+| `run/query_layer/run6UpdateConfigs.sh` | Regenerate the baselines' `APIKeys.yaml` / `DBConfig.yaml` and ADCo's `.env` from `.env` |
+| `run/query_layer/run7Experiments-ADCo.sh` | Run the ADCo pipeline (compile, rewrite, decompile, verify) + workload |
+| `run/query_layer/run8Experiments-Baseline.sh` | Run the baseline (unrewritten) workload |
+| `run/query_layer/run91Experiments-ReSequel.sh` | Run the ReSequel pipeline (catalog build, templatization, rewrite, verify) + workload |
+| `run/query_layer/run92Experiments-R-Bot.sh` | Run the R-Bot pipeline (rewrite, verify) + workload |
+| `run/query_layer/run9Experiments-LearnedRewrite.sh` | Run the LearnedRewrite pipeline (rewrite, verify) + workload |
+| `run/query_layer/run93Reports.sh` | Generate comparison reports into `reports/` |
 | `run/app_layer/run1DownloadBaselines.sh` | Clone ADCo and Py-DBridge into `baselines/` |
 | `run/app_layer/run2SetupBaselines.sh` | Create venvs for the app-layer baselines |
 | `run/app_layer/run3SetupWorkloads.sh` | Clone the Smallbank and TPC-C workload apps into `workload/apps/` |
@@ -38,25 +38,25 @@ run on two layers:
 | `workload/databases/` | Per-DBMS SQL workloads: schemas, indexes, queries, import scripts |
 | `workload/src/` | Python harness that replays DB-layer workloads and logs results (`DBConfig.yaml` holds its DB credentials) |
 | `workload/apps/` | Cloned OLTP workload apps (Smallbank, TPC-C) with their own drivers and `db.config` |
-| `scripts/db_layer/` | DB-layer experiment drivers called by `run/db_layer` entry points (`exp0_ADCo`, `exp1_ReSequel`, `exp2_Baselines`, `exp3_Reports`) |
+| `scripts/query_layer/` | DB-layer experiment drivers called by `run/query_layer` entry points (`exp0_ADCo`, `exp1_ReSequel`, `exp2_Baselines`, `exp3_Reports`) |
 | `scripts/app_layer/` | App-layer experiment drivers called by `run/app_layer` entry points (`exp0_ADCo`, `exp1_Baselines`) |
 | `catalog/` | Generated ReSequel catalog files (per-dataset JSONs, e.g. `catalog/stats-lite/`) |
-| `results/db_layer/` | DB-layer results per approach (`results/db_layer/adco`, `resequel`, `r-bot`, `learnedrewrite`, `baseline`) |
+| `results/query_layer/` | DB-layer results per approach (`results/query_layer/adco`, `resequel`, `r-bot`, `learnedrewrite`, `baseline`) |
 | `results/app_layer/` | App-layer results per approach (`results/app_layer/adco`, `py-dbridge`, `baseline`) |
-| `out/db_layer/` | Rewritten queries for the DB layer (`ADCo-results/`, `ReSequel-results/`, `R-Bot-results/`, `LearnedRewrite-results/`) |
+| `out/query_layer/` | Rewritten queries for the DB layer (`ADCo-results/`, `ReSequel-results/`, `R-Bot-results/`, `LearnedRewrite-results/`) |
 | `out/app_layer/` | Rewritten code for the app layer (`ADCo-results/`, `Py-DBridge-results/`) |
-| `reports/` | Generated comparison reports (`run/db_layer/run93Reports.sh`) |
+| `reports/` | Generated comparison reports (`run/query_layer/run93Reports.sh`) |
 | `docker/` | Container entrypoint used by the experiment image |
 | `docker-compose.yml` | `db` (PostgreSQL 17) service plus the experiment container |
 
 ## Setup (DB layer)
 
 ```bash
-./run/db_layer/run1SetupDependencies.sh
-./run/db_layer/run2DownloadBaselines.sh
-./run/db_layer/run3SetupBaselines.sh
-./run/db_layer/run4DownloadData.sh
-./run/db_layer/run5PrepareData-PostgreSQL-Remote.sh   # or -Local.sh / MySQL variant
+./run/query_layer/run1SetupDependencies.sh
+./run/query_layer/run2DownloadBaselines.sh
+./run/query_layer/run3SetupBaselines.sh
+./run/query_layer/run4DownloadData.sh
+./run/query_layer/run5PrepareData-PostgreSQL-Remote.sh   # or -Local.sh / MySQL variant
 ```
 
 ## Setup (App layer)
@@ -98,7 +98,7 @@ GOOGLE_CLOUD_LOCATION=global
 Then regenerate the baselines' config files:
 
 ```bash
-./run/db_layer/run6UpdateConfigs.sh   # ReSequel/R-Bot YAML + ADCo .env
+./run/query_layer/run6UpdateConfigs.sh   # ReSequel/R-Bot YAML + ADCo .env
 ./run/app_layer/run4UpdateConfigs.sh  # smallbank / tpcc db.config
 ```
 
@@ -107,12 +107,12 @@ Then regenerate the baselines' config files:
 DB layer:
 
 ```bash
-./run/db_layer/run7Experiments-ADCo.sh           # ADCo pipeline + workload
-./run/db_layer/run8Experiments-Baseline.sh       # baseline (unrewritten) workload
-./run/db_layer/run91Experiments-ReSequel.sh      # ReSequel pipeline + workload
-./run/db_layer/run92Experiments-R-Bot.sh         # R-Bot pipeline + workload
-./run/db_layer/run9Experiments-LearnedRewrite.sh # LearnedRewrite pipeline + workload
-./run/db_layer/run93Reports.sh                   # comparison reports into reports/
+./run/query_layer/run7Experiments-ADCo.sh           # ADCo pipeline + workload
+./run/query_layer/run8Experiments-Baseline.sh       # baseline (unrewritten) workload
+./run/query_layer/run91Experiments-ReSequel.sh      # ReSequel pipeline + workload
+./run/query_layer/run92Experiments-R-Bot.sh         # R-Bot pipeline + workload
+./run/query_layer/run9Experiments-LearnedRewrite.sh # LearnedRewrite pipeline + workload
+./run/query_layer/run93Reports.sh                   # comparison reports into reports/
 ```
 
 App layer:
@@ -123,5 +123,5 @@ App layer:
 ./run/app_layer/run7Experiments-Py-DBridge.sh    # Py-DBridge rewrite + Smallbank/TPC-C workload
 ```
 
-Results are written to `results/db_layer/` and `results/app_layer/`, with rewritten
-queries in `out/db_layer/` and rewritten app code in `out/app_layer/`.
+Results are written to `results/query_layer/` and `results/app_layer/`, with rewritten
+queries in `out/query_layer/` and rewritten app code in `out/app_layer/`.

@@ -1,19 +1,19 @@
 #!/bin/bash
 
 # clean original results
-rm -rf results/db_layer/adco
-mkdir -p results/db_layer/adco/benchmarks
+rm -rf results/query_layer/adco
+mkdir -p results/query_layer/adco/benchmarks
 
-rm -rf out/db_layer/ADCo-results
-mkdir -p out/db_layer/ADCo-results
+rm -rf out/query_layer/ADCo-results
+mkdir -p out/query_layer/ADCo-results
 
 export iteration=5
-export result_dir="results/db_layer/adco"
-export result_benchmark_path="results/db_layer/adco/benchmarks"
-export result_output_path="out/db_layer/ADCo-results"
+export result_dir="results/query_layer/adco"
+export result_benchmark_path="results/query_layer/adco/benchmarks"
+export result_output_path="out/query_layer/ADCo-results"
 
-CMDADCo=./scripts/db_layer/exp0_ADCo/runExperiment0.sh
-CMDRunWorkload=./scripts/db_layer/exp2_Baselines/runExperiment2-Workload.sh
+CMDADCo=./scripts/query_layer/exp0_ADCo/runExperiment0.sh
+CMDRunWorkload=./scripts/query_layer/exp2_Baselines/runExperiment2-Workload.sh
 
 model="gemini-3.5-flash-lite"
 

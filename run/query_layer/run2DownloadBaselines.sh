@@ -1,6 +1,6 @@
 #!/bin/bash
 
-root_path="$(cd "$(dirname "$0")" && pwd)"
+root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 baseline_path="${root_path}/baselines"
 
 mkdir -p ${baseline_path}

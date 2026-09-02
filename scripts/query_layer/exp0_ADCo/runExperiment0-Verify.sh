@@ -7,9 +7,9 @@ dbms=$4
 runner_dbms=$5
 
 exp_path="$(pwd)"
-rewrite_path="${exp_path}/out/db_layer/ADCo-results/Decompile/${dbms}/${dataset}-${llm_model}"
-output_path_verify="${exp_path}/out/db_layer/ADCo-results/Verify/${dbms}/${dataset}-${llm_model}-verify"
-output_path_select="${exp_path}/out/db_layer/ADCo-results/Select/${dbms}/${dataset}-${llm_model}-select"
+rewrite_path="${exp_path}/out/query_layer/ADCo-results/Decompile/${dbms}/${dataset}-${llm_model}"
+output_path_verify="${exp_path}/out/query_layer/ADCo-results/Verify/${dbms}/${dataset}-${llm_model}-verify"
+output_path_select="${exp_path}/out/query_layer/ADCo-results/Select/${dbms}/${dataset}-${llm_model}-select"
 database_path="${exp_path}/data/duckdb"
 
 rm -rf ${output_path_verify}
@@ -24,7 +24,7 @@ fi
 
 if [ "$dbms" == "PostgreSQL" ]; then
     if [ -z "$PGHOST" ] || [[ "$PGHOST" == "localhost" || "$PGHOST" == "127.0.0.1" ]]; then
-        ../../run_db_layer/initpgSQL.sh
+        ./run/query_layer/initpgSQL.sh
         sleep 10
     fi
 
@@ -33,7 +33,7 @@ elif [ "$dbms" == "MySQL" ]; then
     sleep 10 
 fi 
 
-verify_log_path="${exp_path}/results/adco/Experiment0_Verify.dat"
+verify_log_path="${exp_path}/results/query_layer/adco/Experiment0_Verify.dat"
 
 cd "${exp_path}/workload/src"
 source venv/bin/activate

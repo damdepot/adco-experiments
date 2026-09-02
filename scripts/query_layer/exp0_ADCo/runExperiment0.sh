@@ -11,20 +11,20 @@ exp_path="$(pwd)"
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 
-CMDCompile=./scripts/db_layer/exp0_ADCo/runExperiment0-Compile.sh
-CMDADCo=./scripts/db_layer/exp0_ADCo/runExperiment0-ADCo.sh
-CMDDecompile=./scripts/db_layer/exp0_ADCo/runExperiment0-Decompile.sh
-CMDVerify=./scripts/db_layer/exp0_ADCo/runExperiment0-Verify.sh
+CMDCompile=./scripts/query_layer/exp0_ADCo/runExperiment0-Compile.sh
+CMDADCo=./scripts/query_layer/exp0_ADCo/runExperiment0-ADCo.sh
+CMDDecompile=./scripts/query_layer/exp0_ADCo/runExperiment0-Decompile.sh
+CMDVerify=./scripts/query_layer/exp0_ADCo/runExperiment0-Verify.sh
 
 if [ "$op" == "Compile" ]; then
     $CMDCompile ${dataset} ${workload_path} ${llm_model} ${dbms}
 
 elif [ "$op" == "Rewrite" ]; then  
-    codebase_path="${exp_path}/out/db_layer/ADCo-results/Compile/${dbms}/${dataset}-${llm_model}"
+    codebase_path="${exp_path}/out/query_layer/ADCo-results/Compile/${dbms}/${dataset}-${llm_model}"
     $CMDADCo ${dataset} ${codebase_path} ${llm_model} ${dbms}  
 
 elif [ "$op" == "Decompile" ]; then
-    rewrite_path="${exp_path}/out/db_layer/ADCo-results/Rewrite/${dbms}/${dataset}-${llm_model}"
+    rewrite_path="${exp_path}/out/query_layer/ADCo-results/Rewrite/${dbms}/${dataset}-${llm_model}"
     $CMDDecompile ${dataset} ${rewrite_path} ${llm_model} ${dbms}
 
 elif [ "$op" == "Verify" ]; then

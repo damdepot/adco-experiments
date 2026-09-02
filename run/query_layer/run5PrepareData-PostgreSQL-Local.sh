@@ -2,7 +2,7 @@
 
 set -e
 
-root_path="$(cd "$(dirname "$0")" && pwd)"
+root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 data_path="${root_path}/data/stats"
 workload_path="${root_path}/workload/databases/PostgreSQL/stats"
 

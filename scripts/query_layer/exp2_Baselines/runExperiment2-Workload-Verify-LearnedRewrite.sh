@@ -6,8 +6,8 @@ dbms=$2
 exp_path="$(pwd)"
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
-rewrite_path="${exp_path}/out/db_layer/LearnedRewrite-results/Rewrite/${dbms}/${dataset}-LearnedRewrite"
-output_path_verify="${exp_path}/out/db_layer/LearnedRewrite-results/Select/${dbms}/${dataset}-LearnedRewrite-select"
+rewrite_path="${exp_path}/out/query_layer/LearnedRewrite-results/Rewrite/${dbms}/${dataset}-LearnedRewrite"
+output_path_verify="${exp_path}/out/query_layer/LearnedRewrite-results/Select/${dbms}/${dataset}-LearnedRewrite-select"
 
 rm -rf ${output_path_verify}
 mkdir -p ${output_path_verify}
@@ -16,7 +16,7 @@ if [ $dataset == "publicbibenchmark" ]; then
     mkdir -p "${output_path_verify}/queries"
 fi    
 
-verify_log_path="${exp_path}/out/db_layer/LearnedRewrite-results/Experiment1_Verify.dat"
+verify_log_path="${exp_path}/out/query_layer/LearnedRewrite-results/Experiment1_Verify.dat"
 
 cd "${exp_path}/workload/src"
 source venv/bin/activate
