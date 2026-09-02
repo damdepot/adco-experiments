@@ -12,3 +12,4 @@ sudo apt-get install git make gcc -y
 sudo apt install cmake -y
 sudo apt-get install ninja-build build-essential make ccache pip clang -y # DuckDB
 sudo apt install postgresql-client -y
+sudo apt-get install -y python3-dev default-libmysqlclient-dev build-essential pkg-config
