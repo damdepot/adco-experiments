@@ -25,7 +25,7 @@ fi
 cd "${exp_path}/baselines/ADCo"
 source venv/bin/activate
 
-SCRIPT="python src/rewriter/pycompiler.py \
+SCRIPT="python src/code_rewriter/pycompiler.py \
                         --input-dir ${workload_path} \
                         --output-dir ${output_path}"
 

@@ -15,7 +15,7 @@ mkdir -p ${output_path}
 cd "${exp_path}/baselines/ADCo"
 source venv/bin/activate
 
-SCRIPT="python -m src.rewriter ${compiled_codebase_path} \
+SCRIPT="python -m src.code_rewriter ${compiled_codebase_path} \
                         --model ${llm_model} \
                         --output-path ${output_path}"
 
