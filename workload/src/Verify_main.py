@@ -38,6 +38,7 @@ class VerifyPG(object):
 
             thread_name = threading.current_thread().name
             query_fname = f"{self.workload_path}/{query}.sql"
+            print(f"{query} is verifying...")
             self._run_main_queries(query, query_fname, thread_name, True)
             self.queries.task_done()
 
@@ -48,6 +49,7 @@ class VerifyPG(object):
             except queue.Empty:
                 break
 
+            print(f"{query}-{vi} is verifying...")
             self._run_rewrite_queries(vi, query)
             queries.task_done()
 
