@@ -102,11 +102,11 @@ class VerifyPG(object):
                     save_text_file(query_rewrite_fname, query_str)
 
             elif rewrite_result is None:
-                self._debug(f"{main_query}-{query}: execution error (result is None)")
+                self._debug(f"{main_query}: execution error (result is None)")
                 with self.results_lock:
                     self.query_verify_results[main_query]["error_queries"].append(query)
             else:
-                self._debug(f"{main_query}-{query}: result mismatch — expected {query_result[:2]}, got {rewrite_result[:2]}")
+                self._debug(f"{main_query}: result mismatch — expected {query_result[:2]}, got {rewrite_result[:2]}")
                 with self.results_lock:
                     self.query_verify_results[main_query]["failed_queries"].append(query)
         else:

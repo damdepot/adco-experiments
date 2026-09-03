@@ -9,17 +9,14 @@ threads=${6:-$THREADS}
 
 exp_path="$(pwd)"
 rewrite_path="${exp_path}/out/query_layer/ADCo-results/Decompile/${dbms}/${dataset}-${llm_model}"
-output_path_verify="${exp_path}/out/query_layer/ADCo-results/Verify/${dbms}/${dataset}-${llm_model}-verify"
+output_path_verify="${exp_path}/out/query_layer/ADCo-results/Select/${dbms}/${dataset}-${llm_model}-select"
 database_path="${exp_path}/data/duckdb"
 
 rm -rf ${output_path_verify}
-rm -rf ${output_path_select}
 mkdir -p ${output_path_verify}
-mkdir -p ${output_path_select}
 
 if [ "$dataset" == "publicbibenchmark" ]; then
     mkdir -p "${output_path_verify}/queries"
-    mkdir -p "${output_path_select}/queries"
 fi    
 
 if [ "$dbms" == "PostgreSQL" ]; then
