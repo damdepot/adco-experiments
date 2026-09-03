@@ -15,9 +15,20 @@ class PostgreDB (object):
             "password": _pgsql_password,
             "host": _pgsql_host,
             "port": _pgsql_port,
+            "connect_timeout": 15,
         }
+        
+        options = []
         if self.disable_parallel:
-            kwargs["options"] = "-c max_parallel_workers_per_gather=0"
+            options.append("max_parallel_workers_per_gather=0")
+            
+        stmt_timeout = int(os.environ.get("PG_STATEMENT_TIMEOUT", "180000"))
+        if stmt_timeout > 0:
+            options.append(f"statement_timeout={stmt_timeout}")
+            
+        if options:
+            kwargs["options"] = "-c " + " -c ".join(options)
+            
         conn = psycopg2.connect(**kwargs)
         conn.autocommit = True
         return conn, conn.cursor()
@@ -39,7 +50,7 @@ class PostgreDB (object):
 
 
 class MySQLDB (object):
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         pass
 
     def connect(self):
@@ -48,7 +59,8 @@ class MySQLDB (object):
             host=_mysql_host,  # e.g., 'localhost' or IP address
             user=_mysql_user,  # your MySQL username
             password=_mysql_password,  # your MySQL password
-            database=_dataset_name  # the database you want to use
+            database=_dataset_name,  # the database you want to use
+            connection_timeout=15
         )
         return conn, conn.cursor()
 
@@ -68,7 +80,7 @@ class MySQLDB (object):
         return None
 
 class DuckDB:
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         pass
 
     def connect(self, threads: int=-1):

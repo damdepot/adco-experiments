@@ -2,6 +2,7 @@ from Database import PostgreDB, DuckDB, MySQLDB
 from FileHandler import read_text_file_line_by_line, save_text_file
 from LogResults import LogVerifyResults
 import time
+import psycopg2
 import os
 import queue
 import threading
@@ -163,49 +164,69 @@ class VerifyPG(object):
         self.tracker = None
 
     def _worker_main(self):
-        while True:
-            try:
-                query = self.queries.get(timeout=1)
-            except queue.Empty:
-                break
-
-            try:
-                thread_name = threading.current_thread().name
-                if self.tracker:
-                    self.tracker.start_query(thread_name, f"baseline query '{query}'")
-                query_fname = f"{self.workload_path}/{query}.sql"
+        thread_name = threading.current_thread().name
+        pg = PostgreDB(disable_parallel=True)
+        conn, cursor = pg.connect()
+        with self.results_lock:
+            self.connections[thread_name] = (pg, conn, cursor)
+        try:
+            while True:
                 try:
-                    self._run_main_queries(query, query_fname, thread_name, True)
-                except Exception as e:
+                    query = self.queries.get(timeout=1)
+                except queue.Empty:
+                    break
+    
+                try:
                     if self.tracker:
-                        self.tracker.log_baseline(query, thread_name, 0, str(e))
+                        self.tracker.start_query(thread_name, f"baseline query '{query}'")
+                    query_fname = f"{self.workload_path}/{query}.sql"
+                    try:
+                        self._run_main_queries(query, query_fname, thread_name, True)
+                    except Exception as e:
+                        if self.tracker:
+                            self.tracker.log_baseline(query, thread_name, 0, str(e))
+                    finally:
+                        if self.tracker:
+                            self.tracker.end_query(thread_name)
                 finally:
-                    if self.tracker:
-                        self.tracker.end_query(thread_name)
-            finally:
-                self.queries.task_done()
+                    self.queries.task_done()
+        finally:
+            pg.close_connect(conn=conn, cursor=cursor)
+            with self.results_lock:
+                if thread_name in self.connections:
+                    del self.connections[thread_name]
 
     def _worker_rewrite(self, queries):
-        while True:
-            try:
-                (query,vi) = queries.get(timeout=1)
-            except queue.Empty:
-                break
-
-            try:
-                thread_name = threading.current_thread().name
-                if self.tracker:
-                    self.tracker.start_query(thread_name, f"rewrite candidate '{query}-v{vi}'")
+        thread_name = threading.current_thread().name
+        pg = PostgreDB(disable_parallel=True)
+        conn, cursor = pg.connect()
+        with self.results_lock:
+            self.connections[thread_name] = (pg, conn, cursor)
+        try:
+            while True:
                 try:
-                    self._run_rewrite_queries(vi, query, thread_name)
-                except Exception as e:
+                    (query,vi) = queries.get(timeout=1)
+                except queue.Empty:
+                    break
+    
+                try:
                     if self.tracker:
-                        self.tracker.log_rewrite("ERR", query, vi, err_msg=str(e))
+                        self.tracker.start_query(thread_name, f"rewrite candidate '{query}-v{vi}'")
+                    try:
+                        self._run_rewrite_queries(vi, query, thread_name)
+                    except Exception as e:
+                        if self.tracker:
+                            self.tracker.log_rewrite("ERR", query, vi, err_msg=str(e))
+                    finally:
+                        if self.tracker:
+                            self.tracker.end_query(thread_name)
                 finally:
-                    if self.tracker:
-                        self.tracker.end_query(thread_name)
-            finally:
-                queries.task_done()
+                    queries.task_done()
+        finally:
+            pg.close_connect(conn=conn, cursor=cursor)
+            with self.results_lock:
+                if thread_name in self.connections:
+                    del self.connections[thread_name]
 
     def _run_main_queries(self, query, query_fname, thread_name, add_result_or_return):
         query_str = read_text_file_line_by_line(query_fname)
@@ -308,16 +329,13 @@ class VerifyPG(object):
         print(f"\n--- Starting {self.dbms} Verification ---")
         print(f"Phase 1: Baseline Queries ({total_baseline} total, {number_threads} threads)")
         self.tracker = ProgressTracker(self.dbms, total_baseline, 0)
-        self.tracker.start_heartbeat(15.0)
+        self.tracker.start_heartbeat(10.0)
         start_time_wall = time.time()
 
         # Create and start threads
         threads = []
         for i in range(number_threads):
-            pg = PostgreDB(disable_parallel=True)
-            conn, cursor = pg.connect()
             thread_name = f"thread_{i}"
-            self.connections[thread_name] = (pg, conn, cursor)
             t = threading.Thread(target=self._worker_main, args=(), name=thread_name)
             t.start()
             threads.append(t)
@@ -326,12 +344,8 @@ class VerifyPG(object):
         try:
             self.queries.join()
         finally:
-            for i, t in enumerate(threads):
+            for t in threads:
                 t.join()
-                thread_name = f"thread_{i}"
-                if thread_name in self.connections:
-                    (pg, conn, cursor) = self.connections[thread_name]
-                    pg.close_connect(conn=conn, cursor=cursor)
             self.tracker.stop_heartbeat()
                     
         self.tracker.print_msg(f"Phase 1 completed in {time.time() - start_time_wall:.3f}s. {self.tracker.baseline_success} succeeded.")
@@ -350,14 +364,11 @@ class VerifyPG(object):
         
         # Phase 3
         self.tracker.print_msg("\nPhase 3: Rewrite Verification")
-        self.tracker.start_heartbeat(15.0)
+        self.tracker.start_heartbeat(10.0)
         threads = []
         self.connections = dict()
         for i in range(number_threads):
-            pg = PostgreDB(disable_parallel=True)
-            conn, cursor = pg.connect()
             thread_name = f"thread_{i}"
-            self.connections[thread_name] = (pg, conn, cursor)
             t = threading.Thread(target=self._worker_rewrite, args=(version_queries,), name=thread_name)
             t.start()
             threads.append(t)
@@ -366,12 +377,8 @@ class VerifyPG(object):
         try:
             version_queries.join()
         finally:
-            for i, t in enumerate(threads):
+            for t in threads:
                 t.join()
-                thread_name = f"thread_{i}"
-                if thread_name in self.connections:
-                    (pg, conn, cursor) = self.connections[thread_name]
-                    pg.close_connect(conn=conn, cursor=cursor)
             self.tracker.stop_heartbeat()
 
         # Phase 4
@@ -436,100 +443,129 @@ class VerifyDuckDB(object):
         self.query_elapsed_time_results = dict()
         self.tracker = None
 
-    def are_dataframes_equal(self, df1: pd.DataFrame, df2: pd.DataFrame) -> bool:
+    def are_dataframes_equal(self, df1, df2) -> bool:
         if df1 is None and df2 is None:
             return True
         if df1 is None or df2 is None:
             return False
 
-        # Check if the shapes match first
-        if df1.shape != df2.shape:
-            return False
+        if hasattr(df1, 'shape') and hasattr(df2, 'shape'):
+            if df1.shape != df2.shape:
+                return False
 
-        # Compare the values directly, ignoring column names
-        return (df1.values == df2.values).all()
+        try:
+            if isinstance(df1, pd.DataFrame) and isinstance(df2, pd.DataFrame):
+                return df1.equals(df2)
+            if hasattr(df1, 'values') and hasattr(df2, 'values'):
+                return (df1.values == df2.values).all()
+            return df1 == df2
+        except Exception:
+            try:
+                return str(df1) == str(df2)
+            except Exception:
+                return False
 
 
     def _worker_main(self):
-        while True:
-            try:
-                query = self.queries.get(timeout=1)
-            except queue.Empty:
-                break
-
-            try:
-                thread_name = threading.current_thread().name
-                if self.tracker:
-                    self.tracker.start_query(thread_name, f"baseline query '{query}'")
-                query_fname = f"{self.workload_path}/{query}.sql"
+        thread_name = threading.current_thread().name
+        ddb = DuckDB()
+        conn = ddb.connect()
+        with self.results_lock:
+            self.connections[thread_name] = (ddb, conn)
+        try:
+            while True:
                 try:
-                    self._run_main_queries(query, query_fname, thread_name, True)
-                except Exception as e:
+                    query = self.queries.get(timeout=1)
+                except queue.Empty:
+                    break
+    
+                try:
                     if self.tracker:
-                        self.tracker.log_baseline(query, thread_name, 0, str(e))
+                        self.tracker.start_query(thread_name, f"baseline query '{query}'")
+                    query_fname = f"{self.workload_path}/{query}.sql"
+                    try:
+                        self._run_main_queries(query, query_fname, thread_name, True)
+                    except Exception as e:
+                        if self.tracker:
+                            self.tracker.log_baseline(query, thread_name, 0, str(e))
+                    finally:
+                        if self.tracker:
+                            self.tracker.end_query(thread_name)
                 finally:
-                    if self.tracker:
-                        self.tracker.end_query(thread_name)
-            finally:
-                self.queries.task_done()
+                    self.queries.task_done()
+        finally:
+            ddb.close_connect(conn=conn)
+            with self.results_lock:
+                if thread_name in self.connections:
+                    del self.connections[thread_name]
 
     def _worker_rewrite(self):
-        while True:
-            try:
-                (query,vi) = self.version_queries.get(timeout=1)
-            except queue.Empty:
-                break
-
-            try:
-                thread_name = threading.current_thread().name
-                if query not in self.query_results:
-                    continue
-                if self.tracker:
-                    self.tracker.start_query(thread_name, f"rewrite candidate '{query}-v{vi}'")
-                query_result = self.query_results[query]
-                query_elapsed_time = self.query_elapsed_time_results.get(query, 0.0) * 3 + 20
+        thread_name = threading.current_thread().name
+        ddb = DuckDB()
+        conn = ddb.connect()
+        with self.results_lock:
+            self.connections[thread_name] = (ddb, conn)
+        try:
+            while True:
                 try:
-                    rewrite_elapsed_time, rewrite_result = self.run_with_timeout(self._run_rewrite_queries, args=(f"{vi}", query, thread_name), timeout=query_elapsed_time)
-                    
-                    baseline_elapsed = self.query_elapsed_time_results.get(query, 0.001)
-                    baseline_elapsed = baseline_elapsed if baseline_elapsed > 0 else 0.001
-                    speedup = baseline_elapsed / rewrite_elapsed_time if (rewrite_elapsed_time is not None and rewrite_elapsed_time > 0) else 0.0
-                    
-                    if self.are_dataframes_equal(rewrite_result, query_result):
-                        with self.results_lock:
-                            self.query_verify_results[query]["verified_queries"].append(f"{vi}")
-                            self.query_verify_results[query]["query_elapsed_time"][f"{vi}"] = rewrite_elapsed_time
-
-                        query_rewrite_fname = f"{self.rewrite_path}/{query}-{vi}.sql"
-                        query_str = read_text_file_line_by_line(query_rewrite_fname)
-
-                        query_rewrite_fname_out = f"{self.output_path_verify}/{query}-{vi}.sql"
-                        save_text_file(query_rewrite_fname_out, query_str)
-                        if self.tracker:
-                            self.tracker.log_rewrite("PASS", query, vi, elapsed=rewrite_elapsed_time, speedup=speedup)
-
-
-                    elif rewrite_result is None:
-                        with self.results_lock:
-                            self.query_verify_results[query]["error_queries"].append(f"{vi}")
-                        if self.tracker:
-                            self.tracker.log_rewrite("ERR", query, vi, err_msg="Result is None")
-                    else:
-                        with self.results_lock:
-                            self.query_verify_results[query]["failed_queries"].append(f"{vi}")
-                        if self.tracker:
-                            self.tracker.log_rewrite("FAIL", query, vi, elapsed=rewrite_elapsed_time)
-                except TimeoutError as e:
+                    (query,vi) = self.version_queries.get(timeout=1)
+                except queue.Empty:
+                    break
+    
+                try:
+                    if query not in self.query_results:
+                        continue
                     if self.tracker:
-                        self.tracker.log_rewrite("TIMEOUT", query, vi, timeout=query_elapsed_time)
-                except Exception as e:
-                    if self.tracker:
-                        self.tracker.log_rewrite("ERR", query, vi, err_msg=str(e))
+                        self.tracker.start_query(thread_name, f"rewrite candidate '{query}-v{vi}'")
+                    query_result = self.query_results[query]
+                    query_elapsed_time = self.query_elapsed_time_results.get(query, 0.0) * 3 + 20
+                    try:
+                        rewrite_elapsed_time, rewrite_result = self.run_with_timeout(self._run_rewrite_queries, args=(f"{vi}", query, thread_name), timeout=query_elapsed_time)
+                        
+                        baseline_elapsed = self.query_elapsed_time_results.get(query, 0.001)
+                        baseline_elapsed = baseline_elapsed if baseline_elapsed > 0 else 0.001
+                        speedup = baseline_elapsed / rewrite_elapsed_time if (rewrite_elapsed_time is not None and rewrite_elapsed_time > 0) else 0.0
+                        
+                        if self.are_dataframes_equal(rewrite_result, query_result):
+                            with self.results_lock:
+                                self.query_verify_results[query]["verified_queries"].append(f"{vi}")
+                                self.query_verify_results[query]["query_elapsed_time"][f"{vi}"] = rewrite_elapsed_time
+    
+                            query_rewrite_fname = f"{self.rewrite_path}/{query}-{vi}.sql"
+                            query_str = read_text_file_line_by_line(query_rewrite_fname)
+    
+                            query_rewrite_fname_out = f"{self.output_path_verify}/{query}-{vi}.sql"
+                            save_text_file(query_rewrite_fname_out, query_str)
+                            if self.tracker:
+                                self.tracker.log_rewrite("PASS", query, vi, elapsed=rewrite_elapsed_time, speedup=speedup)
+    
+    
+                        elif rewrite_result is None:
+                            with self.results_lock:
+                                self.query_verify_results[query]["error_queries"].append(f"{vi}")
+                            if self.tracker:
+                                self.tracker.log_rewrite("ERR", query, vi, err_msg="Result is None")
+                        else:
+                            with self.results_lock:
+                                self.query_verify_results[query]["failed_queries"].append(f"{vi}")
+                            if self.tracker:
+                                self.tracker.log_rewrite("FAIL", query, vi, elapsed=rewrite_elapsed_time)
+                    except TimeoutError as e:
+                        if self.tracker:
+                            self.tracker.log_rewrite("TIMEOUT", query, vi, timeout=query_elapsed_time)
+                    except Exception as e:
+                        if self.tracker:
+                            self.tracker.log_rewrite("ERR", query, vi, err_msg=str(e))
+                    finally:
+                        if self.tracker:
+                            self.tracker.end_query(thread_name)
                 finally:
-                    if self.tracker:
-                        self.tracker.end_query(thread_name)
-            finally:
-                self.version_queries.task_done()
+                    self.version_queries.task_done()
+        finally:
+            ddb.close_connect(conn=conn)
+            with self.results_lock:
+                if thread_name in self.connections:
+                    del self.connections[thread_name]
 
     def run_with_timeout(self, func, args=(), kwargs={}, timeout=5):
         def wrapper(queue, *args, **kwargs):
@@ -607,29 +643,24 @@ class VerifyDuckDB(object):
         print(f"\n--- Starting {self.dbms} Verification ---")
         print(f"Phase 1: Baseline Queries ({total_baseline} total, {number_threads} threads)")
         self.tracker = ProgressTracker(self.dbms, total_baseline, 0)
-        self.tracker.start_heartbeat(15.0)
+        self.tracker.start_heartbeat(10.0)
         start_time_wall = time.time()
 
         # Create and start threads
         threads = []
         for i in range(number_threads):
-            ddb = DuckDB()
-            conn = ddb.connect()
             thread_name = f"thread_{i}"
-            self.connections[thread_name] = (ddb, conn)
             t = threading.Thread(target=self._worker_main, args=(), name=thread_name)
             t.start()
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        self.queries.join()
-        for i, t in enumerate(threads):
-            t.join()
-            thread_name = f"thread_{i}"
-            if thread_name in self.connections:
-                (ddb, conn) = self.connections[thread_name]
-                ddb.close_connect(conn=conn)
-        self.tracker.stop_heartbeat()
+        try:
+            self.queries.join()
+        finally:
+            for t in threads:
+                t.join()
+            self.tracker.stop_heartbeat()
                 
         self.tracker.print_msg(f"Phase 1 completed in {time.time() - start_time_wall:.3f}s. {self.tracker.baseline_success} succeeded.")
 
@@ -645,28 +676,22 @@ class VerifyDuckDB(object):
 
         # Phase 3
         self.tracker.print_msg("\nPhase 3: Rewrite Verification")
-        self.tracker.start_heartbeat(15.0)
+        self.tracker.start_heartbeat(10.0)
         threads = []
         self.connections = dict()
         for i in range(number_threads):
-            ddb = DuckDB()
-            conn = ddb.connect()
             thread_name = f"thread_{i}"
-            self.connections[thread_name] = (ddb, conn)
             t = threading.Thread(target=self._worker_rewrite, args=(), name=thread_name)
             t.start()
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        self.version_queries.join()
-
-        for i, t in enumerate(threads):
-            t.join()
-            thread_name = f"thread_{i}"
-            if thread_name in self.connections:
-                (ddb, conn) = self.connections[thread_name]
-                ddb.close_connect(conn=conn)
-        self.tracker.stop_heartbeat()
+        try:
+            self.version_queries.join()
+        finally:
+            for t in threads:
+                t.join()
+            self.tracker.stop_heartbeat()
 
         # Phase 4
         self.tracker.print_msg("\nPhase 4: Selection & Summary Report")
@@ -732,81 +757,101 @@ class VerifyMySQL(object):
 
 
     def _worker_main(self):
-        while True:
-            try:
-                query = self.queries.get(timeout=1)
-            except queue.Empty:
-                break
-
-            try:
-                thread_name = threading.current_thread().name
-                if self.tracker:
-                    self.tracker.start_query(thread_name, f"baseline query '{query}'")
-                query_fname = f"{self.workload_path}/{query}.sql"
+        thread_name = threading.current_thread().name
+        mysql = MySQLDB()
+        conn, cursor = mysql.connect()
+        with self.results_lock:
+            self.connections[thread_name] = (mysql, conn, cursor)
+        try:
+            while True:
                 try:
-                    self._run_main_queries(query, query_fname, thread_name, True)
-                except Exception as e:
+                    query = self.queries.get(timeout=1)
+                except queue.Empty:
+                    break
+    
+                try:
                     if self.tracker:
-                        self.tracker.log_baseline(query, thread_name, 0, str(e))
+                        self.tracker.start_query(thread_name, f"baseline query '{query}'")
+                    query_fname = f"{self.workload_path}/{query}.sql"
+                    try:
+                        self._run_main_queries(query, query_fname, thread_name, True)
+                    except Exception as e:
+                        if self.tracker:
+                            self.tracker.log_baseline(query, thread_name, 0, str(e))
+                    finally:
+                        if self.tracker:
+                            self.tracker.end_query(thread_name)
                 finally:
-                    if self.tracker:
-                        self.tracker.end_query(thread_name)
-            finally:
-                self.queries.task_done()
+                    self.queries.task_done()
+        finally:
+            mysql.close_connect(conn=conn, cursor=cursor)
+            with self.results_lock:
+                if thread_name in self.connections:
+                    del self.connections[thread_name]
 
     def _worker_rewrite(self):
-        while True:
-            try:
-                (query,vi) = self.version_queries.get(timeout=1)
-            except queue.Empty:
-                break
-
-            try:
-                thread_name = threading.current_thread().name
-                if query not in self.query_results:
-                    continue
-                if self.tracker:
-                    self.tracker.start_query(thread_name, f"rewrite candidate '{query}-v{vi}'")
-                query_result = self.query_results[query]
-
+        thread_name = threading.current_thread().name
+        mysql = MySQLDB()
+        conn, cursor = mysql.connect()
+        with self.results_lock:
+            self.connections[thread_name] = (mysql, conn, cursor)
+        try:
+            while True:
                 try:
-                    rewrite_elapsed_time, rewrite_result = self._run_rewrite_queries(f"{vi}",query, thread_name)
-                    baseline_elapsed = self.query_elapsed_time_results.get(query, 0.001)
-                    baseline_elapsed = baseline_elapsed if baseline_elapsed > 0 else 0.001
-                    speedup = baseline_elapsed / rewrite_elapsed_time if (rewrite_elapsed_time is not None and rewrite_elapsed_time > 0) else 0.0
-                    
-                    if rewrite_result == query_result:
-                        with self.results_lock:
-                            self.query_verify_results[query]["verified_queries"].append(f"{vi}")
-                            self.query_verify_results[query]["query_elapsed_time"][f"{vi}"] = rewrite_elapsed_time
-
-                        query_rewrite_fname = f"{self.rewrite_path}/{query}-{vi}.sql"
-                        query_str = read_text_file_line_by_line(query_rewrite_fname)
-
-                        query_rewrite_fname_out = f"{self.output_path_verify}/{query}-{vi}.sql"
-                        save_text_file(query_rewrite_fname_out, query_str)
-                        if self.tracker:
-                            self.tracker.log_rewrite("PASS", query, vi, elapsed=rewrite_elapsed_time, speedup=speedup)
-
-
-                    elif rewrite_result is None:
-                        with self.results_lock:
-                            self.query_verify_results[query]["error_queries"].append(f"{vi}")
-                        if self.tracker:
-                            self.tracker.log_rewrite("ERR", query, vi, err_msg="Result is None")
-                    else:
-                        with self.results_lock:
-                            self.query_verify_results[query]["failed_queries"].append(f"{vi}")
-                        if self.tracker:
-                            self.tracker.log_rewrite("FAIL", query, vi, elapsed=rewrite_elapsed_time)
-                except Exception as e:
+                    (query,vi) = self.version_queries.get(timeout=1)
+                except queue.Empty:
+                    break
+    
+                try:
+                    if query not in self.query_results:
+                        continue
                     if self.tracker:
-                        self.tracker.log_rewrite("ERR", query, vi, err_msg=str(e))
+                        self.tracker.start_query(thread_name, f"rewrite candidate '{query}-v{vi}'")
+                    query_result = self.query_results[query]
+    
+                    try:
+                        rewrite_elapsed_time, rewrite_result = self._run_rewrite_queries(f"{vi}",query, thread_name)
+                        baseline_elapsed = self.query_elapsed_time_results.get(query, 0.001)
+                        baseline_elapsed = baseline_elapsed if baseline_elapsed > 0 else 0.001
+                        speedup = baseline_elapsed / rewrite_elapsed_time if (rewrite_elapsed_time is not None and rewrite_elapsed_time > 0) else 0.0
+                        
+                        if rewrite_result == query_result:
+                            with self.results_lock:
+                                self.query_verify_results[query]["verified_queries"].append(f"{vi}")
+                                self.query_verify_results[query]["query_elapsed_time"][f"{vi}"] = rewrite_elapsed_time
+    
+                            query_rewrite_fname = f"{self.rewrite_path}/{query}-{vi}.sql"
+                            query_str = read_text_file_line_by_line(query_rewrite_fname)
+    
+                            query_rewrite_fname_out = f"{self.output_path_verify}/{query}-{vi}.sql"
+                            save_text_file(query_rewrite_fname_out, query_str)
+                            if self.tracker:
+                                self.tracker.log_rewrite("PASS", query, vi, elapsed=rewrite_elapsed_time, speedup=speedup)
+    
+    
+                        elif rewrite_result is None:
+                            with self.results_lock:
+                                self.query_verify_results[query]["error_queries"].append(f"{vi}")
+                            if self.tracker:
+                                self.tracker.log_rewrite("ERR", query, vi, err_msg="Result is None")
+                        else:
+                            with self.results_lock:
+                                self.query_verify_results[query]["failed_queries"].append(f"{vi}")
+                            if self.tracker:
+                                self.tracker.log_rewrite("FAIL", query, vi, elapsed=rewrite_elapsed_time)
+                    except Exception as e:
+                        if self.tracker:
+                            self.tracker.log_rewrite("ERR", query, vi, err_msg=str(e))
+                    finally:
+                        if self.tracker:
+                            self.tracker.end_query(thread_name)
                 finally:
-                    if self.tracker:
-                        self.tracker.end_query(thread_name)
-            finally:
-                self.version_queries.task_done()
+                    self.version_queries.task_done()
+        finally:
+            mysql.close_connect(conn=conn, cursor=cursor)
+            with self.results_lock:
+                if thread_name in self.connections:
+                    del self.connections[thread_name]
 
     def _run_main_queries(self, query, query_fname, thread_name, add_result_or_return):
         query_str = read_text_file_line_by_line(query_fname)
@@ -857,16 +902,13 @@ class VerifyMySQL(object):
         print(f"\n--- Starting {self.dbms} Verification ---")
         print(f"Phase 1: Baseline Queries ({total_baseline} total, {number_threads} threads)")
         self.tracker = ProgressTracker(self.dbms, total_baseline, 0)
-        self.tracker.start_heartbeat(15.0)
+        self.tracker.start_heartbeat(10.0)
         start_time_wall = time.time()
 
         # Create and start threads
         threads = []
         for i in range(number_threads):
-            mysql = MySQLDB()
-            conn, cursor = mysql.connect()
             thread_name = f"thread_{i}"
-            self.connections[thread_name] = (mysql, conn, cursor)
             t = threading.Thread(target=self._worker_main, args=(), name=thread_name)
             t.start()
             threads.append(t)
@@ -875,12 +917,8 @@ class VerifyMySQL(object):
         try:
             self.queries.join()
         finally:
-            for i, t in enumerate(threads):
+            for t in threads:
                 t.join()
-                thread_name = f"thread_{i}"
-                if thread_name in self.connections:
-                    (mysql, conn, cursor) = self.connections[thread_name]
-                    mysql.close_connect(conn=conn, cursor=cursor)
             self.tracker.stop_heartbeat()
 
         self.tracker.print_msg(f"Phase 1 completed in {time.time() - start_time_wall:.3f}s. {self.tracker.baseline_success} succeeded.")
@@ -897,14 +935,11 @@ class VerifyMySQL(object):
 
         # Phase 3
         self.tracker.print_msg("\nPhase 3: Rewrite Verification")
-        self.tracker.start_heartbeat(15.0)
+        self.tracker.start_heartbeat(10.0)
         threads = []
         self.connections = dict()
         for i in range(number_threads):
-            mysql = MySQLDB()
-            conn, cursor = mysql.connect()
             thread_name = f"thread_{i}"
-            self.connections[thread_name] = (mysql, conn, cursor)
             t = threading.Thread(target=self._worker_rewrite,  name=thread_name)
             t.start()
             threads.append(t)
@@ -913,12 +948,8 @@ class VerifyMySQL(object):
         try:
             self.version_queries.join()
         finally:
-            for i, t in enumerate(threads):
+            for t in threads:
                 t.join()
-                thread_name = f"thread_{i}"
-                if thread_name in self.connections:
-                    (mysql, conn, cursor) = self.connections[thread_name]
-                    mysql.close_connect(conn=conn, cursor=cursor)
             self.tracker.stop_heartbeat()
 
         # Phase 4
