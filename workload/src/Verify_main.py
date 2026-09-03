@@ -39,19 +39,27 @@ class VerifyPG(object):
             thread_name = threading.current_thread().name
             query_fname = f"{self.workload_path}/{query}.sql"
             print(f"{query} is verifying...")
-            self._run_main_queries(query, query_fname, thread_name, True)
-            self.queries.task_done()
+            try:
+                self._run_main_queries(query, query_fname, thread_name, True)
+            except Exception as e:
+                print(f"[ERROR] {query} failed: {e}")
+            finally:
+                self.queries.task_done()
 
     def _worker_rewrite(self, queries, pg, conn, cursor):
         while True:
             try:
-                (query,vi) = queries.get(timeout=1)
+                (query, vi) = queries.get(timeout=1)
             except queue.Empty:
                 break
 
             print(f"{query}-{vi} is verifying...")
-            self._run_rewrite_queries(vi, query, pg, cursor)
-            queries.task_done()
+            try:
+                self._run_rewrite_queries(vi, query, pg, cursor)
+            except Exception as e:
+                print(f"[ERROR] {query}-{vi} failed: {e}")
+            finally:
+                queries.task_done()
 
 
     def _run_main_queries(self, query, query_fname, thread_name, add_result_or_return, pg=None, cursor=None):
