@@ -44,7 +44,7 @@ class VerifyPG(object):
             try:
                 thread_name = threading.current_thread().name
                 query_fname = f"{self.workload_path}/{query}.sql"
-                self._debug(f"{query} is verifying...")
+                self._debug(f"Main {query} is running...")
                 self._run_main_queries(query, query_fname, thread_name, True)
             finally:
                 self.queries.task_done()
@@ -58,7 +58,7 @@ class VerifyPG(object):
 
             try:
                 thread_name = threading.current_thread().name
-                self._debug(f"{query}-{vi} is verifying...")
+                self._debug(f"Rewrite {query} is verifying...")
                 self._run_rewrite_queries(vi, query, thread_name)
             finally:
                 queries.task_done()

@@ -10,7 +10,6 @@ threads=${6:-$THREADS}
 exp_path="$(pwd)"
 rewrite_path="${exp_path}/out/query_layer/ADCo-results/Decompile/${dbms}/${dataset}-${llm_model}"
 output_path_verify="${exp_path}/out/query_layer/ADCo-results/Verify/${dbms}/${dataset}-${llm_model}-verify"
-output_path_select="${exp_path}/out/query_layer/ADCo-results/Select/${dbms}/${dataset}-${llm_model}-select"
 database_path="${exp_path}/data/duckdb"
 
 rm -rf ${output_path_verify}

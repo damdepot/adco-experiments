@@ -43,7 +43,7 @@ class VerifyPG(object):
 
             thread_name = threading.current_thread().name
             query_fname = f"{self.workload_path}/{query}.sql"
-            self._debug(f"{query} is verifying...")
+            self._debug(f"Main {query} is running...")
             try:
                 self._run_main_queries(query, query_fname, thread_name, True)
             except Exception as e:
@@ -58,7 +58,7 @@ class VerifyPG(object):
             except queue.Empty:
                 break
 
-            self._debug(f"{query}-{vi} is verifying...")
+            self._debug(f"Rewrite {query}-{vi} is verifying...")
             try:
                 self._run_rewrite_queries(vi, query, pg, cursor)
             except Exception as e:
