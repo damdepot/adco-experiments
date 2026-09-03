@@ -28,10 +28,18 @@ class VerifyPG(object):
         self.log = LogVerifyResults()
         self.query_results = dict()
         self.query_verify_results = dict()
+        self.timeout_queries = []
 
     def _debug(self, msg):
         if self.verbose:
             print(f"[DEBUG] {msg}")
+
+    def _save_timeout_queries(self):
+        if self.timeout_queries:
+            with open(f"{self.verify_log_path}.timeouts", "a") as f:
+                for q in sorted(self.timeout_queries):
+                    f.write(f"{q}\n")
+            print(f"[WARN] {len(self.timeout_queries)} main queries timed out: {sorted(self.timeout_queries)}")
 
     # Worker function for threads
     def _worker_main(self):
@@ -46,6 +54,13 @@ class VerifyPG(object):
                 query_fname = f"{self.workload_path}/{query}.sql"
                 self._debug(f"Main {query} is running...")
                 self._run_main_queries(query, query_fname, thread_name, True)
+            except Exception as e:
+                print(f"[ERROR] Main query {query} skipped: {e}")
+                with self.results_lock:
+                    self.timeout_queries.append(query)
+                    self.query_verify_results[query] = {"verified_queries":[], "error_queries": [query],
+                                                        "failed_queries": [], "query_elapsed_time": dict(),
+                                                        "selected_query": None}
             finally:
                 self.queries.task_done()
 
@@ -136,6 +151,8 @@ class VerifyPG(object):
                 (pg, conn, cursor) = self.connections[thread_name]
                 pg.close_connect(conn=conn, cursor=cursor)
 
+        self._save_timeout_queries()
+
         version_queries = queue.Queue()
         for query in self.query_results.keys():
             version_queries.put((query, ""))
@@ -161,6 +178,9 @@ class VerifyPG(object):
                 (pg, conn, cursor) = self.connections[thread_name]
                 pg.close_connect(conn=conn, cursor=cursor)
         self._debug("All rewrite threads joined.")
+        for query_id, results in self.query_verify_results.items():
+            self.log.add_results(query_id, results)
+        self.log.save_results(self.verify_log_path)
 
 
 class VerifyMySQL(object):
@@ -183,10 +203,18 @@ class VerifyMySQL(object):
         self.query_results = dict()
         self.query_verify_results = dict()
         self.query_elapsed_time_results = dict()
+        self.timeout_queries = []
 
     def _debug(self, msg):
         if self.verbose:
             print(f"[DEBUG] {msg}")
+
+    def _save_timeout_queries(self):
+        if self.timeout_queries:
+            with open(f"{self.verify_log_path}.timeouts", "a") as f:
+                for q in sorted(self.timeout_queries):
+                    f.write(f"{q}\n")
+            print(f"[WARN] {len(self.timeout_queries)} main queries timed out: {sorted(self.timeout_queries)}")
 
     def _worker_main(self):
         while True:
@@ -200,6 +228,13 @@ class VerifyMySQL(object):
                 query_fname = f"{self.workload_path}/{query}.sql"
                 self._debug(f"{query} is verifying...")
                 self._run_main_queries(query, query_fname, thread_name, True)
+            except Exception as e:
+                print(f"[ERROR] Main query {query} skipped: {e}")
+                with self.results_lock:
+                    self.timeout_queries.append(query)
+                    self.query_verify_results[query] = {"verified_queries":[], "error_queries": [query],
+                                                        "failed_queries": [], "query_elapsed_time": dict(),
+                                                        "selected_query": None}
             finally:
                 self.queries.task_done()
 
@@ -292,6 +327,8 @@ class VerifyMySQL(object):
                 (mysql, conn, cursor) = self.connections[thread_name]
                 mysql.close_connect(conn=conn, cursor=cursor)
 
+        self._save_timeout_queries()
+
         for query in self.query_results.keys():
             self.version_queries.put((query, ""))
 
@@ -316,3 +353,6 @@ class VerifyMySQL(object):
                 (mysql, conn, cursor) = self.connections[thread_name]
                 mysql.close_connect(conn=conn, cursor=cursor)
         self._debug("All rewrite threads joined.")
+        for query_id, results in self.query_verify_results.items():
+            self.log.add_results(query_id, results)
+        self.log.save_results(self.verify_log_path)

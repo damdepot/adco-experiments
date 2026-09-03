@@ -28,10 +28,18 @@ class VerifyPG(object):
         self.log = LogVerifyResults()
         self.query_results = dict()
         self.query_verify_results = dict()
+        self.timeout_queries = []
 
     def _debug(self, msg):
         if self.verbose:
             print(f"[DEBUG] {msg}")
+
+    def _save_timeout_queries(self):
+        if self.timeout_queries:
+            with open(f"{self.verify_log_path}.timeouts", "a") as f:
+                for q in sorted(self.timeout_queries):
+                    f.write(f"{q}\n")
+            print(f"[WARN] {len(self.timeout_queries)} main queries timed out: {sorted(self.timeout_queries)}")
 
     # Worker function for threads
     def _worker_main(self):
@@ -47,7 +55,12 @@ class VerifyPG(object):
             try:
                 self._run_main_queries(query, query_fname, thread_name, True)
             except Exception as e:
-                print(f"[ERROR] {query} failed: {e}")
+                print(f"[ERROR] Main query {query} skipped: {e}")
+                with self.results_lock:
+                    self.timeout_queries.append(query)
+                    self.query_verify_results[query] = {"verified_queries":[], "error_queries": [query],
+                                                        "failed_queries": [], "query_elapsed_time": dict(),
+                                                        "selected_query": None}
             finally:
                 self.queries.task_done()
 
@@ -156,6 +169,7 @@ class VerifyPG(object):
         for i, t in enumerate(threads):
             t.join()
 
+        self._save_timeout_queries()
 
         version_queries = queue.Queue()
         for query in self.query_results.keys():
@@ -238,6 +252,14 @@ class VerifyDuckDB(object):
         self.query_results = dict()
         self.query_verify_results = dict()
         self.query_elapsed_time_results = dict()
+        self.timeout_queries = []
+
+    def _save_timeout_queries(self):
+        if self.timeout_queries:
+            with open(f"{self.verify_log_path}.timeouts", "a") as f:
+                for q in sorted(self.timeout_queries):
+                    f.write(f"{q}\n")
+            print(f"[WARN] {len(self.timeout_queries)} main queries timed out: {sorted(self.timeout_queries)}")
 
     def are_dataframes_equal(self, df1: pd.DataFrame, df2: pd.DataFrame) -> bool:
         if df1 is None and df2 is None:
@@ -262,8 +284,17 @@ class VerifyDuckDB(object):
 
             thread_name = threading.current_thread().name
             query_fname = f"{self.workload_path}/{query}.sql"
-            self._run_main_queries(query, query_fname, thread_name, True)
-            self.queries.task_done()
+            try:
+                self._run_main_queries(query, query_fname, thread_name, True)
+            except Exception as e:
+                print(f"[ERROR] Main query {query} skipped: {e}")
+                with self.results_lock:
+                    self.timeout_queries.append(query)
+                    self.query_verify_results[query] = {"verified_queries":[], "error_queries": [query],
+                                                        "failed_queries": [], "query_elapsed_time": dict(),
+                                                        "selected_query": None}
+            finally:
+                self.queries.task_done()
 
     def _worker_rewrite(self):
         while True:
@@ -374,6 +405,8 @@ class VerifyDuckDB(object):
         # Wait for all tasks in the queue to be processed
         self.queries.join()
 
+        self._save_timeout_queries()
+
         for query in self.query_results.keys():
             for vi in range(1, 32):
                 self.version_queries.put((query, f"{vi}"))
@@ -440,7 +473,14 @@ class VerifyMySQL(object):
         self.query_results = dict()
         self.query_verify_results = dict()
         self.query_elapsed_time_results = dict()
+        self.timeout_queries = []
 
+    def _save_timeout_queries(self):
+        if self.timeout_queries:
+            with open(f"{self.verify_log_path}.timeouts", "a") as f:
+                for q in sorted(self.timeout_queries):
+                    f.write(f"{q}\n")
+            print(f"[WARN] {len(self.timeout_queries)} main queries timed out: {sorted(self.timeout_queries)}")
 
     def _worker_main(self):
         while True:
@@ -451,8 +491,17 @@ class VerifyMySQL(object):
 
             thread_name = threading.current_thread().name
             query_fname = f"{self.workload_path}/{query}.sql"
-            self._run_main_queries(query, query_fname, thread_name, True)
-            self.queries.task_done()
+            try:
+                self._run_main_queries(query, query_fname, thread_name, True)
+            except Exception as e:
+                print(f"[ERROR] Main query {query} skipped: {e}")
+                with self.results_lock:
+                    self.timeout_queries.append(query)
+                    self.query_verify_results[query] = {"verified_queries":[], "error_queries": [query],
+                                                        "failed_queries": [], "query_elapsed_time": dict(),
+                                                        "selected_query": None}
+            finally:
+                self.queries.task_done()
 
     def _worker_rewrite(self):
         while True:
@@ -541,6 +590,8 @@ class VerifyMySQL(object):
             thread_name = f"thread_{i}"
             (pg, conn, cursor) = self.connections[thread_name]
             pg.close_connect(conn=conn, cursor=cursor)
+
+        self._save_timeout_queries()
 
         for query in self.query_results.keys():
             for vi in range(1, 32):
