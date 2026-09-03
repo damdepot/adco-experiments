@@ -15,14 +15,12 @@ def parse_arguments():
     parser.add_argument('--output-path-verify', type=str, default="/tmp/")
     parser.add_argument('--output-path-select', type=str, default="/tmp/")
     parser.add_argument('--verify-log-path', type=str, default="/tmp/query-verify.log")
-    parser.add_argument('--threads', type=int, default=None, help='Number of worker threads (default: min(cpu_count, 8))')
 
     args = parser.parse_args()
     return args
 
 
 if __name__ == '__main__':
-    os.environ["PG_DISABLE_PARALLEL"] = "1"
     args = parse_arguments()
     load_config(dbms=args.dbms, dataset_name=args.database_name, workload_path=args.workload_path, database_path=args.database_path)
     from Config import _work_load
@@ -39,7 +37,6 @@ if __name__ == '__main__':
 
     verify = workload_dbms(workload_path=args.workload_path, queries=_work_load, database_name=args.database_name,
                           dbms=args.dbms, rewrite_path=args.rewrite_path, output_path_verify=args.output_path_verify,
-                          output_path_select=args.output_path_select, verify_log_path=args.verify_log_path,
-                          threads=args.threads)
+                          output_path_select=args.output_path_select, verify_log_path=args.verify_log_path)
 
     verify.run()
