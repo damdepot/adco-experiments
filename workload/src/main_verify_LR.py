@@ -13,6 +13,7 @@ def parse_arguments():
     parser.add_argument('--output-path-verify', type=str, default="/tmp/")
     parser.add_argument('--verify-log-path', type=str, default="/tmp/query-verify.log")
     parser.add_argument('--threads', type=int, default=None, help='Number of worker threads (default: min(cpu_count, 8))')
+    parser.add_argument('--verbose', action='store_true')
 
     args = parser.parse_args()
     return args
@@ -33,6 +34,6 @@ if __name__ == '__main__':
 
     verify = workload_dbms(workload_path=args.workload_path, queries=_work_load, database_name=args.database_name,
                           dbms=args.dbms, rewrite_path=args.rewrite_path, output_path_verify=args.output_path_verify,
-                          verify_log_path=args.verify_log_path, threads=args.threads)
+                          verify_log_path=args.verify_log_path, threads=args.threads, verbose=args.verbose)
 
     verify.run()

@@ -11,7 +11,7 @@ import pandas as pd
 
 class VerifyPG(object):
     def __init__(self, workload_path: str, rewrite_path: str, queries, database_name: str, dbms: str,
-                 output_path_verify: str, verify_log_path: str, threads: int = None):
+                 output_path_verify: str, verify_log_path: str, threads: int = None, verbose: bool = False):
         self.workload_path = workload_path
         self.rewrite_path = rewrite_path
         self.database_name = database_name
@@ -20,6 +20,7 @@ class VerifyPG(object):
         self.queries = queries
         self.verify_log_path = verify_log_path
         self.number_threads = threads if (threads is not None and threads > 0) else min(multiprocessing.cpu_count(), 8)
+        self.verbose = verbose
 
         self.impl_funcs = dict()
         self.connections = dict()
@@ -28,7 +29,11 @@ class VerifyPG(object):
         self.query_results = dict()
         self.query_verify_results = dict()
 
-        # Worker function for threads
+    def _debug(self, msg):
+        if self.verbose:
+            print(f"[DEBUG] {msg}")
+
+    # Worker function for threads
     def _worker_main(self):
         while True:
             try:
@@ -39,6 +44,7 @@ class VerifyPG(object):
             try:
                 thread_name = threading.current_thread().name
                 query_fname = f"{self.workload_path}/{query}.sql"
+                self._debug(f"{query} is verifying...")
                 self._run_main_queries(query, query_fname, thread_name, True)
             finally:
                 self.queries.task_done()
@@ -52,6 +58,7 @@ class VerifyPG(object):
 
             try:
                 thread_name = threading.current_thread().name
+                self._debug(f"{query}-{vi} is verifying...")
                 self._run_rewrite_queries(vi, query, thread_name)
             finally:
                 queries.task_done()
@@ -95,11 +102,15 @@ class VerifyPG(object):
                     save_text_file(query_rewrite_fname, query_str)
 
             elif rewrite_result is None:
+                self._debug(f"{main_query}-{query}: execution error (result is None)")
                 with self.results_lock:
                     self.query_verify_results[main_query]["error_queries"].append(query)
             else:
+                self._debug(f"{main_query}-{query}: result mismatch — expected {query_result[:2]}, got {rewrite_result[:2]}")
                 with self.results_lock:
                     self.query_verify_results[main_query]["failed_queries"].append(query)
+        else:
+            self._debug(f"File not found: {query_rewrite_fname}")
 
     def run(self):
         number_threads = self.number_threads
@@ -149,11 +160,12 @@ class VerifyPG(object):
                 thread_name = f"thread_{i}"
                 (pg, conn, cursor) = self.connections[thread_name]
                 pg.close_connect(conn=conn, cursor=cursor)
+        self._debug("All rewrite threads joined.")
 
 
 class VerifyMySQL(object):
     def __init__(self, workload_path: str, rewrite_path: str, queries, database_name: str, dbms: str,
-                 output_path_verify: str,  verify_log_path: str, threads: int = None):
+                 output_path_verify: str,  verify_log_path: str, threads: int = None, verbose: bool = False):
         self.workload_path = workload_path
         self.rewrite_path = rewrite_path
         self.database_name = database_name
@@ -162,6 +174,7 @@ class VerifyMySQL(object):
         self.queries = queries
         self.verify_log_path = verify_log_path
         self.number_threads = threads if (threads is not None and threads > 0) else min(multiprocessing.cpu_count(), 8)
+        self.verbose = verbose
 
         self.connections = dict()
         self.version_queries = queue.Queue()
@@ -171,6 +184,9 @@ class VerifyMySQL(object):
         self.query_verify_results = dict()
         self.query_elapsed_time_results = dict()
 
+    def _debug(self, msg):
+        if self.verbose:
+            print(f"[DEBUG] {msg}")
 
     def _worker_main(self):
         while True:
@@ -182,6 +198,7 @@ class VerifyMySQL(object):
             try:
                 thread_name = threading.current_thread().name
                 query_fname = f"{self.workload_path}/{query}.sql"
+                self._debug(f"{query} is verifying...")
                 self._run_main_queries(query, query_fname, thread_name, True)
             finally:
                 self.queries.task_done()
@@ -195,6 +212,7 @@ class VerifyMySQL(object):
 
             try:
                 thread_name = threading.current_thread().name
+                self._debug(f"{query}-{vi} is verifying...")
                 query_result = self.query_results[query]
                 rewrite_elapsed_time, rewrite_result = self._run_rewrite_queries(f"{vi}",query, thread_name)
                 if rewrite_result == query_result:
@@ -297,3 +315,4 @@ class VerifyMySQL(object):
                 thread_name = f"thread_{i}"
                 (mysql, conn, cursor) = self.connections[thread_name]
                 mysql.close_connect(conn=conn, cursor=cursor)
+        self._debug("All rewrite threads joined.")

@@ -27,7 +27,8 @@ CMD="python main_verify_LR.py --workload-path ${workload_path} \
                     --dbms ${dbms} \
                     --rewrite-path ${rewrite_path} \
                     --verify-log-path ${verify_log_path} \
-                    --output-path-verify ${output_path_verify}"
+                    --output-path-verify ${output_path_verify} \
+                    --verbose"
 
 if [ -n "$threads" ]; then
     CMD="${CMD} --threads ${threads}"

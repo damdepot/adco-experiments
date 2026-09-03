@@ -51,7 +51,8 @@ CMD="python main_verify.py --workload-path ${workload_path} \
                     --rewrite-path ${rewrite_path} \
                     --verify-log-path ${verify_log_path} \
                     --output-path-verify ${output_path_verify} \
-                    --output-path-select ${output_path_select}"
+                    --output-path-select ${output_path_select} \
+                    --verbose"
 
 if [ -n "$threads" ]; then
     CMD="${CMD} --threads ${threads}"
