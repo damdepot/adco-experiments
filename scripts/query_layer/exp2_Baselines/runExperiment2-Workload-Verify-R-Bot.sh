@@ -3,6 +3,7 @@
 dataset=$1
 dbms=$2
 llm_model=$3
+threads=${4:-$THREADS}
 
 exp_path="$(pwd)"
 
@@ -29,5 +30,9 @@ CMD="python main_verify_LR.py --workload-path ${workload_path} \
                     --rewrite-path ${rewrite_path} \
                     --verify-log-path ${verify_log_path} \
                     --output-path-verify ${output_path_verify}"
+
+if [ -n "$threads" ]; then
+    CMD="${CMD} --threads ${threads}"
+fi
 
 $CMD

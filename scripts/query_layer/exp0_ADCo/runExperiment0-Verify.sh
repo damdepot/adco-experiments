@@ -5,6 +5,7 @@ workload_path=$2
 llm_model=$3
 dbms=$4
 runner_dbms=$5
+threads=${6:-$THREADS}
 
 exp_path="$(pwd)"
 rewrite_path="${exp_path}/out/query_layer/ADCo-results/Decompile/${dbms}/${dataset}-${llm_model}"
@@ -47,5 +48,9 @@ CMD="python main_verify.py --workload-path ${workload_path} \
                     --verify-log-path ${verify_log_path} \
                     --output-path-verify ${output_path_verify} \
                     --output-path-select ${output_path_select}"
+
+if [ -n "$threads" ]; then
+    CMD="${CMD} --threads ${threads}"
+fi
 
 $CMD

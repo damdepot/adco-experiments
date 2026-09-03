@@ -1,15 +1,24 @@
+import os
 import psycopg2
 import duckdb
 import mysql.connector
 
 class PostgreDB (object):
-    def __init__(self):
-        pass
+    def __init__(self, disable_parallel: bool = False):
+        self.disable_parallel = disable_parallel or (os.environ.get("PG_DISABLE_PARALLEL", "0").lower() in ("1", "true", "yes"))
 
     def connect(self):
         from Config import _dataset_name, _pgsql_user, _pgsql_password, _pgsql_host, _pgsql_port
-        conn = psycopg2.connect(database=_dataset_name, user=_pgsql_user, password=_pgsql_password,
-                                host=_pgsql_host, port=_pgsql_port, )
+        kwargs = {
+            "database": _dataset_name,
+            "user": _pgsql_user,
+            "password": _pgsql_password,
+            "host": _pgsql_host,
+            "port": _pgsql_port,
+        }
+        if self.disable_parallel:
+            kwargs["options"] = "-c max_parallel_workers_per_gather=0"
+        conn = psycopg2.connect(**kwargs)
         return conn, conn.cursor()
 
     def close_connect(self, conn, cursor):

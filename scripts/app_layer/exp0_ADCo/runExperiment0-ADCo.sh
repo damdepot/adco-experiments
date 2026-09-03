@@ -15,9 +15,10 @@ mkdir -p ${output_path}
 cd "${exp_path}/baselines/ADCo"
 source venv/bin/activate
 
-SCRIPT="python -m src.rewriter ${codebase_path} \
+SCRIPT="python -m src.code_rewriter ${codebase_path} \
                         --model ${llm_model} \
-                        --output-path ${output_path}"
+                        --sandbox-dir ${output_path} \
+                        --output-path ${output_path}/result.json"
 
 echo ${SCRIPT}
 $SCRIPT

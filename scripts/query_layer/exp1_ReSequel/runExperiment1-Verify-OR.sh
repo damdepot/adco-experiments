@@ -5,6 +5,7 @@ workload_path=$2
 dbms=$3
 llm_model=$4
 runner_dbms=$5
+threads=${6:-$THREADS}
 
 # sync
 # echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
@@ -48,5 +49,9 @@ CMD="python main_verify_OR.py --workload-path ${workload_path} \
                     --verify-log-path ${verify_log_path} \
                     --output-path-verify NX \
                     --output-path-select ${output_path_select}"
+
+if [ -n "$threads" ]; then
+    CMD="${CMD} --threads ${threads}"
+fi
 
 $CMD
