@@ -150,9 +150,6 @@ class VerifyPG(object):
 
         for i, t in enumerate(threads):
             t.join()
-            thread_name = f"thread_{i}"
-            (pg, conn, cursor) = self.connections[thread_name]
-            pg.close_connect(conn=conn, cursor=cursor)
 
 
         version_queries = queue.Queue()
@@ -176,6 +173,9 @@ class VerifyPG(object):
 
         for i, t in enumerate(threads):
             t.join()
+            thread_name = f"thread_{i}"
+            (pg, conn, cursor) = self.connections[thread_name]
+            pg.close_connect(conn=conn, cursor=cursor)
         print("[DEBUG] All rewrite threads joined.")
 
         #for query in self.query_results.keys():
