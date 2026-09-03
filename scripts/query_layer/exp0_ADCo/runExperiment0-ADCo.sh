@@ -18,7 +18,8 @@ source venv/bin/activate
 SCRIPT="python -m src.code_rewriter ${compiled_codebase_path} \
                         --model ${llm_model} \
                         --sandbox-dir ${output_path} \
-                        --output-path ${output_path}/result.json"
+                        --output-path ${output_path}/result.json \
+                        --verbose"
 
 echo ${SCRIPT}
 $SCRIPT
