@@ -22,7 +22,7 @@ class VerifyPG(object):
         self.verify_log_path = verify_log_path
         self.number_threads = threads if (threads is not None and threads > 0) else min(multiprocessing.cpu_count(), 8)
 
-        self.impl_funcs= ""
+        self.impl_funcs = dict()
         self.connections = dict()
         self.results_lock = threading.Lock()
         self.log = LogVerifyResults()
@@ -52,22 +52,21 @@ class VerifyPG(object):
                 break
 
             try:
-                self._run_rewrite_queries(vi, query)
+                thread_name = threading.current_thread().name
+                self._run_rewrite_queries(vi, query, thread_name)
             finally:
                 queries.task_done()
 
 
     def _run_main_queries(self, query, query_fname, thread_name, add_result_or_return):
         query_str = read_text_file_line_by_line(query_fname)
+        (pg, conn, cursor) = self.connections[thread_name]
         if add_result_or_return:
-            (pg, conn, cursor) = self.connections[thread_name]
             res_an = pg.execute(cursor=cursor, query=query_str)
             with self.results_lock:
                 self.query_results[query] = res_an
                 self.query_verify_results[query] = {"verified_queries":[], "error_queries": [], "failed_queries": [], "query_elapsed_time": dict(), "selected_query": None}
         else:
-            pg = PostgreDB(disable_parallel=True)
-            conn, cursor = pg.connect()
             elapsed_time = -1
             res_an = None
             try:
@@ -78,14 +77,13 @@ class VerifyPG(object):
             except:
                 pass
 
-            pg.close_connect(conn=conn, cursor=cursor)
             return elapsed_time, res_an
 
-    def _run_rewrite_queries(self, query, main_query):
+    def _run_rewrite_queries(self, query, main_query, thread_name):
         query_rewrite_fname = f"{self.rewrite_path}/{main_query}-{query}.sql"
         if os.path.exists(query_rewrite_fname):
             rewrite_elapsed_time, rewrite_result = self._run_main_queries(query=query, query_fname=query_rewrite_fname,
-                                                        thread_name=None, add_result_or_return=False)
+                                                        thread_name=thread_name, add_result_or_return=False)
             query_result = self.query_results[main_query]
 
             if rewrite_result == query_result:
@@ -93,7 +91,7 @@ class VerifyPG(object):
                     self.query_verify_results[main_query]["verified_queries"].append(query)
                     self.query_verify_results[main_query]["query_elapsed_time"][query] = rewrite_elapsed_time
 
-                    query_str =f"{self.impl_funcs} \n {read_text_file_line_by_line(query_rewrite_fname)}"
+                    query_str = f"{self.impl_funcs.get(main_query, '')} \n {read_text_file_line_by_line(query_rewrite_fname)}"
                     query_rewrite_fname = f"{self.output_path_verify}/{main_query}-{query}.sql"
                     save_text_file(query_rewrite_fname, query_str)
 
@@ -107,15 +105,18 @@ class VerifyPG(object):
     def _run_implemented_functions(self, main_query):
         fun_fname = f"{self.rewrite_path}/{main_query}-0.sql"
         if os.path.exists(fun_fname):
+            pg = PostgreDB(disable_parallel=True)
+            conn, cursor = None, None
             try:
-                query_str = read_text_file_line_by_line(fun_fname)
-                pg = PostgreDB(disable_parallel=True)
                 conn, cursor = pg.connect()
+                query_str = read_text_file_line_by_line(fun_fname)
                 res_an = pg.execute(cursor=cursor, query=query_str)
-                pg.close_connect(conn=conn, cursor=cursor)
-                self.impl_funcs = query_str + "\n"
+                self.impl_funcs[main_query] = query_str + "\n"
             except Exception as e:
                 pass
+            finally:
+                if conn is not None and cursor is not None:
+                    pg.close_connect(conn=conn, cursor=cursor)
 
     def run(self):
         number_threads = self.number_threads
@@ -132,14 +133,14 @@ class VerifyPG(object):
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        self.queries.join()
-
-        for i, t in enumerate(threads):
-            t.join()
-            thread_name = f"thread_{i}"
-            (pg, conn, cursor) = self.connections[thread_name]
-            pg.close_connect(conn=conn, cursor=cursor)
-
+        try:
+            self.queries.join()
+        finally:
+            for i, t in enumerate(threads):
+                t.join()
+                thread_name = f"thread_{i}"
+                (pg, conn, cursor) = self.connections[thread_name]
+                pg.close_connect(conn=conn, cursor=cursor)
 
         version_queries = queue.Queue()
         for query in self.query_results.keys():
@@ -147,19 +148,26 @@ class VerifyPG(object):
             for vi in range(1, 32):
                 version_queries.put((query, f"{vi}"))
 
-
         threads = []
+        self.connections = dict()
         for i in range(number_threads):
+            pg = PostgreDB(disable_parallel=True)
+            conn, cursor = pg.connect()
             thread_name = f"thread_{i}"
+            self.connections[thread_name] = (pg, conn, cursor)
             t = threading.Thread(target=self._worker_rewrite, args=(version_queries,), name=thread_name)
             t.start()
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        version_queries.join()
-
-        for i, t in enumerate(threads):
-            t.join()
+        try:
+            version_queries.join()
+        finally:
+            for i, t in enumerate(threads):
+                t.join()
+                thread_name = f"thread_{i}"
+                (pg, conn, cursor) = self.connections[thread_name]
+                pg.close_connect(conn=conn, cursor=cursor)
 
         #for query in self.query_results.keys():
         for query in self.query_results.keys():
@@ -534,12 +542,14 @@ class VerifyMySQL(object):
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        self.queries.join()
-        for i, t in enumerate(threads):
-            t.join()
-            thread_name = f"thread_{i}"
-            (pg, conn, cursor) = self.connections[thread_name]
-            pg.close_connect(conn=conn, cursor=cursor)
+        try:
+            self.queries.join()
+        finally:
+            for i, t in enumerate(threads):
+                t.join()
+                thread_name = f"thread_{i}"
+                (mysql, conn, cursor) = self.connections[thread_name]
+                mysql.close_connect(conn=conn, cursor=cursor)
 
         for query in self.query_results.keys():
             for vi in range(1, 32):
@@ -557,13 +567,14 @@ class VerifyMySQL(object):
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        self.version_queries.join()
-
-        for i, t in enumerate(threads):
-            t.join()
-            thread_name = f"thread_{i}"
-            (mysql, conn, cursor) = self.connections[thread_name]
-            mysql.close_connect(conn=conn, cursor=cursor)
+        try:
+            self.version_queries.join()
+        finally:
+            for i, t in enumerate(threads):
+                t.join()
+                thread_name = f"thread_{i}"
+                (mysql, conn, cursor) = self.connections[thread_name]
+                mysql.close_connect(conn=conn, cursor=cursor)
 
         for query in self.query_results.keys():
             results = self.query_verify_results[query]

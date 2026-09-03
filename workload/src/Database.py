@@ -19,17 +19,23 @@ class PostgreDB (object):
         if self.disable_parallel:
             kwargs["options"] = "-c max_parallel_workers_per_gather=0"
         conn = psycopg2.connect(**kwargs)
+        conn.autocommit = True
         return conn, conn.cursor()
 
     def close_connect(self, conn, cursor):
-        cursor.close()
-        conn.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            if conn is not None:
+                conn.close()
 
 
     def execute(self, cursor, query):
         cursor.execute(query)
-        result = cursor.fetchall()
-        return result
+        if cursor.description is not None:
+            return cursor.fetchall()
+        return None
 
 
 class MySQLDB (object):
@@ -47,14 +53,19 @@ class MySQLDB (object):
         return conn, conn.cursor()
 
     def close_connect(self, conn, cursor):
-        cursor.close()
-        conn.close()
+        try:
+            if cursor is not None:
+                cursor.close()
+        finally:
+            if conn is not None:
+                conn.close()
 
 
     def execute(self, cursor, query):
         cursor.execute(query)
-        result = cursor.fetchall()
-        return result
+        if cursor.description is not None:
+            return cursor.fetchall()
+        return None
 
 class DuckDB:
     def __init__(self):
@@ -69,7 +80,8 @@ class DuckDB:
         return conn
 
     def close_connect(self, conn):
-        conn.close()
+        if conn is not None:
+            conn.close()
 
 
     def execute(self, conn, query):
