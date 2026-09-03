@@ -160,11 +160,14 @@ class VerifyPG(object):
 
         # Wait for all tasks in the queue to be processed
         version_queries.join()
+        print("[DEBUG] All rewrite workers finished.")
 
         for i, t in enumerate(threads):
             t.join()
+        print("[DEBUG] All rewrite threads joined.")
 
         #for query in self.query_results.keys():
+        print("[DEBUG] Starting results selection loop...")
         for query in self.query_results.keys():
                 results = self.query_verify_results[query]
                 min_time = -1
@@ -193,7 +196,9 @@ class VerifyPG(object):
                 else:
                     print(f"Unverified Query: {query}")
 
+        print("[DEBUG] Results loop done. Saving log...")
         self.log.save_results(f"{self.verify_log_path}")
+        print("[DEBUG] Log saved. Done.")
 
 
 class VerifyDuckDB(object):
