@@ -113,7 +113,7 @@ class VerifyPG(object):
                 pass
 
     def run(self):
-        number_threads = multiprocessing.cpu_count()
+        number_threads = min(multiprocessing.cpu_count(), 16)
 
         # Create and start threads
         threads = []
