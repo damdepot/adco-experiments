@@ -97,6 +97,6 @@ write_apikeys baselines/R-Bot/my_rewriter/APIKeys.yaml
 write_dbconfig baselines/R-Bot/my_rewriter/DBConfig.yaml
 
 echo '-------------------<< Updating ADCo .env >>-------------------'
-write_adco_env baselines/ADCo/src/.env
+write_adco_env baselines/ADCo/.env
 
 echo "Updated API keys and DB configs for ReSequel and R-Bot, and .env for ADCo."
