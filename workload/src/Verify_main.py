@@ -83,8 +83,8 @@ class VerifyPG(object):
                 res_an = pg.execute(cursor=cursor, query=query_str)
                 end = time.time()
                 elapsed_time = end - start
-            except:
-                pass
+            except Exception as e:
+                print(f"[ERROR] query execution failed: {e}")
 
             if owns_conn:
                 pg.close_connect(conn=conn, cursor=cursor)
