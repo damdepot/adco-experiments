@@ -92,27 +92,31 @@ class VerifyPG(object):
 
     def _run_rewrite_queries(self, query, main_query, pg, cursor):
         query_rewrite_fname = f"{self.rewrite_path}/{main_query}-{query}.sql"
-        if os.path.exists(query_rewrite_fname):
-            rewrite_elapsed_time, rewrite_result = self._run_main_queries(query=query, query_fname=query_rewrite_fname,
-                                                        thread_name=None, add_result_or_return=False,
-                                                        pg=pg, cursor=cursor)
-            query_result = self.query_results[main_query]
+        if not os.path.exists(query_rewrite_fname):
+            print(f"[DEBUG] File not found: {query_rewrite_fname}")
+            return
+        rewrite_elapsed_time, rewrite_result = self._run_main_queries(query=query, query_fname=query_rewrite_fname,
+                                                    thread_name=None, add_result_or_return=False,
+                                                    pg=pg, cursor=cursor)
+        query_result = self.query_results[main_query]
 
-            if rewrite_result == query_result:
-                with self.results_lock:
-                    self.query_verify_results[main_query]["verified_queries"].append(query)
-                    self.query_verify_results[main_query]["query_elapsed_time"][query] = rewrite_elapsed_time
+        if rewrite_result == query_result:
+            with self.results_lock:
+                self.query_verify_results[main_query]["verified_queries"].append(query)
+                self.query_verify_results[main_query]["query_elapsed_time"][query] = rewrite_elapsed_time
 
-                    query_str =f"{self.impl_funcs} \n {read_text_file_line_by_line(query_rewrite_fname)}"
-                    query_rewrite_fname = f"{self.output_path_verify}/{main_query}-{query}.sql"
-                    save_text_file(query_rewrite_fname, query_str)
+                query_str =f"{self.impl_funcs} \n {read_text_file_line_by_line(query_rewrite_fname)}"
+                query_rewrite_fname = f"{self.output_path_verify}/{main_query}-{query}.sql"
+                save_text_file(query_rewrite_fname, query_str)
 
-            elif rewrite_result is None:
-                with self.results_lock:
-                    self.query_verify_results[main_query]["error_queries"].append(query)
-            else:
-                with self.results_lock:
-                    self.query_verify_results[main_query]["failed_queries"].append(query)
+        elif rewrite_result is None:
+            print(f"[DEBUG] {main_query}-{query}: execution error (result is None)")
+            with self.results_lock:
+                self.query_verify_results[main_query]["error_queries"].append(query)
+        else:
+            print(f"[DEBUG] {main_query}-{query}: result mismatch — expected {query_result[:2]}, got {rewrite_result[:2]}")
+            with self.results_lock:
+                self.query_verify_results[main_query]["failed_queries"].append(query)
 
     def _run_implemented_functions(self, main_query):
         fun_fname = f"{self.rewrite_path}/{main_query}-0.sql"
