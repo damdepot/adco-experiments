@@ -9,7 +9,9 @@ class PostgreDB (object):
     def connect(self):
         from Config import _dataset_name, _pgsql_user, _pgsql_password, _pgsql_host, _pgsql_port
         conn = psycopg2.connect(database=_dataset_name, user=_pgsql_user, password=_pgsql_password,
-                                host=_pgsql_host, port=_pgsql_port)
+                                host=_pgsql_host, port=_pgsql_port,
+                                options="-c statement_timeout=300000")  # 5 min timeout
+        conn.autocommit = True
         return conn, conn.cursor()
 
     def close_connect(self, conn, cursor):
