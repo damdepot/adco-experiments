@@ -42,7 +42,7 @@ class VerifyPG(object):
             self._run_main_queries(query, query_fname, thread_name, True)
             self.queries.task_done()
 
-    def _worker_rewrite(self, queries):
+    def _worker_rewrite(self, queries, pg, conn, cursor):
         while True:
             try:
                 (query,vi) = queries.get(timeout=1)
@@ -50,11 +50,11 @@ class VerifyPG(object):
                 break
 
             print(f"{query}-{vi} is verifying...")
-            self._run_rewrite_queries(vi, query)
+            self._run_rewrite_queries(vi, query, pg, cursor)
             queries.task_done()
 
 
-    def _run_main_queries(self, query, query_fname, thread_name, add_result_or_return):
+    def _run_main_queries(self, query, query_fname, thread_name, add_result_or_return, pg=None, cursor=None):
         query_str = read_text_file_line_by_line(query_fname)
         if add_result_or_return:
             (pg, conn, cursor) = self.connections[thread_name]
@@ -63,8 +63,11 @@ class VerifyPG(object):
                 self.query_results[query] = res_an
                 self.query_verify_results[query] = {"verified_queries":[], "error_queries": [], "failed_queries": [], "query_elapsed_time": dict(), "selected_query": None}
         else:
-            pg = PostgreDB()
-            conn, cursor = pg.connect()
+            # Reuse a provided connection, or open a temporary one
+            owns_conn = pg is None
+            if owns_conn:
+                pg = PostgreDB()
+                conn, cursor = pg.connect()
             elapsed_time = -1
             res_an = None
             try:
@@ -75,14 +78,16 @@ class VerifyPG(object):
             except:
                 pass
 
-            pg.close_connect(conn=conn, cursor=cursor)
+            if owns_conn:
+                pg.close_connect(conn=conn, cursor=cursor)
             return elapsed_time, res_an
 
-    def _run_rewrite_queries(self, query, main_query):
+    def _run_rewrite_queries(self, query, main_query, pg, cursor):
         query_rewrite_fname = f"{self.rewrite_path}/{main_query}-{query}.sql"
         if os.path.exists(query_rewrite_fname):
             rewrite_elapsed_time, rewrite_result = self._run_main_queries(query=query, query_fname=query_rewrite_fname,
-                                                        thread_name=None, add_result_or_return=False)
+                                                        thread_name=None, add_result_or_return=False,
+                                                        pg=pg, cursor=cursor)
             query_result = self.query_results[main_query]
 
             if rewrite_result == query_result:
@@ -148,7 +153,8 @@ class VerifyPG(object):
         threads = []
         for i in range(number_threads):
             thread_name = f"thread_{i}"
-            t = threading.Thread(target=self._worker_rewrite, args=(version_queries,), name=thread_name)
+            (pg, conn, cursor) = self.connections[thread_name]
+            t = threading.Thread(target=self._worker_rewrite, args=(version_queries, pg, conn, cursor), name=thread_name)
             t.start()
             threads.append(t)
 
@@ -173,6 +179,13 @@ class VerifyPG(object):
                 if selected_version != "-1" :
                     results["selected_query"] = selected_version
                     self.log.add_results(query_id=query, results=results)
+                    print(
+                        f"{query} done — "
+                        f"verified: {len(results['verified_queries'])}, "
+                        f"failed: {len(results['failed_queries'])}, "
+                        f"errors: {len(results['error_queries'])}, "
+                        f"selected: v{selected_version}"
+                    )
                     query_selected_fname = f"{self.output_path_select}/{query}.sql"
                     query_rewrite_fname = f"{self.rewrite_path}/{query}-{selected_version}.sql"
                     query_str = read_text_file_line_by_line(query_rewrite_fname)
