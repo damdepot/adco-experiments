@@ -11,7 +11,7 @@ import pandas as pd
 
 class VerifyPG(object):
     def __init__(self, workload_path: str, rewrite_path: str, queries, database_name: str, dbms: str,
-                 output_path_verify: str, output_path_select: str, verify_log_path: str):
+                 output_path_verify: str, output_path_select: str, verify_log_path: str, verbose: bool = False):
         self.workload_path = workload_path
         self.rewrite_path = rewrite_path
         self.database_name = database_name
@@ -20,6 +20,7 @@ class VerifyPG(object):
         self.output_path_select = output_path_select
         self.queries = queries
         self.verify_log_path = verify_log_path
+        self.verbose = verbose
 
         self.impl_funcs= ""
         self.connections = dict()
@@ -28,7 +29,11 @@ class VerifyPG(object):
         self.query_results = dict()
         self.query_verify_results = dict()
 
-        # Worker function for threads
+    def _debug(self, msg):
+        if self.verbose:
+            print(f"[DEBUG] {msg}")
+
+    # Worker function for threads
     def _worker_main(self):
         while True:
             try:
@@ -38,7 +43,7 @@ class VerifyPG(object):
 
             thread_name = threading.current_thread().name
             query_fname = f"{self.workload_path}/{query}.sql"
-            print(f"{query} is verifying...")
+            self._debug(f"{query} is verifying...")
             try:
                 self._run_main_queries(query, query_fname, thread_name, True)
             except Exception as e:
@@ -53,7 +58,7 @@ class VerifyPG(object):
             except queue.Empty:
                 break
 
-            print(f"{query}-{vi} is verifying...")
+            self._debug(f"{query}-{vi} is verifying...")
             try:
                 self._run_rewrite_queries(vi, query, pg, cursor)
             except Exception as e:
@@ -93,7 +98,7 @@ class VerifyPG(object):
     def _run_rewrite_queries(self, query, main_query, pg, cursor):
         query_rewrite_fname = f"{self.rewrite_path}/{main_query}-{query}.sql"
         if not os.path.exists(query_rewrite_fname):
-            print(f"[DEBUG] File not found: {query_rewrite_fname}")
+            self._debug(f"File not found: {query_rewrite_fname}")
             return
         rewrite_elapsed_time, rewrite_result = self._run_main_queries(query=query, query_fname=query_rewrite_fname,
                                                     thread_name=None, add_result_or_return=False,
@@ -110,11 +115,11 @@ class VerifyPG(object):
                 save_text_file(query_rewrite_fname, query_str)
 
         elif rewrite_result is None:
-            print(f"[DEBUG] {main_query}-{query}: execution error (result is None)")
+            self._debug(f"{main_query}-{query}: execution error (result is None)")
             with self.results_lock:
                 self.query_verify_results[main_query]["error_queries"].append(query)
         else:
-            print(f"[DEBUG] {main_query}-{query}: result mismatch — expected {query_result[:2]}, got {rewrite_result[:2]}")
+            self._debug(f"{main_query}-{query}: result mismatch — expected {query_result[:2]}, got {rewrite_result[:2]}")
             with self.results_lock:
                 self.query_verify_results[main_query]["failed_queries"].append(query)
 
@@ -169,17 +174,17 @@ class VerifyPG(object):
 
         # Wait for all tasks in the queue to be processed
         version_queries.join()
-        print("[DEBUG] All rewrite workers finished.")
+        self._debug("All rewrite workers finished.")
 
         for i, t in enumerate(threads):
             t.join()
             thread_name = f"thread_{i}"
             (pg, conn, cursor) = self.connections[thread_name]
             pg.close_connect(conn=conn, cursor=cursor)
-        print("[DEBUG] All rewrite threads joined.")
+        self._debug("All rewrite threads joined.")
 
         #for query in self.query_results.keys():
-        print("[DEBUG] Starting results selection loop...")
+        self._debug("Starting results selection loop...")
         for query in self.query_results.keys():
                 results = self.query_verify_results[query]
                 min_time = -1
@@ -195,6 +200,7 @@ class VerifyPG(object):
                     results["selected_query"] = selected_version
                     self.log.add_results(query_id=query, results=results)
                     print(
+                        "RESTULTS: "
                         f"{query} done — "
                         f"verified: {len(results['verified_queries'])}, "
                         f"failed: {len(results['failed_queries'])}, "
@@ -208,9 +214,9 @@ class VerifyPG(object):
                 else:
                     print(f"Unverified Query: {query}")
 
-        print("[DEBUG] Results loop done. Saving log...")
+        self._debug("Results loop done. Saving log...")
         self.log.save_results(f"{self.verify_log_path}")
-        print("[DEBUG] Log saved. Done.")
+        self._debug("Log saved. Done.")
 
 
 class VerifyDuckDB(object):
