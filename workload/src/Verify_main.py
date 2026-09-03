@@ -26,6 +26,57 @@ class ProgressTracker:
         self.accelerated_queries = 0
         self.unverified_queries = 0
 
+        self.active_queries = {}
+        self.heartbeat_thread = None
+        self.heartbeat_running = False
+
+    def start_heartbeat(self, interval=10.0):
+        with self.lock:
+            if self.heartbeat_running:
+                return
+            self.heartbeat_running = True
+        self.heartbeat_thread = threading.Thread(target=self._heartbeat_loop, args=(interval,), daemon=True)
+        self.heartbeat_thread.start()
+
+    def stop_heartbeat(self):
+        with self.lock:
+            self.heartbeat_running = False
+        if self.heartbeat_thread and self.heartbeat_thread.is_alive():
+            self.heartbeat_thread.join(timeout=1.0)
+
+    def _heartbeat_loop(self, interval):
+        while True:
+            with self.lock:
+                if not self.heartbeat_running:
+                    break
+            time.sleep(interval)
+            with self.lock:
+                if not self.heartbeat_running:
+                    break
+                active = self.active_queries.copy()
+            if active:
+                now = time.time()
+                parts = []
+                for t_name, info in active.items():
+                    elapsed = now - info['start_time']
+                    parts.append(f"{info['desc']} ({elapsed:.1f}s on {t_name})")
+                
+                msg = f"[IN PROGRESS] {len(active)} queries in-flight: " + ", ".join(parts)
+                sys.stdout.write(msg + "\n")
+                sys.stdout.flush()
+
+    def start_query(self, thread_name, query_desc):
+        with self.lock:
+            self.active_queries[thread_name] = {'desc': query_desc, 'start_time': time.time()}
+            msg = f"[START] {thread_name} | Starting {query_desc}..."
+            sys.stdout.write(msg + "\n")
+            sys.stdout.flush()
+
+    def end_query(self, thread_name):
+        with self.lock:
+            if thread_name in self.active_queries:
+                del self.active_queries[thread_name]
+
     def print_msg(self, msg):
         with self.lock:
             sys.stdout.write(msg + "\n")
@@ -120,12 +171,17 @@ class VerifyPG(object):
 
             try:
                 thread_name = threading.current_thread().name
+                if self.tracker:
+                    self.tracker.start_query(thread_name, f"baseline query '{query}'")
                 query_fname = f"{self.workload_path}/{query}.sql"
                 try:
                     self._run_main_queries(query, query_fname, thread_name, True)
                 except Exception as e:
                     if self.tracker:
                         self.tracker.log_baseline(query, thread_name, 0, str(e))
+                finally:
+                    if self.tracker:
+                        self.tracker.end_query(thread_name)
             finally:
                 self.queries.task_done()
 
@@ -138,11 +194,16 @@ class VerifyPG(object):
 
             try:
                 thread_name = threading.current_thread().name
+                if self.tracker:
+                    self.tracker.start_query(thread_name, f"rewrite candidate '{query}-v{vi}'")
                 try:
                     self._run_rewrite_queries(vi, query, thread_name)
                 except Exception as e:
                     if self.tracker:
                         self.tracker.log_rewrite("ERR", query, vi, err_msg=str(e))
+                finally:
+                    if self.tracker:
+                        self.tracker.end_query(thread_name)
             finally:
                 queries.task_done()
 
@@ -247,6 +308,7 @@ class VerifyPG(object):
         print(f"\n--- Starting {self.dbms} Verification ---")
         print(f"Phase 1: Baseline Queries ({total_baseline} total, {number_threads} threads)")
         self.tracker = ProgressTracker(self.dbms, total_baseline, 0)
+        self.tracker.start_heartbeat(15.0)
         start_time_wall = time.time()
 
         # Create and start threads
@@ -270,6 +332,7 @@ class VerifyPG(object):
                 if thread_name in self.connections:
                     (pg, conn, cursor) = self.connections[thread_name]
                     pg.close_connect(conn=conn, cursor=cursor)
+            self.tracker.stop_heartbeat()
                     
         self.tracker.print_msg(f"Phase 1 completed in {time.time() - start_time_wall:.3f}s. {self.tracker.baseline_success} succeeded.")
 
@@ -287,6 +350,7 @@ class VerifyPG(object):
         
         # Phase 3
         self.tracker.print_msg("\nPhase 3: Rewrite Verification")
+        self.tracker.start_heartbeat(15.0)
         threads = []
         self.connections = dict()
         for i in range(number_threads):
@@ -308,6 +372,7 @@ class VerifyPG(object):
                 if thread_name in self.connections:
                     (pg, conn, cursor) = self.connections[thread_name]
                     pg.close_connect(conn=conn, cursor=cursor)
+            self.tracker.stop_heartbeat()
 
         # Phase 4
         self.tracker.print_msg("\nPhase 4: Selection & Summary Report")
@@ -394,12 +459,17 @@ class VerifyDuckDB(object):
 
             try:
                 thread_name = threading.current_thread().name
+                if self.tracker:
+                    self.tracker.start_query(thread_name, f"baseline query '{query}'")
                 query_fname = f"{self.workload_path}/{query}.sql"
                 try:
                     self._run_main_queries(query, query_fname, thread_name, True)
                 except Exception as e:
                     if self.tracker:
                         self.tracker.log_baseline(query, thread_name, 0, str(e))
+                finally:
+                    if self.tracker:
+                        self.tracker.end_query(thread_name)
             finally:
                 self.queries.task_done()
 
@@ -414,6 +484,8 @@ class VerifyDuckDB(object):
                 thread_name = threading.current_thread().name
                 if query not in self.query_results:
                     continue
+                if self.tracker:
+                    self.tracker.start_query(thread_name, f"rewrite candidate '{query}-v{vi}'")
                 query_result = self.query_results[query]
                 query_elapsed_time = self.query_elapsed_time_results.get(query, 0.0) * 3 + 20
                 try:
@@ -453,6 +525,9 @@ class VerifyDuckDB(object):
                 except Exception as e:
                     if self.tracker:
                         self.tracker.log_rewrite("ERR", query, vi, err_msg=str(e))
+                finally:
+                    if self.tracker:
+                        self.tracker.end_query(thread_name)
             finally:
                 self.version_queries.task_done()
 
@@ -532,6 +607,7 @@ class VerifyDuckDB(object):
         print(f"\n--- Starting {self.dbms} Verification ---")
         print(f"Phase 1: Baseline Queries ({total_baseline} total, {number_threads} threads)")
         self.tracker = ProgressTracker(self.dbms, total_baseline, 0)
+        self.tracker.start_heartbeat(15.0)
         start_time_wall = time.time()
 
         # Create and start threads
@@ -553,6 +629,7 @@ class VerifyDuckDB(object):
             if thread_name in self.connections:
                 (ddb, conn) = self.connections[thread_name]
                 ddb.close_connect(conn=conn)
+        self.tracker.stop_heartbeat()
                 
         self.tracker.print_msg(f"Phase 1 completed in {time.time() - start_time_wall:.3f}s. {self.tracker.baseline_success} succeeded.")
 
@@ -568,6 +645,7 @@ class VerifyDuckDB(object):
 
         # Phase 3
         self.tracker.print_msg("\nPhase 3: Rewrite Verification")
+        self.tracker.start_heartbeat(15.0)
         threads = []
         self.connections = dict()
         for i in range(number_threads):
@@ -588,6 +666,7 @@ class VerifyDuckDB(object):
             if thread_name in self.connections:
                 (ddb, conn) = self.connections[thread_name]
                 ddb.close_connect(conn=conn)
+        self.tracker.stop_heartbeat()
 
         # Phase 4
         self.tracker.print_msg("\nPhase 4: Selection & Summary Report")
@@ -661,12 +740,17 @@ class VerifyMySQL(object):
 
             try:
                 thread_name = threading.current_thread().name
+                if self.tracker:
+                    self.tracker.start_query(thread_name, f"baseline query '{query}'")
                 query_fname = f"{self.workload_path}/{query}.sql"
                 try:
                     self._run_main_queries(query, query_fname, thread_name, True)
                 except Exception as e:
                     if self.tracker:
                         self.tracker.log_baseline(query, thread_name, 0, str(e))
+                finally:
+                    if self.tracker:
+                        self.tracker.end_query(thread_name)
             finally:
                 self.queries.task_done()
 
@@ -681,6 +765,8 @@ class VerifyMySQL(object):
                 thread_name = threading.current_thread().name
                 if query not in self.query_results:
                     continue
+                if self.tracker:
+                    self.tracker.start_query(thread_name, f"rewrite candidate '{query}-v{vi}'")
                 query_result = self.query_results[query]
 
                 try:
@@ -716,6 +802,9 @@ class VerifyMySQL(object):
                 except Exception as e:
                     if self.tracker:
                         self.tracker.log_rewrite("ERR", query, vi, err_msg=str(e))
+                finally:
+                    if self.tracker:
+                        self.tracker.end_query(thread_name)
             finally:
                 self.version_queries.task_done()
 
@@ -768,6 +857,7 @@ class VerifyMySQL(object):
         print(f"\n--- Starting {self.dbms} Verification ---")
         print(f"Phase 1: Baseline Queries ({total_baseline} total, {number_threads} threads)")
         self.tracker = ProgressTracker(self.dbms, total_baseline, 0)
+        self.tracker.start_heartbeat(15.0)
         start_time_wall = time.time()
 
         # Create and start threads
@@ -791,6 +881,7 @@ class VerifyMySQL(object):
                 if thread_name in self.connections:
                     (mysql, conn, cursor) = self.connections[thread_name]
                     mysql.close_connect(conn=conn, cursor=cursor)
+            self.tracker.stop_heartbeat()
 
         self.tracker.print_msg(f"Phase 1 completed in {time.time() - start_time_wall:.3f}s. {self.tracker.baseline_success} succeeded.")
         
@@ -806,6 +897,7 @@ class VerifyMySQL(object):
 
         # Phase 3
         self.tracker.print_msg("\nPhase 3: Rewrite Verification")
+        self.tracker.start_heartbeat(15.0)
         threads = []
         self.connections = dict()
         for i in range(number_threads):
@@ -827,6 +919,7 @@ class VerifyMySQL(object):
                 if thread_name in self.connections:
                     (mysql, conn, cursor) = self.connections[thread_name]
                     mysql.close_connect(conn=conn, cursor=cursor)
+            self.tracker.stop_heartbeat()
 
         # Phase 4
         self.tracker.print_msg("\nPhase 4: Selection & Summary Report")
