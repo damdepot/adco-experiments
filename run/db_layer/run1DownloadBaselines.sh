@@ -6,14 +6,16 @@ baseline_path="${root_path}/baselines"
 mkdir -p ${baseline_path}
 cd ${baseline_path}
 
-download() {
-    local url="$1" name="$2"
+
+download_branch() {
+    local url="$1" name="$2" branch="$3"
     echo "-------------------<< Downloading ${name} >>-------------------"
     if [ -d "${name}" ]; then
         echo "${name} already exists, skipping"
     else
-        git clone --depth 1 "${url}" "${name}"
+        git clone -b "${branch}" --depth 1 "${url}" "${name}"
     fi
 }
 
-download https://github.com/dannykhant/agenttune.git AgentTune
+download_branch https://github.com/damdepot/ADCo.git ADCo develop
+download_branch https://github.com/dannykhant/AgentTune.git AgentTune main
