@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         default-jre-headless \
         default-libmysqlclient-dev \
         docker.io \
+        docker-compose \
         flex \
         git \
         libicu-dev \
@@ -34,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         postgresql-client \
         unzip \
         wget \
+        sysbench \
     && rm -rf /var/lib/apt/lists/*
 
 COPY workload/src/requirements.txt /tmp/requirements.txt
