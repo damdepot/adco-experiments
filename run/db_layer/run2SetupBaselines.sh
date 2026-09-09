@@ -24,8 +24,8 @@ setup_venv() {
         return 0
     fi
     rm -rf venv
-    uv venv venv
-    uv pip install --python venv/bin/python -r requirements.txt
+    UV_PYTHON_INSTALL_DIR="${dir}/.uv-python" uv venv venv
+    UV_PYTHON_INSTALL_DIR="${dir}/.uv-python" uv pip install --python venv/bin/python -r requirements.txt
     printf '%s\n' "${dep_hash}" > .venv_hash
 }
 
@@ -46,8 +46,8 @@ setup_venv_uv() {
         return 0
     fi
     rm -rf venv
-    uv venv venv
-    uv pip install --python venv/bin/python -e .
+    UV_PYTHON_INSTALL_DIR="${dir}/.uv-python" uv venv venv
+    UV_PYTHON_INSTALL_DIR="${dir}/.uv-python" uv pip install --python venv/bin/python -e .
     printf '%s\n' "${dep_hash}" > .venv_hash
 }
 
