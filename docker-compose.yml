@@ -11,7 +11,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     platform: linux/amd64
     deploy:
       resources:
@@ -26,6 +25,31 @@ services:
       retries: 10
       start_period: 10s
 
+  db-init:
+    image: postgres:17
+    container_name: adcoexp-db-init
+    restart: "no"
+    platform: linux/amd64
+    environment:
+      PGHOST: pgdb
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    depends_on:
+      pgdb:
+        condition: service_healthy
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        psql -v ON_ERROR_STOP=1 <<-EOSQL
+          SELECT 'CREATE DATABASE agenttune' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'agenttune')\gexec
+          SELECT 'CREATE DATABASE smallbank' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'smallbank')\gexec
+          SELECT 'CREATE DATABASE tpcc' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'tpcc')\gexec
+          SELECT 'CREATE DATABASE adcodb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'adcodb')\gexec
+          SELECT 'CREATE DATABASE baselinedb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'baselinedb')\gexec
+        EOSQL
+
   adcoexp:
     build: .
     image: adcoexp-image
@@ -37,6 +61,8 @@ services:
     depends_on:
       pgdb:
         condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
