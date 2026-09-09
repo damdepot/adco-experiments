@@ -14,7 +14,6 @@ CMDADCo=./scripts/app_layer/exp0_ADCo/runExperiment0-ADCo.sh
 
 if [ "$op" == "Rewrite" ]; then  
     $CMDADCo ${codebase_path} ${llm_model} ${dbms} ${benchmark}
-
 else     
-    $CMDADCo ${codebase_path} ${llm_model} ${dbms} ${benchmark}
+    echo "Invalid operation: $op. Supported operations are: Rewrite." 
 fi 
