@@ -1,8 +1,7 @@
 services:
-  db:
+  pgdb:
     image: postgres:17
-    container_name: adcoexp-postgres
-    profiles: ["common"]
+    container_name: adcoexp-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
@@ -13,6 +12,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     platform: linux/amd64
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 2g
     shm_size: 2g
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -25,80 +29,23 @@ services:
     build: .
     image: adcoexp-image
     container_name: adcoexp
-    profiles: ["common", "db_layer"]
     restart: unless-stopped
     volumes:
       - .:/app # root-level download and experiment scripts
-      - /var/run/docker.sock:/var/run/docker.sock
-
-  adcodb:
-    image: postgres:17
-    container_name: adcodb
-    profiles: ["db_layer"]
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: adcodb
-    ports:
-      - "5433:5432"
-    volumes:
-      - adcodb_data:/var/lib/postgresql/data
-    platform: linux/amd64
-    shm_size: 2g
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
-  agenttunedb:
-    image: postgres:17
-    container_name: agenttunedb
-    profiles: ["db_layer"]
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: agenttunedb
-    ports:
-      - "5434:5432"
-    volumes:
-      - agenttunedb_data:/var/lib/postgresql/data
-    platform: linux/amd64
-    shm_size: 2g
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
-  baselinedb:
-    image: postgres:17
-    container_name: baselinedb
-    profiles: ["db_layer"]
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: baselinedb
-    ports:
-      - "5432:5432"
-    volumes:
-      - baselinedb_data:/var/lib/postgresql/data
-    platform: linux/amd64
-    shm_size: 2g
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
+      - /var/run/docker.sock:/var/run/docker.sock 
+    depends_on:
+      pgdb:
+        condition: service_healthy
 
 volumes:
   postgres_data:
   adcodb_data:
   agenttunedb_data:
   baselinedb_data:
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv4: "true"
+      com.docker.network.enable_ipv6: "false"
