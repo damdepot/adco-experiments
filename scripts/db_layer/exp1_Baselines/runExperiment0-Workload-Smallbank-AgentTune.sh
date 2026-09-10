@@ -14,6 +14,7 @@ source venv/bin/activate
 
 CMD="python main.py test \
                     --driver ${dbms} \
+                    --threads 8 \
                     --accounts ${accounts} \
                     --transactions ${transactions} \
                     --output-path ${log_fname}"

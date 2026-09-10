@@ -13,8 +13,6 @@ log_fname="${exp_path}/results/db_layer/adco/benchmarks/runExperiment1-${benchma
 cd "${workload_path}"
 source venv/bin/activate
 
-cd "${exp_path}/out/db_layer/ADCo-results/Rewrite/${dbms}/${benchmark}-${llm_model}"
-
 CMD="python tpcc.py ${dbms} \
                 --config=${workload_path}/db.config \
                 --clients=${clients} \

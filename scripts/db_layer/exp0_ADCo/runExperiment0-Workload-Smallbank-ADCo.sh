@@ -12,10 +12,9 @@ log_fname="${exp_path}/results/db_layer/adco/benchmarks/runExperiment1-${benchma
 cd "${exp_path}/workload/apps/smallbank"
 source venv/bin/activate
 
-cd "${exp_path}/out/db_layer/ADCo-results/Rewrite/${dbms}/${benchmark}-${llm_model}"
-
 CMD="python main.py test \
                     --driver ${dbms} \
+                    --threads 8 \
                     --accounts ${accounts} \
                     --transactions ${transactions} \
                     --output-path ${log_fname}"
