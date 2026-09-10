@@ -28,7 +28,7 @@ echo '-------------------<< Tuning knobs for Smallbank >>-------------------'
 $CMDAgentTune postgres smallbank
 
 echo '-------------------<< Running the Smallbank workload >>-------------------'
-$CMDRunSmallbank ${model} postgres 50000 10000 smallbank
+$CMDRunSmallbank ${model} postgres 100000 10000 smallbank
 
 echo '-------------------<< Refreshing docker production database >>-------------------'
 $CMDDocker Down ${db_container}
@@ -41,7 +41,7 @@ echo '-------------------<< Tuning knobs for TPCC >>-------------------'
 $CMDAgentTune postgres tpcc
 
 echo '-------------------<< Running the TPCC workload >>-------------------'
-$CMDRunTPCC ${model} postgres 1 1 tpcc
+$CMDRunTPCC ${model} postgres 5 5 tpcc
 
 echo '-------------------<< Refreshing docker production database >>-------------------'
 $CMDDocker Down ${db_container}
