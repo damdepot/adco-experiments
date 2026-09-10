@@ -15,6 +15,12 @@ exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 workload_input="${exp_path}/baselines/AgentTune/workload analyzer/workloads/${benchmark}.wg"
 workload_schema="${exp_path}/baselines/AgentTune/workload analyzer/workloads/${benchmark}.json"
 
+log_dir="${exp_path}/baselines/AgentTune/configuration recommender/log"
+record_dir="${exp_path}/baselines/AgentTune/configuration recommender/record"
+
+rm -rf "${log_dir}" "${record_dir}"
+mkdir -p "${log_dir}" "${record_dir}"
+
 cd "${exp_path}/baselines/AgentTune"
 source venv/bin/activate
 
