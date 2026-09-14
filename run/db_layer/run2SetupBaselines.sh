@@ -61,3 +61,8 @@ setup_venv_uv "${adco_path}"
 echo '-------------------<< Setting up AgentTune baseline >>-------------------'
 agenttune_path="${root_path}/baselines/AgentTune"
 setup_venv "${agenttune_path}"
+
+### OtterTune
+echo '-------------------<< Setting up OtterTune baseline >>-------------------'
+ottertune_path="${root_path}/baselines/ottertune"
+docker build --platform linux/amd64 -t ottertune-tuner "${ottertune_path}"

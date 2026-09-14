@@ -19,3 +19,4 @@ download_branch() {
 
 download_branch https://github.com/damdepot/ADCo.git ADCo develop
 download_branch https://github.com/dannykhant/AgentTune.git AgentTune main
+download_branch https://github.com/dannykhant/ottertune.git OtterTune main

@@ -1,10 +1,16 @@
 #!/bin/bash
 
-root_path="$(cd "$(dirname "$0")/.." && pwd)"
+root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 workload_path="${root_path}/workload/apps"
 
 mkdir -p ${workload_path}
 cd ${workload_path}
+
+venv_ok() {
+    [ -x "${1}/venv/bin/python" ] \
+        && [ -f "${1}/.venv_hash" ] \
+        && [ "$(cat "${1}/.venv_hash")" = "${2}" ]
+}
 
 download() {
     local url="$1" name="$2"
@@ -48,5 +54,5 @@ smallbank_path="${workload_path}/smallbank"
 setup_venv_uv "${smallbank_path}"
 
 echo '-------------------<< Setting up TPC-C >>-------------------'
-tpcc-path="${workload_path}/tpcc"
-setup_venv_uv "${tpcc-path}"
+tpcc_path="${workload_path}/tpcc"
+setup_venv_uv "${tpcc_path}"
