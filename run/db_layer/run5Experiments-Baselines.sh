@@ -8,7 +8,15 @@ export iteration=5
 
 CMDRunSmallbank=./scripts/db_layer/exp1_Baselines/runExperiment1-Workload-Smallbank.sh
 CMDRunTPCC=./scripts/db_layer/exp1_Baselines/runExperiment1-Workload-TPCC.sh
+CMDDocker=./scripts/db_layer/exp1_Baselines/runExperiment1-Production-Docker.sh
 
+db_container="adcoexp-db"
+db_service="pgdb"
+
+echo '-------------------<< Refreshing docker production database >>-------------------'
+$CMDDocker Down ${db_container}
+$CMDDocker Up ${db_container} ${db_service} 
+sleep 5s
 
 ### Workload: Smallbank
 ### **********

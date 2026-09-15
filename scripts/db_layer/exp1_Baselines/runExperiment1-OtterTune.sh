@@ -3,6 +3,8 @@ set -e
 
 dbms=$1
 benchmark=$2
+iterations=$3
+warmup=$4
 
 case "${dbms}" in
     postgres|postgresql) dbms_sec="postgres" ;;
@@ -31,9 +33,6 @@ output_dir="${exp_path}/results/db_layer/ottertune"
 rm -rf "${record_dir}"
 mkdir -p "${log_dir}" "${record_dir}" "${output_dir}/benchmarks"
 
-iterations="${OTTERTUNE_ITERATIONS:-5}"
-warmup="${OTTERTUNE_WARMUP:-2}"
-
 echo "-------------------<< Running OtterTune Bayesian Optimization for ${benchmark} >>-------------------"
 
 # Inspect the network of the database container to attach to the same bridge network
@@ -48,6 +47,16 @@ else
     RESULTS_OUT="/results"
 fi
 
+# Construct micro-workload command executed by ottertune-tuner during tuning iterations
+TARGET_EXP_CONTAINER="${ADCOEXP_CONTAINER:-adcoexp}"
+if [ "${benchmark}" == "smallbank" ]; then
+    WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/smallbank && (source venv/bin/activate 2>/dev/null || true) && python main.py run --driver postgres --accounts 100000 --transactions 2000 --host ${CONTAINER_NAME}'"
+elif [ "${benchmark}" == "tpcc" ]; then
+    WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/tpcc && (source venv/bin/activate 2>/dev/null || true) && python tpcc.py postgres --config=/app/workload/apps/tpcc/db.config --warehouses 2 --clients 4 --duration 10 --no-load'"
+else
+    WORKLOAD_CMD=""
+fi
+
 docker run --rm \
     --network "${DB_NETWORK}" \
     ${VOLUMES_ARG} \
@@ -60,6 +69,7 @@ docker run --rm \
         --db-user "${DB_USER}" \
         --db-password "${DB_PASSWORD}" \
         --workload-name "${benchmark}" \
+        --workload-cmd "${WORKLOAD_CMD}" \
         --restart-cmd "docker restart ${CONTAINER_NAME}" \
         --output-dir "${RESULTS_OUT}" \
         --iterations "${iterations}" \

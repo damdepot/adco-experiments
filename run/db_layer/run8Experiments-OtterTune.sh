@@ -20,7 +20,7 @@ db_service="pgdb"
 ### Smallbank
 ### **********
 echo '-------------------<< Tuning knobs with OtterTune for Smallbank >>-------------------'
-$CMDOtterTune postgres smallbank
+$CMDOtterTune postgres smallbank 30 5
 
 echo '-------------------<< Running the Smallbank workload >>-------------------'
 $CMDRunSmallbank postgres 100000 10000 smallbank
@@ -33,7 +33,7 @@ sleep 5s
 ### TPCC
 ### **********
 echo '-------------------<< Tuning knobs with OtterTune for TPCC >>-------------------'
-$CMDOtterTune postgres tpcc
+$CMDOtterTune postgres tpcc 30 5
 
 echo '-------------------<< Running the TPCC workload >>-------------------'
 $CMDRunTPCC postgres 5 5 tpcc
