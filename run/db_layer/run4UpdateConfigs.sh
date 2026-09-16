@@ -128,6 +128,35 @@ print('updated', cfg)
 PY
 }
 
+update_gptuner_config() {
+    local dir="$1"
+    local cfg="${dir}/configs/postgres.ini"
+    mkdir -p "${dir}/configs"
+    cat > "${cfg}" << EOF
+[DATABASE]
+user=${POSTGRES_USER:-postgres}
+password=${POSTGRES_PASSWORD:-postgres}
+host=${POSTGRES_HOST:-127.0.0.1}
+port=${POSTGRES_PORT:-5432}
+db=gptuner
+restart_cmd=docker restart adcoexp-db
+knob_info_path=${dir}/knowledge_collection/postgres/knob_info/system_view.json
+recover_script=${dir}/scripts/recover_postgres.sh
+
+[LLM]
+api_base=https://generativelanguage.googleapis.com/v1beta/openai/
+api_key=${GOOGLE_API_KEY:-}
+model=gemini-3.5-flash-lite
+
+[HARDWARE]
+cpu_cores=${TARGET_CPU_CORES:-2}
+memory_gb=${TARGET_MEMORY_GB:-2.0}
+storage_gb=${TARGET_STORAGE_GB:-10.0}
+disk_type=SSD
+EOF
+    echo "updated ${cfg}"
+}
+
 
 echo '-------------------<< Updating smallbank db.config >>-------------------'
 update_db_config "${root_path}/workload/apps/smallbank" smallbank
@@ -143,3 +172,6 @@ write_adco_env "${root_path}/baselines/ADCo/.env"
 
 echo '-------------------<< Updating AgentTune config.ini >>-------------------'
 update_agenttune_config "${root_path}/baselines/AgentTune"
+
+echo '-------------------<< Updating GPTuner config >>-------------------'
+update_gptuner_config "${root_path}/baselines/GPTuner"
