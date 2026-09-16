@@ -5,9 +5,11 @@ dbms=$2
 accounts=$3
 transactions=$4
 benchmark=$5
+dir_name=$6
+
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
-log_fname="${exp_path}/results/db_layer/adco/benchmarks/runExperiment1-${benchmark}-${dbms}-${llm_model}"
+log_fname="${exp_path}/results/db_layer/${dir_name}/benchmarks/runExperiment1-${benchmark}-${dbms}-${llm_model}"
 
 cd "${exp_path}/workload/apps/smallbank"
 source venv/bin/activate
