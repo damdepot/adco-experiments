@@ -33,7 +33,7 @@ def geometric_mean(values):
 def discover_workloads(results_dir, dbms):
     """Discover available workloads in results_dir for the given dbms."""
     workloads = set()
-    systems = ['baseline', 'adco', 'agenttune', 'ottertune']
+    systems = ['baseline', 'adco', 'agenttune', 'gptuner', 'ottertune']
     for sys in systems:
         bench_dir = os.path.join(results_dir, sys, 'benchmarks')
         if not os.path.exists(bench_dir):
@@ -296,11 +296,12 @@ def main():
     parser.add_argument('--output-dir', default='reports/db_layer', help='Output directory for generated reports')
     args = parser.parse_args()
     
-    systems = ['baseline', 'adco', 'agenttune', 'ottertune']
+    systems = ['baseline', 'adco', 'agenttune', 'gptuner', 'ottertune']
     system_display_names = {
         'baseline': 'Baseline',
         'adco': 'ADCo',
         'agenttune': 'AgentTune',
+        'gptuner': 'GPTuner',
         'ottertune': 'OtterTune'
     }
     
