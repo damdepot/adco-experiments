@@ -62,6 +62,11 @@ echo '-------------------<< Setting up AgentTune baseline >>-------------------'
 agenttune_path="${root_path}/baselines/AgentTune"
 setup_venv "${agenttune_path}"
 
+### GPTuner
+echo '-------------------<< Setting up GPTuner baseline >>-------------------'
+gptuner_path="${root_path}/baselines/GPTuner"
+setup_venv "${gptuner_path}"
+
 ### OtterTune
 echo '-------------------<< Setting up OtterTune baseline >>-------------------'
 ottertune_path="${root_path}/baselines/OtterTune"
