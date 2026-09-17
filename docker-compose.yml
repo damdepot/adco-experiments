@@ -44,6 +44,7 @@ services:
       - |
         psql -v ON_ERROR_STOP=1 <<-EOSQL
           SELECT 'CREATE DATABASE agenttune' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'agenttune')\gexec
+          SELECT 'CREATE DATABASE gptuner' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'gptuner')\gexec
           SELECT 'CREATE DATABASE smallbank' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'smallbank')\gexec
           SELECT 'CREATE DATABASE tpcc' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'tpcc')\gexec
           SELECT 'CREATE DATABASE adcodb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'adcodb')\gexec

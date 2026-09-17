@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ninja-build \
         pkg-config \
         postgresql-client \
+        swig \
         unzip \
         wget \
         sysbench \
