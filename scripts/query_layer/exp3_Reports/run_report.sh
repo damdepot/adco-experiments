@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 RESULTS_DIR="${REPO_ROOT}/results/query_layer"
-OUTPUT_DIR="${REPO_ROOT}/reports"
+OUTPUT_DIR="${REPO_ROOT}/reports/query_layer"
 
 DATASET="${1:-stats}"
 DBMS="${2:-PostgreSQL}"

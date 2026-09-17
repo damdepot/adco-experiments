@@ -11,7 +11,7 @@ import pandas as pd
 
 class VerifyPG(object):
     def __init__(self, workload_path: str, rewrite_path: str, queries, database_name: str, dbms: str,
-                 output_path_verify: str, verify_log_path: str):
+                 output_path_verify: str, verify_log_path: str, threads: int = None, verbose: bool = False):
         self.workload_path = workload_path
         self.rewrite_path = rewrite_path
         self.database_name = database_name
@@ -19,15 +19,29 @@ class VerifyPG(object):
         self.output_path_verify = output_path_verify
         self.queries = queries
         self.verify_log_path = verify_log_path
+        self.number_threads = threads if (threads is not None and threads > 0) else min(multiprocessing.cpu_count(), 8)
+        self.verbose = verbose
 
-        self.impl_funcs= ""
+        self.impl_funcs = dict()
         self.connections = dict()
         self.results_lock = threading.Lock()
         self.log = LogVerifyResults()
         self.query_results = dict()
         self.query_verify_results = dict()
+        self.timeout_queries = []
 
-        # Worker function for threads
+    def _debug(self, msg):
+        if self.verbose:
+            print(f"[DEBUG] {msg}")
+
+    def _save_timeout_queries(self):
+        if self.timeout_queries:
+            with open(f"{self.verify_log_path}.timeouts", "a") as f:
+                for q in sorted(self.timeout_queries):
+                    f.write(f"{q}\n")
+            print(f"[WARN] {len(self.timeout_queries)} main queries timed out: {sorted(self.timeout_queries)}")
+
+    # Worker function for threads
     def _worker_main(self):
         while True:
             try:
@@ -35,10 +49,20 @@ class VerifyPG(object):
             except queue.Empty:
                 break
 
-            thread_name = threading.current_thread().name
-            query_fname = f"{self.workload_path}/{query}.sql"
-            self._run_main_queries(query, query_fname, thread_name, True)
-            self.queries.task_done()
+            try:
+                thread_name = threading.current_thread().name
+                query_fname = f"{self.workload_path}/{query}.sql"
+                self._debug(f"Main {query} is running...")
+                self._run_main_queries(query, query_fname, thread_name, True)
+            except Exception as e:
+                print(f"[ERROR] Main query {query} skipped: {e}")
+                with self.results_lock:
+                    self.timeout_queries.append(query)
+                    self.query_verify_results[query] = {"verified_queries":[], "error_queries": [query],
+                                                        "failed_queries": [], "query_elapsed_time": dict(),
+                                                        "selected_query": None}
+            finally:
+                self.queries.task_done()
 
     def _worker_rewrite(self, queries):
         while True:
@@ -47,21 +71,23 @@ class VerifyPG(object):
             except queue.Empty:
                 break
 
-            self._run_rewrite_queries(vi, query)
-            queries.task_done()
+            try:
+                thread_name = threading.current_thread().name
+                self._debug(f"Rewrite {query} is verifying...")
+                self._run_rewrite_queries(vi, query, thread_name)
+            finally:
+                queries.task_done()
 
 
     def _run_main_queries(self, query, query_fname, thread_name, add_result_or_return):
         query_str = read_text_file_line_by_line(query_fname)
+        (pg, conn, cursor) = self.connections[thread_name]
         if add_result_or_return:
-            (pg, conn, cursor) = self.connections[thread_name]
             res_an = pg.execute(cursor=cursor, query=query_str)
             with self.results_lock:
                 self.query_results[query] = res_an
                 self.query_verify_results[query] = {"verified_queries":[], "error_queries": [], "failed_queries": [], "query_elapsed_time": dict(), "selected_query": None}
         else:
-            pg = PostgreDB()
-            conn, cursor = pg.connect()
             elapsed_time = -1
             res_an = None
             try:
@@ -72,14 +98,13 @@ class VerifyPG(object):
             except:
                 pass
 
-            pg.close_connect(conn=conn, cursor=cursor)
             return elapsed_time, res_an
 
-    def _run_rewrite_queries(self, query, main_query):
+    def _run_rewrite_queries(self, query, main_query, thread_name):
         query_rewrite_fname = f"{self.rewrite_path}/{main_query}.sql"
         if os.path.exists(query_rewrite_fname):
             rewrite_elapsed_time, rewrite_result = self._run_main_queries(query=query, query_fname=query_rewrite_fname,
-                                                        thread_name=None, add_result_or_return=False)
+                                                        thread_name=thread_name, add_result_or_return=False)
             query_result = self.query_results[main_query]
 
             if rewrite_result == query_result:
@@ -92,19 +117,23 @@ class VerifyPG(object):
                     save_text_file(query_rewrite_fname, query_str)
 
             elif rewrite_result is None:
+                self._debug(f"{main_query}: execution error (result is None)")
                 with self.results_lock:
                     self.query_verify_results[main_query]["error_queries"].append(query)
             else:
+                self._debug(f"{main_query}: result mismatch — expected {query_result[:2]}, got {rewrite_result[:2]}")
                 with self.results_lock:
                     self.query_verify_results[main_query]["failed_queries"].append(query)
+        else:
+            self._debug(f"File not found: {query_rewrite_fname}")
 
     def run(self):
-        number_threads = 1 #multiprocessing.cpu_count()
+        number_threads = self.number_threads
 
         # Create and start threads
         threads = []
         for i in range(number_threads):
-            pg = PostgreDB()
+            pg = PostgreDB(disable_parallel=True)
             conn, cursor = pg.connect()
             thread_name = f"thread_{i}"
             self.connections[thread_name] = (pg, conn, cursor)
@@ -113,37 +142,50 @@ class VerifyPG(object):
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        self.queries.join()
+        try:
+            self.queries.join()
+        finally:
+            for i, t in enumerate(threads):
+                t.join()
+                thread_name = f"thread_{i}"
+                (pg, conn, cursor) = self.connections[thread_name]
+                pg.close_connect(conn=conn, cursor=cursor)
 
-        for i, t in enumerate(threads):
-            t.join()
-            thread_name = f"thread_{i}"
-            (pg, conn, cursor) = self.connections[thread_name]
-            pg.close_connect(conn=conn, cursor=cursor)
-
+        self._save_timeout_queries()
 
         version_queries = queue.Queue()
         for query in self.query_results.keys():
             version_queries.put((query, ""))
 
-
         threads = []
+        self.connections = dict()
         for i in range(number_threads):
+            pg = PostgreDB(disable_parallel=True)
+            conn, cursor = pg.connect()
             thread_name = f"thread_{i}"
+            self.connections[thread_name] = (pg, conn, cursor)
             t = threading.Thread(target=self._worker_rewrite, args=(version_queries,), name=thread_name)
             t.start()
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        version_queries.join()
-
-        for i, t in enumerate(threads):
-            t.join()
+        try:
+            version_queries.join()
+        finally:
+            for i, t in enumerate(threads):
+                t.join()
+                thread_name = f"thread_{i}"
+                (pg, conn, cursor) = self.connections[thread_name]
+                pg.close_connect(conn=conn, cursor=cursor)
+        self._debug("All rewrite threads joined.")
+        for query_id, results in self.query_verify_results.items():
+            self.log.add_results(query_id, results)
+        self.log.save_results(self.verify_log_path)
 
 
 class VerifyMySQL(object):
     def __init__(self, workload_path: str, rewrite_path: str, queries, database_name: str, dbms: str,
-                 output_path_verify: str,  verify_log_path: str):
+                 output_path_verify: str,  verify_log_path: str, threads: int = None, verbose: bool = False):
         self.workload_path = workload_path
         self.rewrite_path = rewrite_path
         self.database_name = database_name
@@ -151,6 +193,8 @@ class VerifyMySQL(object):
         self.output_path_verify = output_path_verify
         self.queries = queries
         self.verify_log_path = verify_log_path
+        self.number_threads = threads if (threads is not None and threads > 0) else min(multiprocessing.cpu_count(), 8)
+        self.verbose = verbose
 
         self.connections = dict()
         self.version_queries = queue.Queue()
@@ -159,7 +203,18 @@ class VerifyMySQL(object):
         self.query_results = dict()
         self.query_verify_results = dict()
         self.query_elapsed_time_results = dict()
+        self.timeout_queries = []
 
+    def _debug(self, msg):
+        if self.verbose:
+            print(f"[DEBUG] {msg}")
+
+    def _save_timeout_queries(self):
+        if self.timeout_queries:
+            with open(f"{self.verify_log_path}.timeouts", "a") as f:
+                for q in sorted(self.timeout_queries):
+                    f.write(f"{q}\n")
+            print(f"[WARN] {len(self.timeout_queries)} main queries timed out: {sorted(self.timeout_queries)}")
 
     def _worker_main(self):
         while True:
@@ -168,10 +223,20 @@ class VerifyMySQL(object):
             except queue.Empty:
                 break
 
-            thread_name = threading.current_thread().name
-            query_fname = f"{self.workload_path}/{query}.sql"
-            self._run_main_queries(query, query_fname, thread_name, True)
-            self.queries.task_done()
+            try:
+                thread_name = threading.current_thread().name
+                query_fname = f"{self.workload_path}/{query}.sql"
+                self._debug(f"{query} is verifying...")
+                self._run_main_queries(query, query_fname, thread_name, True)
+            except Exception as e:
+                print(f"[ERROR] Main query {query} skipped: {e}")
+                with self.results_lock:
+                    self.timeout_queries.append(query)
+                    self.query_verify_results[query] = {"verified_queries":[], "error_queries": [query],
+                                                        "failed_queries": [], "query_elapsed_time": dict(),
+                                                        "selected_query": None}
+            finally:
+                self.queries.task_done()
 
     def _worker_rewrite(self):
         while True:
@@ -182,6 +247,7 @@ class VerifyMySQL(object):
 
             try:
                 thread_name = threading.current_thread().name
+                self._debug(f"{query}-{vi} is verifying...")
                 query_result = self.query_results[query]
                 rewrite_elapsed_time, rewrite_result = self._run_rewrite_queries(f"{vi}",query, thread_name)
                 if rewrite_result == query_result:
@@ -201,8 +267,8 @@ class VerifyMySQL(object):
                     self.query_verify_results[query]["failed_queries"].append(f"{vi}")
             except TimeoutError as e:
                 print(f"Timeout {query}: {vi}")
-
-            self.version_queries.task_done()
+            finally:
+                self.version_queries.task_done()
 
 
     def _run_main_queries(self, query, query_fname, thread_name, add_result_or_return):
@@ -238,7 +304,7 @@ class VerifyMySQL(object):
             return None, None
 
     def run(self):
-        number_threads = multiprocessing.cpu_count()
+        number_threads = self.number_threads
 
         # Create and start threads
         threads = []
@@ -252,12 +318,16 @@ class VerifyMySQL(object):
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        self.queries.join()
-        for i, t in enumerate(threads):
-            t.join()
-            thread_name = f"thread_{i}"
-            (pg, conn, cursor) = self.connections[thread_name]
-            pg.close_connect(conn=conn, cursor=cursor)
+        try:
+            self.queries.join()
+        finally:
+            for i, t in enumerate(threads):
+                t.join()
+                thread_name = f"thread_{i}"
+                (mysql, conn, cursor) = self.connections[thread_name]
+                mysql.close_connect(conn=conn, cursor=cursor)
+
+        self._save_timeout_queries()
 
         for query in self.query_results.keys():
             self.version_queries.put((query, ""))
@@ -274,10 +344,15 @@ class VerifyMySQL(object):
             threads.append(t)
 
         # Wait for all tasks in the queue to be processed
-        self.version_queries.join()
-
-        for i, t in enumerate(threads):
-            t.join()
-            thread_name = f"thread_{i}"
-            (mysql, conn, cursor) = self.connections[thread_name]
-            mysql.close_connect(conn=conn, cursor=cursor)
+        try:
+            self.version_queries.join()
+        finally:
+            for i, t in enumerate(threads):
+                t.join()
+                thread_name = f"thread_{i}"
+                (mysql, conn, cursor) = self.connections[thread_name]
+                mysql.close_connect(conn=conn, cursor=cursor)
+        self._debug("All rewrite threads joined.")
+        for query_id, results in self.query_verify_results.items():
+            self.log.add_results(query_id, results)
+        self.log.save_results(self.verify_log_path)

@@ -13,14 +13,18 @@ venv_ok() {
 setup_venv() {
     local dir="$1"
     cd "${dir}"
+    local dep_files=(requirements.txt)
+    if [ -f .python-version ]; then
+        dep_files+=(.python-version)
+    fi
     local dep_hash
-    dep_hash="$(cat requirements.txt | cksum)"
+    dep_hash="$(cat "${dep_files[@]}" | cksum)"
     if venv_ok "${dir}" "${dep_hash}"; then
         echo 'venv already up to date, skipping'
         return 0
     fi
     rm -rf venv
-    uv venv venv --python python3
+    uv venv venv
     uv pip install --python venv/bin/python -r requirements.txt
     printf '%s\n' "${dep_hash}" > .venv_hash
 }
@@ -39,7 +43,7 @@ setup_venv_uv() {
         return 0
     fi
     rm -rf venv
-    uv venv venv --python python3
+    uv venv venv
     uv pip install --python venv/bin/python -e .
     printf '%s\n' "${dep_hash}" > .venv_hash
 }

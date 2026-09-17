@@ -5,14 +5,23 @@ dbms=$2
 accounts=$3
 transactions=$4
 benchmark=$5
+dir_name=$6
+
+if [ "$dir_name" == "aco" ] || [ "$dir_name" == "ACo" ]; then
+    out_name="ACo-results"
+    res_name="aco"
+else
+    out_name="ADCo-results"
+    res_name="adco"
+fi
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
-log_fname="${exp_path}/results/app_layer/adco/benchmarks/runExperiment1-${benchmark}-${dbms}-${llm_model}"
+log_fname="${exp_path}/results/app_layer/${res_name}/benchmarks/runExperiment1-${benchmark}-${dbms}-${llm_model}"
 
 cd "${exp_path}/workload/apps/smallbank"
 source venv/bin/activate
 
-cd "${exp_path}/out/app_layer/ADCo-results/Rewrite/${dbms}/${benchmark}-${llm_model}"
+cd "${exp_path}/out/app_layer/${out_name}/Rewrite/${dbms}/${benchmark}-${llm_model}"
 
 CMD="python main.py test \
                     --driver ${dbms} \

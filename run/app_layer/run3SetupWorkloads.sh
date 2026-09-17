@@ -23,6 +23,9 @@ setup_venv_uv() {
     if [ -f uv.lock ]; then
         dep_files+=(uv.lock)
     fi
+    if [ -f .python-version ]; then
+        dep_files+=(.python-version)
+    fi
     local dep_hash
     dep_hash="$(cat "${dep_files[@]}" | cksum)"
     if venv_ok "${dir}" "${dep_hash}"; then
@@ -30,7 +33,7 @@ setup_venv_uv() {
         return 0
     fi
     rm -rf venv
-    uv venv venv --python python3
+    uv venv venv
     uv pip install --python venv/bin/python -e .
     printf '%s\n' "${dep_hash}" > .venv_hash
 }
