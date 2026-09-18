@@ -16,7 +16,7 @@ uv run python -m src.adco ${codebase_path} \
     --db-type ${dbms} \
     --db-name ${benchmark} \
     --cpu-cores 2 \
-    --memory 2 \
+    --memory 8 \
     --sandbox-dir ${output_path} \
     --knob-path ${output_path}/knobs \
     --log-file ${output_path}/knob_tuner.log \

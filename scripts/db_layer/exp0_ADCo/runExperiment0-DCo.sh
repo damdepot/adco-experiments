@@ -18,7 +18,7 @@ uv run python -m src.adco "${codebase_path}" \
     --db-type="${dbms}" \
     --db-name="${benchmark}" \
     --cpu-cores=2 \
-    --memory=2 \
+    --memory=8 \
     --knob-path="${output_path}" \
     --log-file="${output_path}/adco_tune.log" \
     --output-path="${output_path}/result.json" \
