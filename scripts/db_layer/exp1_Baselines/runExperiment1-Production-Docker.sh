@@ -9,6 +9,12 @@ service=$3
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 compose_file="${exp_path}/docker-compose.yml"
 
+# Prefer docker compose V2, fallback to docker-compose V1 (fixes ContainerConfig / merge_volume_bindings bug on compose V1→V2 migration)
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+else
+    COMPOSE="docker-compose"
+fi
 
 if [ "$op" == "Restart" ]; then  
     echo '-------------------<< Restarting docker production database >>-------------------'
@@ -16,14 +22,18 @@ if [ "$op" == "Restart" ]; then
 
 elif [ "$op" == "Down" ]; then  
     echo '-------------------<< Removing docker production database >>-------------------'
-    docker stop "${container}"
-    docker rm -v -f "${container}"
+    docker stop "${container}" 2>/dev/null || true
+    docker rm -v -f "${container}" 2>/dev/null || true
+    # stale one-off init container causes 'ContainerConfig' / merge_volume_bindings error after compose V1->V2 upgrade
+    docker rm -f adcoexp-db-init 2>/dev/null || true
 
 elif [ "$op" == "Up" ]; then  
     echo '-------------------<< Creating docker production database >>-------------------'
-    docker-compose -p adco-experiments -f "${compose_file}" up -d "${service}"
+    # clean stale init container before up (prevents ContainerConfig error)
+    docker rm -f adcoexp-db-init 2>/dev/null || true
+    $COMPOSE -p adco-experiments -f "${compose_file}" up -d "${service}"
     if [ "${service}" == "pgdb" ]; then
-        docker-compose -p adco-experiments -f "${compose_file}" up db-init
+        $COMPOSE -p adco-experiments -f "${compose_file}" up db-init
     fi
 
 else     
