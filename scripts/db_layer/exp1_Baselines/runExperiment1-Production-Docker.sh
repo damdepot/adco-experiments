@@ -22,6 +22,9 @@ elif [ "$op" == "Down" ]; then
 elif [ "$op" == "Up" ]; then  
     echo '-------------------<< Creating docker production database >>-------------------'
     docker-compose -p adco-experiments -f "${compose_file}" up -d "${service}"
+    if [ "${service}" == "pgdb" ]; then
+        docker-compose -p adco-experiments -f "${compose_file}" up db-init
+    fi
 
 else     
     echo "Invalid operation: $op. Supported operations are: Restart, Down, Up."
