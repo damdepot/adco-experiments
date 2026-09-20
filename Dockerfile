@@ -25,7 +25,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         default-jre-headless \
         default-libmysqlclient-dev \
         docker.io \
-        docker-compose \
         flex \
         git \
         libicu-dev \
@@ -38,6 +37,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         wget \
         sysbench \
     && rm -rf /var/lib/apt/lists/*
+
+# Install docker compose V2 plugin (fixes compose V1 1.29.2 ContainerConfig / watch_events KeyError: 'id' bugs)
+ARG COMPOSE_VERSION=v2.29.2
+RUN mkdir -p /usr/local/lib/docker/cli-plugins \
+    && ARCH="$(dpkg --print-architecture)" \
+    && case "$ARCH" in amd64) ARCH=x86_64;; arm64) ARCH=aarch64;; *) echo "unsupported arch: $ARCH" >&2; exit 1;; esac \
+    && curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}" -o /usr/local/lib/docker/cli-plugins/docker-compose \
+    && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose \
+    && ln -sf /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose \
+    && docker compose version
 
 COPY workload/src/requirements.txt /tmp/requirements.txt
 RUN uv pip install --system -r /tmp/requirements.txt \

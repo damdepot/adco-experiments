@@ -9,14 +9,12 @@ services:
       POSTGRES_DB: postgres
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     platform: linux/amd64
     deploy:
       resources:
         limits:
           cpus: "2"
-          memory: 2g
+          memory: 8g
     shm_size: 2g
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
@@ -59,17 +57,12 @@ services:
     volumes:
       - .:/app # root-level download and experiment scripts
       - /var/run/docker.sock:/var/run/docker.sock 
+      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
     depends_on:
       pgdb:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
-
-volumes:
-  postgres_data:
-  adcodb_data:
-  agenttunedb_data:
-  baselinedb_data:
 
 networks:
   default:
