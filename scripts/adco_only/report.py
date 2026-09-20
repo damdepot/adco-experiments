@@ -16,6 +16,11 @@ def calculate_median(values):
     else:
         return (sorted_values[n // 2 - 1] + sorted_values[n // 2]) / 2.0
 
+def calculate_mean(values):
+    if not values:
+        return None
+    return sum(values) / len(values)
+
 def geometric_mean(values):
     valid = [v for v in values if v is not None and v > 0]
     if not valid:
@@ -28,7 +33,7 @@ def geometric_mean(values):
 def discover_workloads(results_dir, dbms):
     """Discover available workloads in results_dir for the given dbms."""
     workloads = set()
-    systems = ['aco', 'dco', 'adco']
+    systems = ['baseline', 'aco', 'dco', 'adco']
     for sys in systems:
         bench_dir = os.path.join(results_dir, sys, 'benchmarks')
         if not os.path.exists(bench_dir):
@@ -52,7 +57,7 @@ def discover_workloads(results_dir, dbms):
 
 def parse_workload_data(results_dir, workload, dbms, systems):
     """
-    Parse benchmark files for a specific workload and dbms across ACo, DCo, ADCo.
+    Parse benchmark files for a specific workload and dbms across systems.
     Returns:
         data: dict[sys][transaction] -> { 'executed': list, 'execution_time': list, 'transaction_rate': list }
         raw_records: list of [sys, workload, dbms, file_name, transaction, executed, execution_time, transaction_rate]
@@ -100,8 +105,7 @@ def parse_workload_data(results_dir, workload, dbms, systems):
                 
     return data, raw_records
 
-def generate_workload_report(data, raw_records, workload, dbms, output_dir):
-    systems = ['aco', 'dco', 'adco']
+def generate_workload_report(data, raw_records, workload, dbms, systems, system_display_names, output_dir):
     
     # Collect all transaction names preserving order if possible (placing TOTAL last)
     all_txns = []
@@ -115,108 +119,237 @@ def generate_workload_report(data, raw_records, workload, dbms, output_dir):
     if any('TOTAL' in [k.upper() for k in data[sys].keys()] for sys in systems):
         all_txns.append('TOTAL')
     
-    # Calculate stats per transaction using median rate
+    # Calculate stats per transaction
+    # We will use median for aggregation
     stats = {sys: {} for sys in systems}
     for sys in systems:
         for txn in all_txns:
             rate_vals = data[sys][txn]['transaction_rate']
+            time_vals = data[sys][txn]['execution_time']
+            exec_vals = data[sys][txn]['executed']
             stats[sys][txn] = {
-                'rate': calculate_median(rate_vals)
+                'rate': calculate_median(rate_vals),
+                'time': calculate_median(time_vals),
+                'executed': calculate_median(exec_vals)
             }
             
+    # Calculate Speedups relative to baseline (Throughput speedup = sys_rate / baseline_rate)
+    speedups = {sys: [] for sys in systems}
     adco_vs_aco_speedups = []
     adco_vs_dco_speedups = []
+    adco_vs_aco_time_speedups = []
+    adco_vs_dco_time_speedups = []
     
-    # Terminal Output Header
+    # Format terminal output
     lines = []
     title = f"ADCo Performance Comparison: {workload.upper()} on {dbms}"
     lines.append(title)
     lines.append("=" * len(title))
     lines.append("")
-    lines.append("--- Throughput / Transaction Rate (txn/s) ---")
     
-    header = f"{'Transaction':<20} | {'ACo (Rewrite)':<15} | {'DCo (Tune)':<15} | {'ADCo (Unified)':<15} | {'ADCo vs ACo':<12} | {'ADCo vs DCo':<12}"
+    header = f"{'Transaction':<20} | {'Baseline (txn/s)':<18}"
+    for sys in systems[1:]:
+        sys_name = system_display_names.get(sys, sys.capitalize())
+        header += f" | {sys_name:<14} | Speedup (rate)"
+    header += f" | {'ADCo vs ACo':<14} | {'ADCo vs DCo':<14}"
     lines.append(header)
     lines.append("-" * len(header))
     
     for txn in all_txns:
+        line = f"{txn:<20} | "
+        base_rate = stats['baseline'].get(txn, {}).get('rate')
+        line += f"{f'{base_rate:.2f}':<18}" if base_rate is not None else f"{'N/A':<18}"
+        
+        for sys in systems[1:]:
+            sys_rate = stats[sys].get(txn, {}).get('rate')
+            if base_rate is not None and sys_rate is not None and base_rate > 0:
+                spd = sys_rate / base_rate
+                if txn.upper() != 'TOTAL':
+                    speedups[sys].append(spd)
+                spd_str = f"{spd:.2f}x"
+            else:
+                spd_str = "N/A"
+            r_str = f"{sys_rate:.2f}" if sys_rate is not None else "N/A"
+            line += f" | {r_str:<14} | {spd_str:<14}"
+        # ADCo vs ACo / ADCo vs DCo
         aco_rate = stats['aco'].get(txn, {}).get('rate')
         dco_rate = stats['dco'].get(txn, {}).get('rate')
         adco_rate = stats['adco'].get(txn, {}).get('rate')
-        
-        aco_str = f"{aco_rate:.2f}" if aco_rate is not None else "N/A"
-        dco_str = f"{dco_rate:.2f}" if dco_rate is not None else "N/A"
-        adco_str = f"{adco_rate:.2f}" if adco_rate is not None else "N/A"
-        
-        # ADCo vs ACo
         if aco_rate is not None and adco_rate is not None and aco_rate > 0:
-            spd_aco = adco_rate / aco_rate
-            spd_aco_str = f"{spd_aco:.2f}x"
+            spd = adco_rate / aco_rate
             if txn.upper() != 'TOTAL':
-                adco_vs_aco_speedups.append(spd_aco)
+                adco_vs_aco_speedups.append(spd)
+            spd_aco_str = f"{spd:.2f}x"
         else:
             spd_aco_str = "N/A"
-            
-        # ADCo vs DCo
         if dco_rate is not None and adco_rate is not None and dco_rate > 0:
-            spd_dco = adco_rate / dco_rate
-            spd_dco_str = f"{spd_dco:.2f}x"
+            spd = adco_rate / dco_rate
             if txn.upper() != 'TOTAL':
-                adco_vs_dco_speedups.append(spd_dco)
+                adco_vs_dco_speedups.append(spd)
+            spd_dco_str = f"{spd:.2f}x"
         else:
             spd_dco_str = "N/A"
-            
-        lines.append(f"{txn:<20} | {aco_str:<15} | {dco_str:<15} | {adco_str:<15} | {spd_aco_str:<12} | {spd_dco_str:<12}")
+        # time-based for geo later (collect here as well)
+        aco_time = stats['aco'].get(txn, {}).get('time')
+        dco_time = stats['dco'].get(txn, {}).get('time')
+        adco_time = stats['adco'].get(txn, {}).get('time')
+        if aco_time is not None and adco_time is not None and adco_time > 0:
+            spd_t = aco_time / adco_time
+            if txn.upper() != 'TOTAL':
+                adco_vs_aco_time_speedups.append(spd_t)
+        if dco_time is not None and adco_time is not None and adco_time > 0:
+            spd_t = dco_time / adco_time
+            if txn.upper() != 'TOTAL':
+                adco_vs_dco_time_speedups.append(spd_t)
+        line += f" | {spd_aco_str:<14} | {spd_dco_str:<14}"
+        lines.append(line)
         
     lines.append("-" * len(header))
     
-    # Geo Mean row
+    # Geo Mean of Speedup
+    geo_line = f"{'Geo Mean (Txns)':<20} | {'-':<18}"
+    for sys in systems[1:]:
+        g_spd = geometric_mean(speedups[sys])
+        g_str = f"{g_spd:.2f}x" if g_spd > 0 else "N/A"
+        geo_line += f" | {'-':<14} | {g_str:<14}"
     g_aco = geometric_mean(adco_vs_aco_speedups)
     g_dco = geometric_mean(adco_vs_dco_speedups)
-    g_aco_str = f"{g_aco:.2f}x" if g_aco > 0 else "N/A"
-    g_dco_str = f"{g_dco:.2f}x" if g_dco > 0 else "N/A"
-    lines.append(f"{'Geo Mean (Txns)':<20} | {'-':<15} | {'-':<15} | {'-':<15} | {g_aco_str:<12} | {g_dco_str:<12}")
+    geo_line += f" | {f'{g_aco:.2f}x' if g_aco>0 else 'N/A':<14} | {f'{g_dco:.2f}x' if g_dco>0 else 'N/A':<14}"
+    lines.append(geo_line)
     lines.append("")
     
-    print("\n".join(lines))
+    report_text = "\n".join(lines)
+    print(report_text)
     
-    # Markdown Report Generation (Throughput Table Only)
+    # Markdown Report Generation
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         md_path = os.path.join(output_dir, f"performance_comparison_{workload}_{dbms}.md")
         
         md_lines = []
         md_lines.append(f"# ADCo Performance Comparison: {workload.upper()} on {dbms}\n")
-        md_lines.append("## Throughput / Transaction Rate (txn/s)\n")
-        md_lines.append("| Transaction | ACo (Rewrite) | DCo (Tune) | ADCo (Unified) | ADCo vs ACo | ADCo vs DCo |")
-        md_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: |")
+        
+        # Table 1: Throughput (Transaction Rate)
+        md_lines.append("## Transaction Rate / Throughput (txn/s)\n")
+        md_header = "| Transaction | Baseline (txn/s) |"
+        md_sep = "| :--- | :---: |"
+        for sys in systems[1:]:
+            sys_name = system_display_names.get(sys, sys.capitalize())
+            md_header += f" {sys_name} (txn/s) | {sys_name} Speedup |"
+            md_sep += " :---: | :---: |"
+        md_header += " ADCo vs ACo | ADCo vs DCo |"
+        md_sep += " :---: | :---: |"
+        md_lines.append(md_header)
+        md_lines.append(md_sep)
         
         for txn in all_txns:
             is_total = (txn.upper() == 'TOTAL')
             prefix = "**" if is_total else ""
             suffix = "**" if is_total else ""
             
+            base_rate = stats['baseline'].get(txn, {}).get('rate')
+            base_rate_str = f"{base_rate:.2f}" if base_rate is not None else "N/A"
+            row_str = f"| {prefix}{txn}{suffix} | {prefix}{base_rate_str}{suffix} |"
+            
+            for sys in systems[1:]:
+                sys_rate = stats[sys].get(txn, {}).get('rate')
+                if base_rate is not None and sys_rate is not None and base_rate > 0:
+                    spd = sys_rate / base_rate
+                    spd_str = f"{spd:.2f}x"
+                else:
+                    spd_str = "N/A"
+                r_str = f"{sys_rate:.2f}" if sys_rate is not None else "N/A"
+                row_str += f" {prefix}{r_str}{suffix} | {prefix}{spd_str}{suffix} |"
+            # ADCo vs ACo / ADCo vs DCo
             aco_rate = stats['aco'].get(txn, {}).get('rate')
             dco_rate = stats['dco'].get(txn, {}).get('rate')
             adco_rate = stats['adco'].get(txn, {}).get('rate')
-            
-            aco_str = f"{aco_rate:.2f}" if aco_rate is not None else "N/A"
-            dco_str = f"{dco_rate:.2f}" if dco_rate is not None else "N/A"
-            adco_str = f"{adco_rate:.2f}" if adco_rate is not None else "N/A"
-            
             if aco_rate is not None and adco_rate is not None and aco_rate > 0:
-                spd_aco_str = f"{(adco_rate / aco_rate):.2f}x"
+                spd_aco = adco_rate / aco_rate
+                spd_aco_str = f"{spd_aco:.2f}x"
             else:
                 spd_aco_str = "N/A"
-                
             if dco_rate is not None and adco_rate is not None and dco_rate > 0:
-                spd_dco_str = f"{(adco_rate / dco_rate):.2f}x"
+                spd_dco = adco_rate / dco_rate
+                spd_dco_str = f"{spd_dco:.2f}x"
             else:
                 spd_dco_str = "N/A"
-                
-            md_lines.append(f"| {prefix}{txn}{suffix} | {prefix}{aco_str}{suffix} | {prefix}{dco_str}{suffix} | {prefix}{adco_str}{suffix} | {prefix}{spd_aco_str}{suffix} | {prefix}{spd_dco_str}{suffix} |")
+            row_str += f" {prefix}{spd_aco_str}{suffix} | {prefix}{spd_dco_str}{suffix} |"
+            md_lines.append(row_str)
             
-        md_lines.append(f"| **Geo Mean (Txns)** | **-** | **-** | **-** | **{g_aco_str}** | **{g_dco_str}** |")
+        # Geo Mean row
+        geo_row = "| **Geo Mean (Txns)** | **-** |"
+        for sys in systems[1:]:
+            g_spd = geometric_mean(speedups[sys])
+            g_str = f"{g_spd:.2f}x" if g_spd > 0 else "N/A"
+            geo_row += f" **-** | **{g_str}** |"
+        g_aco = geometric_mean(adco_vs_aco_speedups)
+        g_dco = geometric_mean(adco_vs_dco_speedups)
+        geo_row += f" **{f'{g_aco:.2f}x' if g_aco>0 else 'N/A'}** | **{f'{g_dco:.2f}x' if g_dco>0 else 'N/A'}** |"
+        md_lines.append(geo_row)
+        md_lines.append("\n")
+        
+        # Table 2: Execution Time (ms)
+        md_lines.append("## Execution Time (ms)\n")
+        md_header_time = "| Transaction | Baseline (ms) |"
+        md_sep_time = "| :--- | :---: |"
+        for sys in systems[1:]:
+            sys_name = system_display_names.get(sys, sys.capitalize())
+            md_header_time += f" {sys_name} (ms) | {sys_name} Latency Reduction |"
+            md_sep_time += " :---: | :---: |"
+        md_header_time += " ADCo vs ACo | ADCo vs DCo |"
+        md_sep_time += " :---: | :---: |"
+        md_lines.append(md_header_time)
+        md_lines.append(md_sep_time)
+        
+        for txn in all_txns:
+            is_total = (txn.upper() == 'TOTAL')
+            prefix = "**" if is_total else ""
+            suffix = "**" if is_total else ""
+            
+            base_time = stats['baseline'].get(txn, {}).get('time')
+            base_time_str = f"{base_time:.2f}" if base_time is not None else "N/A"
+            row_str = f"| {prefix}{txn}{suffix} | {prefix}{base_time_str}{suffix} |"
+            
+            for sys in systems[1:]:
+                sys_time = stats[sys].get(txn, {}).get('time')
+                if base_time is not None and sys_time is not None and sys_time > 0:
+                    spd = base_time / sys_time
+                    spd_str = f"{spd:.2f}x"
+                else:
+                    spd_str = "N/A"
+                t_str = f"{sys_time:.2f}" if sys_time is not None else "N/A"
+                row_str += f" {prefix}{t_str}{suffix} | {prefix}{spd_str}{suffix} |"
+            # ADCo vs ACo / ADCo vs DCo latency reduction
+            aco_time = stats['aco'].get(txn, {}).get('time')
+            dco_time = stats['dco'].get(txn, {}).get('time')
+            adco_time = stats['adco'].get(txn, {}).get('time')
+            if aco_time is not None and adco_time is not None and adco_time > 0:
+                spd_aco_t = aco_time / adco_time
+                spd_aco_t_str = f"{spd_aco_t:.2f}x"
+            else:
+                spd_aco_t_str = "N/A"
+            if dco_time is not None and adco_time is not None and adco_time > 0:
+                spd_dco_t = dco_time / adco_time
+                spd_dco_t_str = f"{spd_dco_t:.2f}x"
+            else:
+                spd_dco_t_str = "N/A"
+            row_str += f" {prefix}{spd_aco_t_str}{suffix} | {prefix}{spd_dco_t_str}{suffix} |"
+            md_lines.append(row_str)
+        md_lines.append("\n")
+        
+        # Detailed Raw Data Summary Table
+        md_lines.append("## Transaction Breakdown Summary\n")
+        md_lines.append("| System | Transaction | Executed | Execution Time (ms) | Transaction Rate (txn/s) |")
+        md_lines.append("| :--- | :--- | :---: | :---: | :---: |")
+        for sys in systems:
+            sys_name = system_display_names.get(sys, sys.capitalize())
+            for txn in all_txns:
+                st = stats[sys].get(txn, {})
+                exec_val = f"{st.get('executed'):.0f}" if st.get('executed') is not None else "N/A"
+                time_val = f"{st.get('time'):.2f}" if st.get('time') is not None else "N/A"
+                rate_val = f"{st.get('rate'):.2f}" if st.get('rate') is not None else "N/A"
+                md_lines.append(f"| {sys_name} | {txn} | {exec_val} | {time_val} | {rate_val} |")
         md_lines.append("")
         
         with open(md_path, 'w', encoding='utf-8') as f:
@@ -232,14 +365,20 @@ def generate_workload_report(data, raw_records, workload, dbms, output_dir):
         print(f"Raw data saved to: {csv_path}\n")
 
 def main():
-    parser = argparse.ArgumentParser(description='Parse ADCo benchmark results (ACo vs DCo vs ADCo) and output throughput comparison reports.')
+    parser = argparse.ArgumentParser(description='Parse ADCo benchmark results (Baseline vs ACo vs DCo vs ADCo) and output throughput comparison reports.')
     parser.add_argument('--workload', default='all', help="Workload name ('smallbank', 'tpcc', or 'all')")
     parser.add_argument('--dbms', default='postgres', help='DBMS name (e.g. postgres, PostgreSQL)')
     parser.add_argument('--results-dir', default='results/adco_only', help='Base results directory for adco_only')
     parser.add_argument('--output-dir', default='reports/adco_only', help='Output directory for generated reports')
     args = parser.parse_args()
     
-    systems = ['aco', 'dco', 'adco']
+    systems = ['baseline', 'aco', 'dco', 'adco']
+    system_display_names = {
+        'baseline': 'Baseline',
+        'aco': 'ACo',
+        'dco': 'DCo',
+        'adco': 'ADCo'
+    }
     
     # Determine workloads to run
     if args.workload.lower() == 'all':
@@ -251,7 +390,7 @@ def main():
         
     for wl in workloads:
         data, raw_records = parse_workload_data(args.results_dir, wl, args.dbms, systems)
-        generate_workload_report(data, raw_records, wl, args.dbms, args.output_dir)
+        generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, args.output_dir)
 
 if __name__ == '__main__':
     main()
