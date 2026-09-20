@@ -57,7 +57,6 @@ services:
     volumes:
       - .:/app # root-level download and experiment scripts
       - /var/run/docker.sock:/var/run/docker.sock 
-      - ${HOME}/.config/gcloud:/root/.config/gcloud:ro
     depends_on:
       pgdb:
         condition: service_healthy
