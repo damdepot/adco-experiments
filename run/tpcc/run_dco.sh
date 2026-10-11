@@ -60,7 +60,7 @@ run_dco_tpcc_tool() {
 }
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
-bench_seed_once "tpcc" "${SEED_DB_TPCC}"
+bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 
 echo "----------------->> DCo tpcc <<-----------------"
 bench_arm_from_seed "dco" "baseline" "tpcc" "${SEED_DB_TPCC}" run_dco_tpcc_tool

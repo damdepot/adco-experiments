@@ -84,7 +84,7 @@ run_ottertune_tpcc_tool() {
 }
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
-bench_seed_once "tpcc" "${SEED_DB_TPCC}"
+bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 
 echo "----------------->> OtterTune tpcc <<-----------------"
 bench_arm_from_seed "ottertune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_ottertune_tpcc_tool

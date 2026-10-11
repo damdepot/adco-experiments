@@ -85,7 +85,7 @@ run_adco_tpcc_tool() {
 }
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
-bench_seed_once "tpcc" "${SEED_DB_TPCC}"
+bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 
 echo "----------------->> ADCo tpcc <<-----------------"
 bench_arm_from_seed "adco" "baseline" "tpcc" "${SEED_DB_TPCC}" run_adco_tpcc_tool

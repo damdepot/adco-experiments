@@ -83,7 +83,7 @@ run_agenttune_tpcc_tool() {
 }
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
-bench_seed_once "tpcc" "${SEED_DB_TPCC}"
+bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 
 echo "----------------->> AgentTune tpcc <<-----------------"
 bench_arm_from_seed "agenttune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_agenttune_tpcc_tool

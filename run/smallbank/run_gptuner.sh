@@ -84,7 +84,7 @@ run_gptuner_smallbank_tool() {
 }
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
-bench_seed_once "smallbank" "${SEED_DB_SMALLBANK}"
+bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 
 echo "----------------->> GPTuner smallbank <<-----------------"
 bench_arm_from_seed "gptuner" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_gptuner_smallbank_tool

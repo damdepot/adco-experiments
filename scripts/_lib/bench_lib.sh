@@ -124,6 +124,28 @@ bench_seed_once() {
     bench_snapshot "${db}" "${seed}"
 }
 
+# Reuse the seed DB if present, else load once. RESEED=1 forces a reload.
+# bench_ensure_seed <db> <seed>
+bench_ensure_seed() {
+    local db="$1"
+    local seed="$2"
+    if [ "${RESEED:-0}" = "1" ]; then
+        bench_seed_once "${db}" "${seed}"
+        return
+    fi
+    if ! docker exec -u postgres "${BENCH_DB_CONTAINER}" pg_isready -U postgres >/dev/null 2>&1; then
+        "${BENCH_CMDDOCKER}" Up "${BENCH_DB_CONTAINER}" "${BENCH_DB_SERVICE}"
+        "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
+    fi
+    local exists
+    exists="$(psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname='${seed}'" 2>/dev/null || true)"
+    if [[ "${exists}" == *1* ]]; then
+        echo "Reusing existing seed database '${seed}'."
+        return 0
+    fi
+    bench_seed_once "${db}" "${seed}"
+}
+
 # Measure one arm from an already-snapshotted seed (see bench_seed_once).
 # bench_arm_from_seed <tag> <dir> <db> <seed> [tool_fn]
 # Same symmetry as bench_arm (identical data + cold buffers per arm) with

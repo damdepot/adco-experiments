@@ -83,7 +83,7 @@ run_agenttune_smallbank_tool() {
 }
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
-bench_seed_once "smallbank" "${SEED_DB_SMALLBANK}"
+bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 
 echo "----------------->> AgentTune smallbank <<-----------------"
 bench_arm_from_seed "agenttune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_agenttune_smallbank_tool
