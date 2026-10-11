@@ -29,8 +29,6 @@ rm -rf out/app_layer/ADCo-results
 mkdir -p out/app_layer/ADCo-results
 mkdir -p "${EXP_PATH}/out/db_layer/ADCo-results"
 
-export RUN_ID="$(date +%Y%m%d_%H%M%S)"
-
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
 
@@ -57,7 +55,7 @@ legacy_sync() {
     local subdir="$1" tag="$2" base="$3" benchmark="$4"
     local prefix="${base}/runExperiment1-${benchmark}-${DBMS}-${MODEL}"
     local f last=""
-    for f in "${subdir}/${tag}_${RUN_ID}"*.csv; do
+    for f in "${subdir}/${tag}.csv"; do
         if [ ! -e "$f" ]; then
             continue
         fi
@@ -89,9 +87,6 @@ run_adco_tpcc_tool() {
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_seed_once "tpcc" "${SEED_DB_TPCC}"
 
-echo "----------------->> Baseline tpcc <<-----------------"
-bench_arm_from_seed "baseline" "baseline" "tpcc" "${SEED_DB_TPCC}"
-
 echo "----------------->> ADCo tpcc <<-----------------"
 bench_arm_from_seed "adco" "baseline" "tpcc" "${SEED_DB_TPCC}" run_adco_tpcc_tool
 legacy_sync "${TPCC_RESULTS}" "adco" "${ADCO_TPCC_BASE}" "tpcc"
@@ -113,4 +108,4 @@ echo '-------------------<< Comparison >>-------------------'
 $CMDReport tpcc postgres
 
 echo "----------------->> Comparison tpcc <<-----------------"
-RESULTS_DIR="${EXP_PATH}/results/tpcc" "${EXP_PATH}/scripts/_lib/run_comparison.sh" "${RUN_ID}"
+RESULTS_DIR="${EXP_PATH}/results/tpcc" "${EXP_PATH}/scripts/_lib/run_comparison.sh"

@@ -66,7 +66,8 @@ bench_measure() {
 # arms execute the identical sequence; optimized arms merely inject a tool.
 #   baseline:  reset -> load -> restart -> wait -> clean reload -> measure
 #   optimized: reset -> load -> tool -> restart -> wait -> clean reload -> measure
-# <tag> names the load/measure CSVs (RUN_ID must be exported). <optimized_dir>
+# <tag> names the load/measure CSVs (fixed names; each baseline runs once
+# into a wiped method dir, so no run stamp is needed). <optimized_dir>
 # is 'baseline' or an out/<dir> rewritten app. The optional <tool_fn> is a shell
 # function name invoked between the initial and clean loads; a non-zero return
 # aborts the run via errexit. Baseline passes no <tool_fn>.
@@ -74,17 +75,16 @@ bench_arm() {
     local tag="$1"
     local optimized_dir="$2"
     local tool_fn="${3:-}"
-    local run_id="${RUN_ID:?RUN_ID must be set before bench_arm}"
 
     bench_reset
-    bench_load "load_${tag}_${run_id}.csv"
+    bench_load "load_${tag}.csv"
     if [ -n "${tool_fn}" ]; then
         "${tool_fn}"
     fi
     "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
     "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
-    bench_load "load_clean_${tag}_${run_id}.csv"
-    bench_measure "${optimized_dir}" "${tag}_${run_id}.csv"
+    bench_load "load_clean_${tag}.csv"
+    bench_measure "${optimized_dir}" "${tag}.csv"
 }
 
 # Snapshot a pristine dataset once so multi-arm runs load only once.
@@ -119,9 +119,8 @@ bench_restore() {
 bench_seed_once() {
     local db="$1"
     local seed="$2"
-    local run_id="${RUN_ID:?RUN_ID must be set before bench_seed_once}"
     bench_reset
-    bench_load "load_seed_${run_id}.csv"
+    bench_load "load_seed.csv"
     bench_snapshot "${db}" "${seed}"
 }
 
@@ -137,7 +136,6 @@ bench_arm_from_seed() {
     local db="$3"
     local seed="$4"
     local tool_fn="${5:-}"
-    local run_id="${RUN_ID:?RUN_ID must be set before bench_arm_from_seed}"
 
     bench_restore "${db}" "${seed}"
     if [ -n "${tool_fn}" ]; then
@@ -146,7 +144,7 @@ bench_arm_from_seed() {
     fi
     "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
     "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
-    bench_measure "${optimized_dir}" "${tag}_${run_id}.csv"
+    bench_measure "${optimized_dir}" "${tag}.csv"
 }
 
 # Mutual exclusion for DB-destructive runs. bench_lock <root> takes a

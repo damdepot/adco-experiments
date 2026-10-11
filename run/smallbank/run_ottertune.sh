@@ -3,7 +3,7 @@
 # OtterTune experiments (SmallBank only) — canonical seed-once +
 # bench_arm_from_seed pattern (cf. benchmarks/run0_smallbank.sh).
 #
-# RUN_ID, bench_lock, SEED_DB, bench_seed_once, per-arm bench_arm_from_seed
+# bench_lock, SEED_DB, bench_seed_once, per-arm bench_arm_from_seed
 # with tool fns, comparison call per benchmark.
 #
 # Baseline compat: the existing
@@ -20,7 +20,7 @@
 # there — use scripts/common/db_layer/exp2_Reports for the cross-tool view.
 #
 # Canonical rep CSVs: results/<benchmark>/ottertune/benchmarks/
-#   <tag>_<RUN_ID>[_rN].csv (tags: baseline, ottertune)
+#   <tag>.csv (tags: baseline, ottertune)
 # Single-file aliases (report.py compat): results/<benchmark>/ottertune/
 #   benchmarks/runExperiment1-<bm>-postgres-ottertune
 #
@@ -49,8 +49,6 @@ source "${LIB}"
 SMALLBANK_TOOL_BASE="${EXP_PATH}/results/smallbank/ottertune/benchmarks"
 mkdir -p "${SMALLBANK_TOOL_BASE}"
 
-export RUN_ID="$(date +%Y%m%d_%H%M%S)"
-
 bench_lock "${EXP_PATH}"
 
 CMOtterTune="${EXP_PATH}/scripts/common/db_layer/exp1_Baselines/runExperiment1-OtterTune.sh"
@@ -59,7 +57,7 @@ legacy_sync() {
     local subdir="$1" tag="$2" benchmark="$3"
     local prefix="${subdir}/runExperiment1-${benchmark}-${DBMS}-ottertune"
     local f last=""
-    for f in "${subdir}/${tag}_${RUN_ID}"*.csv; do
+    for f in "${subdir}/${tag}.csv"; do
         if [ ! -e "$f" ]; then
             continue
         fi
@@ -88,12 +86,9 @@ run_ottertune_smallbank_tool() {
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_seed_once "smallbank" "${SEED_DB_SMALLBANK}"
 
-echo "----------------->> Baseline smallbank <<-----------------"
-bench_arm_from_seed "baseline" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
-
 echo "----------------->> OtterTune smallbank <<-----------------"
 bench_arm_from_seed "ottertune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_ottertune_smallbank_tool
 legacy_sync "${SMALLBANK_RESULTS}" "ottertune" "smallbank"
 
 echo "----------------->> Comparison smallbank <<-----------------"
-RESULTS_DIR="${SMALLBANK_RESULTS}" "${EXP_PATH}/scripts/_lib/run_comparison.sh" "${RUN_ID}" || true
+RESULTS_DIR="${SMALLBANK_RESULTS}" "${EXP_PATH}/scripts/_lib/run_comparison.sh" || true

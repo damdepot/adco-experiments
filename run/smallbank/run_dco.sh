@@ -4,7 +4,7 @@
 # bench_arm_from_seed pattern (cf. benchmarks/run0_smallbank.sh,
 # run2_dco_smallbank.sh).
 #
-#   RUN_ID, bench_lock, SEED_DB, bench_seed_once, per-arm bench_arm_from_seed
+#   bench_lock, SEED_DB, bench_seed_once, per-arm bench_arm_from_seed
 #   with tool fns, comparison call per benchmark.
 #
 # Contract (env-overridable, benchmarks scale):
@@ -21,7 +21,7 @@
 # out/db_layer/DCo-results for inspection.
 #
 # Canonical rep CSVs: results/<benchmark>/dco/benchmarks/
-#   <tag>_<RUN_ID>[_rN].csv  (tags: baseline, dco)
+#   <tag>.csv  (tags: baseline, dco)
 # Single-file aliases (report.py compat) are refreshed alongside the rep CSVs:
 #   results/<benchmark>/dco/benchmarks/runExperiment1-<bm>-postgres-<model>
 #
@@ -50,8 +50,6 @@ DCO_SMALLBANK_BASE="${EXP_PATH}/results/smallbank/dco/benchmarks"
 mkdir -p "${DCO_SMALLBANK_BASE}"
 mkdir -p "${EXP_PATH}/out/db_layer/DCo-results"
 
-export RUN_ID="$(date +%Y%m%d_%H%M%S)"
-
 bench_lock "${EXP_PATH}"
 
 CMDADCo="${EXP_PATH}/scripts/common/db_layer/exp0_ADCo/runExperiment0.sh"
@@ -61,7 +59,7 @@ legacy_sync() {
     local subdir="$1" tag="$2" base="$3" benchmark="$4"
     local prefix="${base}/runExperiment1-${benchmark}-${DBMS}-${MODEL}"
     local f last=""
-    for f in "${subdir}/${tag}_${RUN_ID}"*.csv; do
+    for f in "${subdir}/${tag}.csv"; do
         if [ ! -e "$f" ]; then
             continue
         fi
@@ -90,12 +88,9 @@ run_dco_smallbank_tool() {
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_seed_once "smallbank" "${SEED_DB_SMALLBANK}"
 
-echo "----------------->> Baseline smallbank <<-----------------"
-bench_arm_from_seed "baseline" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
-
 echo "----------------->> DCo smallbank <<-----------------"
 bench_arm_from_seed "dco" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_dco_smallbank_tool
 legacy_sync "${SMALLBANK_RESULTS}" "dco" "${DCO_SMALLBANK_BASE}" "smallbank"
 
 echo "----------------->> Comparison smallbank <<-----------------"
-RESULTS_DIR="${EXP_PATH}/results/smallbank" "${EXP_PATH}/scripts/_lib/run_comparison.sh" "${RUN_ID}"
+RESULTS_DIR="${EXP_PATH}/results/smallbank" "${EXP_PATH}/scripts/_lib/run_comparison.sh"

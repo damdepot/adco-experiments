@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
 #
-# Compare OLTP results across labels for one run.
+# Compare OLTP results across labels.
 #
-# Files are multi-rep: <label>_<RUN_ID>_r1.csv, _r2, ... (a single-rep run
-# produces <label>_<RUN_ID>.csv). Labels are auto-discovered from files in
-# RESULTS_DIR matching <label>_<RUN_ID>.csv / <label>_<RUN_ID>_rN.csv for the
-# given RUN_ID (baseline first when present, otherwise alphabetical). For
-# every label the txn/s of column 4 is averaged across that run's reps, per
-# transaction type, and printed alongside the percentage change relative to
-# the first present label. Higher is better.
+# Files are fixed-name (each baseline runs once into a wiped method dir):
+# <label>.csv, or multi-rep <label>_r1.csv, _r2, ... Labels are
+# auto-discovered from <label>.csv / <label>_rN.csv files in RESULTS_DIR
+# (baseline first when present, otherwise alphabetical). runExperiment*
+# logs/aliases and old <label>_<RUN_ID>.csv files are ignored. For every
+# label the txn/s of column 4 is averaged across reps, per transaction
+# type, and printed alongside the percentage change relative to the first
+# present label. Higher is better.
 #
 # Usage:
-#   scripts/_lib/run_comparison.sh [RUN_ID]
+#   scripts/_lib/run_comparison.sh
 #
-# RUN_ID defaults to the newest run that has baseline files. Results live in
-# <repo>/results/<workload> (e.g. results/tpcc or results/smallbank) unless
-# RESULTS_DIR is set. Labels with no parseable rows are skipped with a WARNING.
+# Results live in <repo>/results/<workload> (e.g. results/tpcc or
+# results/smallbank) unless RESULTS_DIR is set. Labels with no parseable
+# rows are skipped with a WARNING.
 # NOTE: RESULTS_DIR honors a caller-provided env override.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RESULTS_DIR="${RESULTS_DIR:-${ROOT}/results/tpcc}"
-RUN_ID="${1:-}"
 
-python3 - "${RESULTS_DIR}" "${RUN_ID}" <<'PY'
+python3 - "${RESULTS_DIR}" <<'PY'
 import csv
 import glob
 import os
@@ -32,7 +32,6 @@ import re
 import sys
 
 results_dir = sys.argv[1]
-run_id = sys.argv[2] if len(sys.argv) > 2 else ""
 
 
 def all_csvs():
@@ -43,16 +42,25 @@ def all_csvs():
     )
 
 
-def rep_files(label, run):
+def label_of(basename):
+    # Fixed names only: <label>.csv or <label>_rN.csv. runExperiment* logs
+    # and legacy <label>_<RUN_ID>.csv files never match.
+    m = re.match(r"^([A-Za-z][A-Za-z0-9-]*?)(?:_r\d+)?\.csv$", basename)
+    if not m or basename.startswith("runExperiment"):
+        return None
+    return m.group(1)
+
+
+def rep_files(label):
     files = sorted(
-        glob.glob(os.path.join(results_dir, label, f"{label}_{run}_r*.csv"))
-        + glob.glob(os.path.join(results_dir, f"{label}_{run}_r*.csv"))
+        glob.glob(os.path.join(results_dir, label, f"{label}_r*.csv"))
+        + glob.glob(os.path.join(results_dir, f"{label}_r*.csv"))
     )
     files = [f for f in files if re.search(r"_r\d+\.csv$", f)]
     if not files:
         for plain in (
-            os.path.join(results_dir, label, f"{label}_{run}.csv"),
-            os.path.join(results_dir, f"{label}_{run}.csv"),
+            os.path.join(results_dir, label, f"{label}.csv"),
+            os.path.join(results_dir, f"{label}.csv"),
         ):
             if os.path.isfile(plain):
                 files = [plain]
@@ -60,25 +68,15 @@ def rep_files(label, run):
     return files
 
 
-if not run_id:
-    ids = set()
-    for path in all_csvs():
-        m = re.search(r"baseline_(\d{8}_\d{6})(?:_r\d+)?\.csv$", os.path.basename(path))
-        if m:
-            ids.add(m.group(1))
-    if not ids:
-        sys.stderr.write(
-            f"ERROR: no baseline result files found in {results_dir}; pass a RUN_ID.\n"
-        )
-        sys.exit(1)
-    run_id = sorted(ids)[-1]
-
-# Auto-discover labels: filename prefix before _<RUN_ID> for this RUN_ID.
+# Auto-discover labels from fixed-name CSVs.
 candidates = set()
 for path in all_csvs():
-    m = re.match(r"^(.*)_(\d{8}_\d{6})(?:_r\d+)?\.csv$", os.path.basename(path))
-    if m and m.group(2) == run_id and m.group(1):
-        candidates.add(m.group(1))
+    label = label_of(os.path.basename(path))
+    if label:
+        candidates.add(label)
+if not candidates:
+    sys.stderr.write(f"ERROR: no result CSVs found in {results_dir}.\n")
+    sys.exit(1)
 labels = sorted(candidates)
 if "baseline" in labels:
     labels.remove("baseline")
@@ -87,10 +85,10 @@ if "baseline" in labels:
 data = {}
 order = []
 for label in labels:
-    files = rep_files(label, run_id)
+    files = rep_files(label)
     if not files:
         sys.stderr.write(
-            f"WARNING: missing {label}_{run_id}[_rN].csv (skipping '{label}')\n"
+            f"WARNING: missing {label}[_rN].csv (skipping '{label}')\n"
         )
         data[label] = None
         continue
@@ -117,13 +115,13 @@ for label in labels:
     data[label] = {t: sums[t] / counts[t] for t in sums} if sums else None
     if data[label] is None:
         sys.stderr.write(
-            f"WARNING: no parseable rows in {label}_{run_id} (skipping '{label}')\n"
+            f"WARNING: no parseable rows in {label} (skipping '{label}')\n"
         )
 
 present = [label for label in labels if data[label] is not None]
 if not present:
     sys.stderr.write(
-        f"ERROR: no result CSVs found in {results_dir} for RUN_ID {run_id}\n"
+        f"ERROR: no result CSVs found in {results_dir}\n"
     )
     sys.exit(1)
 
@@ -131,7 +129,7 @@ ref = present[0]
 base = data[ref]
 
 print(f"OLTP comparison — transaction rate (txn/s), % change vs {ref}")
-print(f"Source: {results_dir} (RUN_ID {run_id})")
+print(f"Source: {results_dir}")
 print()
 
 header = f"{'TRANSACTION':<14}"

@@ -24,8 +24,6 @@ DCO_TPCC_BASE="${EXP_PATH}/results/tpcc/dco/benchmarks"
 mkdir -p "${DCO_TPCC_BASE}"
 mkdir -p "${EXP_PATH}/out/db_layer/DCo-results"
 
-export RUN_ID="$(date +%Y%m%d_%H%M%S)"
-
 bench_lock "${EXP_PATH}"
 
 CMDADCo="${EXP_PATH}/scripts/common/db_layer/exp0_ADCo/runExperiment0.sh"
@@ -35,7 +33,7 @@ legacy_sync() {
     local subdir="$1" tag="$2" base="$3" benchmark="$4"
     local prefix="${base}/runExperiment1-${benchmark}-${DBMS}-${MODEL}"
     local f last=""
-    for f in "${subdir}/${tag}_${RUN_ID}"*.csv; do
+    for f in "${subdir}/${tag}.csv"; do
         if [ ! -e "$f" ]; then
             continue
         fi
@@ -64,12 +62,9 @@ run_dco_tpcc_tool() {
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_seed_once "tpcc" "${SEED_DB_TPCC}"
 
-echo "----------------->> Baseline tpcc <<-----------------"
-bench_arm_from_seed "baseline" "baseline" "tpcc" "${SEED_DB_TPCC}"
-
 echo "----------------->> DCo tpcc <<-----------------"
 bench_arm_from_seed "dco" "baseline" "tpcc" "${SEED_DB_TPCC}" run_dco_tpcc_tool
 legacy_sync "${TPCC_RESULTS}" "dco" "${DCO_TPCC_BASE}" "tpcc"
 
 echo "----------------->> Comparison tpcc <<-----------------"
-RESULTS_DIR="${EXP_PATH}/results/tpcc" "${EXP_PATH}/scripts/_lib/run_comparison.sh" "${RUN_ID}"
+RESULTS_DIR="${EXP_PATH}/results/tpcc" "${EXP_PATH}/scripts/_lib/run_comparison.sh"

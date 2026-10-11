@@ -19,8 +19,6 @@ export SETTLE_SECS="${SETTLE_SECS:-5}"
 export DBMS="${DBMS:-postgres}"
 MODEL="${MODEL:-gemini-3.5-flash-lite}"
 
-export RUN_ID="$(date +%Y%m%d_%H%M%S)"
-
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
 
@@ -55,7 +53,7 @@ legacy_sync() {
     local subdir="$1" tag="$2" base="$3" benchmark="$4"
     local prefix="${base}/runExperiment1-${benchmark}-${DBMS}-${MODEL}"
     local f last=""
-    for f in "${subdir}/${tag}_${RUN_ID}"*.csv; do
+    for f in "${subdir}/${tag}.csv"; do
         if [ ! -e "$f" ]; then
             continue
         fi
@@ -87,9 +85,6 @@ run_adco_smallbank_tool() {
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_seed_once "smallbank" "${SEED_DB_SMALLBANK}"
 
-echo "----------------->> Baseline smallbank <<-----------------"
-bench_arm_from_seed "baseline" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
-
 echo "----------------->> ADCo smallbank <<-----------------"
 bench_arm_from_seed "adco" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_adco_smallbank_tool
 legacy_sync "${SMALLBANK_RESULTS}" "adco" "${ADCO_SMALLBANK_BASE}" "smallbank"
@@ -111,4 +106,4 @@ echo '-------------------<< Comparison >>-------------------'
 $CMDReport smallbank postgres
 
 echo "----------------->> Comparison smallbank <<-----------------"
-RESULTS_DIR="${ROOT}/results/smallbank" "${ROOT}/scripts/_lib/run_comparison.sh" "${RUN_ID}"
+RESULTS_DIR="${ROOT}/results/smallbank" "${ROOT}/scripts/_lib/run_comparison.sh"

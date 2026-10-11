@@ -18,8 +18,6 @@ export TRANSACTIONS="${TRANSACTIONS:-60000}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
 export DBMS="${DBMS:-postgres}"
 
-export RUN_ID="$(date +%Y%m%d_%H%M%S)"
-
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
 
@@ -48,7 +46,7 @@ legacy_sync() {
     local subdir="$1" tag="$2" benchmark="$3"
     local prefix="${subdir}/runExperiment1-${benchmark}-${DBMS}"
     local f last=""
-    for f in "${subdir}/${tag}_${RUN_ID}"*.csv; do
+    for f in "${subdir}/${tag}.csv"; do
         if [ ! -e "$f" ]; then
             continue
         fi
@@ -87,4 +85,4 @@ echo '-------------------<< Comparison >>-------------------'
 $CMDReport smallbank postgres
 
 echo "----------------->> Comparison smallbank <<-----------------"
-RESULTS_DIR="${SMALLBANK_RESULTS}" "${ROOT}/scripts/_lib/run_comparison.sh" "${RUN_ID}"
+RESULTS_DIR="${SMALLBANK_RESULTS}" "${ROOT}/scripts/_lib/run_comparison.sh"
