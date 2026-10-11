@@ -55,7 +55,9 @@ RUN ARCH="$(dpkg --print-architecture)" \
     && curl -fsSL "https://api.adoptium.net/v3/binary/latest/8/ga/linux/${ADOPT_ARCH}/jre/hotspot/normal/eclipse" -o /tmp/jre8.tar.gz \
     && mkdir -p /opt/java8 \
     && tar -xzf /tmp/jre8.tar.gz -C /opt/java8 --strip-components=1 \
-    && rm /tmp/jre8.tar.gz
+    && rm /tmp/jre8.tar.gz \
+    && update-alternatives --install /usr/bin/java java /opt/java8/bin/java 1080 \
+    && update-alternatives --set java /opt/java8/bin/java
 
 COPY workload/src/requirements.txt /tmp/requirements.txt
 RUN uv pip install --system -r /tmp/requirements.txt \
