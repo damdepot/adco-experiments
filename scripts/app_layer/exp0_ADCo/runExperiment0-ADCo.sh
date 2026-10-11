@@ -23,7 +23,7 @@ fi
 # PYTHONPATH instead of `uv run` (which would mutate/recreate .venv).
 adco_venv="${exp_path}/baselines/ADCo/.venv/bin/python"
 [ -x "${adco_venv}" ] || adco_venv="${exp_path}/baselines/ADCo/venv/bin/python"
-mkdir -p ${output_path}
+mkdir -p ${output_path}/out/adco
 cd ${output_path}
 PYTHONPATH="${exp_path}/baselines/ADCo" "${adco_venv}" -m src.adco ${codebase_path} \
     --model ${llm_model} \
@@ -32,6 +32,15 @@ PYTHONPATH="${exp_path}/baselines/ADCo" "${adco_venv}" -m src.adco ${codebase_pa
     --cpu-cores 2 \
     --memory 8 \
     --sandbox-dir ${output_path} \
+    --db-config ${output_path}/db.config \
+    --intent-output ${output_path}/out/adco/intent_result.json \
+    --rewriter-output ${output_path}/out/adco/rewriter_result.json \
     --log-file ${output_path}/knob_tuner.log \
     --output-path ${output_path}/result.json \
     --verbose
+rc=$?
+if [ $rc -ne 0 ]; then
+    echo "--- ${output_path}/knob_tuner.log (tail) ---" >&2
+    tail -n 50 ${output_path}/knob_tuner.log >&2 || true
+    exit $rc
+fi

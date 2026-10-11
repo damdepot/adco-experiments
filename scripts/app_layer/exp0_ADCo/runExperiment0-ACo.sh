@@ -25,7 +25,7 @@ fi
 # PYTHONPATH instead of `uv run` (which would mutate/recreate .venv).
 adco_venv="${exp_path}/baselines/ADCo/.venv/bin/python"
 [ -x "${adco_venv}" ] || adco_venv="${exp_path}/baselines/ADCo/venv/bin/python"
-mkdir -p "${output_path}"
+mkdir -p "${output_path}/out/adco"
 cd "${output_path}"
 PYTHONPATH="${exp_path}/baselines/ADCo" "${adco_venv}" -m src.adco "${codebase_path}" \
     --model="${llm_model}" \
@@ -33,5 +33,13 @@ PYTHONPATH="${exp_path}/baselines/ADCo" "${adco_venv}" -m src.adco "${codebase_p
     --db-type="${dbms}" \
     --db-name="${benchmark}" \
     --sandbox-dir="${output_path}" \
+    --intent-output="${output_path}/out/adco/intent_result.json" \
+    --rewriter-output="${output_path}/out/adco/rewriter_result.json" \
     --output-path="${output_path}/result.json" \
     --verbose
+rc=$?
+if [ $rc -ne 0 ]; then
+    echo "--- ${output_path}/logs/adco.log (tail) ---" >&2
+    tail -n 50 "${output_path}/logs/adco.log" >&2 || true
+    exit $rc
+fi
