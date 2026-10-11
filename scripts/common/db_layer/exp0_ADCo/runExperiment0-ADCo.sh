@@ -17,6 +17,7 @@ dbms="${3:-postgres}"
 benchmark="${4:-smallbank}"
 
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+db_config_path="${exp_path}/baselines/ADCo/db.config"
 bench_lib="${exp_path}/scripts/_lib/bench_lib.sh"
 
 dir_name="${benchmark}"
@@ -92,6 +93,7 @@ if supports_flag "--measure-warmup-seconds"; then extra_args+=(--measure-warmup-
 if supports_flag "--early-stop-min-reps"; then extra_args+=(--early-stop-min-reps="${early_stop_min_reps}"); fi
 if supports_flag "--max-attempts"; then extra_args+=(--max-attempts="${max_attempts}"); fi
 if supports_flag "--max-set-knobs"; then extra_args+=(--max-set-knobs="${max_set_knobs}"); fi
+if supports_flag "--db-config"; then extra_args+=(--db-config="${db_config_path}"); fi
 
 PYTHONPATH="${exp_path}/baselines/ADCo" "${adco_venv}" -m src.adco "${codebase_path}" \
     --model="${llm_model}" \

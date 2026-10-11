@@ -22,18 +22,17 @@ MODEL="${MODEL:-gemini-3.5-flash-lite}"
 # shellcheck disable=SC1090
 source "${LIB}"
 
-# clean adco results ONCE at top (do NOT wipe between app and db phases)
+# clean adco results ONCE at top
 rm -rf results/tpcc/adco
 mkdir -p results/tpcc/adco/benchmarks
 rm -rf out/app_layer/ADCo-results
 mkdir -p out/app_layer/ADCo-results
-mkdir -p "${EXP_PATH}/out/db_layer/ADCo-results"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
 
 # Define variables and command paths (app ADCo phase)
-CMDADCo=./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh
+CMDADCoApp=./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh
 CMDRunTPCC=./scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh
 CMDDocker=./scripts/_lib/docker.sh
 CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
@@ -50,52 +49,20 @@ measure_prep() {
     bench_settle
 }
 
-# $1=subdir $2=tag $3=per-benchmark base dir $4=benchmark (aliases keep -<model> suffix)
-legacy_sync() {
-    local subdir="$1" tag="$2" base="$3" benchmark="$4"
-    local prefix="${base}/runExperiment1-${benchmark}-${DBMS}-${MODEL}"
-    local f last=""
-    for f in "${subdir}/${tag}.csv"; do
-        if [ ! -e "$f" ]; then
-            continue
-        fi
-        cp "$f" "${prefix}-$(basename "$f" .csv).csv"
-        last="$f"
-    done
-    if [ -n "${last}" ]; then
-        cp "${last}" "${prefix}"
-    fi
-}
-
-# ── TPC-C (db layer first: with REPS=1 its alias shares the app log name,
-# and the later phase always wins) ─────────────────────────────────────────
-CMDADCo="${EXP_PATH}/scripts/common/db_layer/exp0_ADCo/runExperiment0.sh"
-export BENCH_CMDRUNTPCC="${EXP_PATH}/scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-Db-ADCo.sh"
-ADCO_TPCC_BASE="${EXP_PATH}/results/tpcc/adco/benchmarks"
-TPCC_RESULTS="${ADCO_TPCC_BASE}"
-mkdir -p "${TPCC_RESULTS}"
-export RESULTS_DIR="${TPCC_RESULTS}"
+# ── TPC-C (single unified ADCo run: rewrite+tune, app arm measured) ─────
 SEED_DB_TPCC="tpcc_seed"
-
-run_adco_tpcc_tool() {
-    if ! "$CMDADCo" ADCo "${MODEL}" "${DBMS}" tpcc; then
-        echo "ERROR: ADCo tuning failed; skipping post-ADCo TPCC measurement and CSV." >&2
-        return 1
-    fi
-}
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 
-echo "----------------->> ADCo tpcc <<-----------------"
-bench_arm_from_seed "adco" "baseline" "tpcc" "${SEED_DB_TPCC}" run_adco_tpcc_tool
-legacy_sync "${TPCC_RESULTS}" "adco" "${ADCO_TPCC_BASE}" "tpcc"
+echo "----------------->> ADCo tpcc (unified single run) <<-----------------"
+bench_restore "tpcc" "${SEED_DB_TPCC}"
 
-### ADCo (app layer, last so its logs survive alongside the db files)
+### ADCo (single unified run: ACo rewrite + DCo tune, rewritten-app arm measured)
 ### **********
-echo '-------------------<< ADCo >>-------------------'
+echo '-------------------<< ADCo (unified single run) >>-------------------'
 echo '-------------------<< Generating ADCo (ACo + DCo) for TPCC >>-------------------'
-if $CMDADCo ADCo ${model} postgres tpcc; then
+if $CMDADCoApp ADCo ${model} postgres tpcc; then
     echo '-------------------<< Running ADCo TPCC workload >>-------------------'
     measure_prep
     PHASE=load $CMDRunTPCC ${model} postgres "${WAREHOUSES}" "${CLIENTS}" tpcc adco

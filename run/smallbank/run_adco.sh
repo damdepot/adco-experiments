@@ -22,19 +22,17 @@ MODEL="${MODEL:-gemini-3.5-flash-lite}"
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
 
-# Clean adco results ONCE at top (do NOT wipe between app and db phases)
+# Clean adco results ONCE at top
 rm -rf results/smallbank/adco
 mkdir -p results/smallbank/adco/benchmarks
 rm -rf out/app_layer/ADCo-results
 mkdir -p out/app_layer/ADCo-results
-mkdir -p "${ROOT}/out/db_layer/ADCo-results"
 
 # Define variables and command paths
 CMDADCoApp=./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh
 CMDRunSmallbankApp=./scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh
 CMDDocker=./scripts/_lib/docker.sh
 CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
-CMDADCoDb="${ROOT}/scripts/common/db_layer/exp0_ADCo/runExperiment0.sh"
 
 model="${MODEL}"
 db_container="adcoexp-db"
@@ -48,50 +46,17 @@ measure_prep() {
     bench_settle
 }
 
-# $1=subdir $2=tag $3=per-benchmark base dir $4=benchmark (aliases keep -<model> suffix)
-legacy_sync() {
-    local subdir="$1" tag="$2" base="$3" benchmark="$4"
-    local prefix="${base}/runExperiment1-${benchmark}-${DBMS}-${MODEL}"
-    local f last=""
-    for f in "${subdir}/${tag}.csv"; do
-        if [ ! -e "$f" ]; then
-            continue
-        fi
-        cp "$f" "${prefix}-$(basename "$f" .csv).csv"
-        last="$f"
-    done
-    if [ -n "${last}" ]; then
-        cp "${last}" "${prefix}"
-    fi
-}
-
-### ADCo (db layer first: with REPS=1 its alias shares the app log name,
-### and the later phase always wins)
-### **********
-export BENCH_CMDRUNTPCC="${ROOT}/scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-Db-ADCo.sh"
-ADCO_SMALLBANK_BASE="${ROOT}/results/smallbank/adco/benchmarks"
-SMALLBANK_RESULTS="${ADCO_SMALLBANK_BASE}"
-mkdir -p "${SMALLBANK_RESULTS}"
-export RESULTS_DIR="${SMALLBANK_RESULTS}"
 SEED_DB_SMALLBANK="smallbank_seed"
-
-run_adco_smallbank_tool() {
-    if ! "$CMDADCoDb" ADCo "${MODEL}" "${DBMS}" smallbank; then
-        echo "ERROR: ADCo tuning failed; skipping post-ADCo SmallBank measurement and CSV." >&2
-        return 1
-    fi
-}
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 
-echo "----------------->> ADCo smallbank <<-----------------"
-bench_arm_from_seed "adco" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_adco_smallbank_tool
-legacy_sync "${SMALLBANK_RESULTS}" "adco" "${ADCO_SMALLBANK_BASE}" "smallbank"
-
-### ADCo (app layer, last so its logs survive alongside the db files)
+### ADCo (unified rewrite+tune, single run; rewritten-app arm measured only)
 ### **********
-echo '-------------------<< ADCo >>-------------------'
+echo "----------------->> Restore seed for single ADCo run <<-----------------"
+bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
+
+echo '-------------------<< ADCo (unified single run: ACo rewrite + DCo tune) >>-------------------'
 echo '-------------------<< Generating ADCo (ACo + DCo) for Smallbank >>-------------------'
 if $CMDADCoApp ADCo ${model} postgres smallbank; then
     echo '-------------------<< Running ADCo Smallbank workload >>-------------------'
