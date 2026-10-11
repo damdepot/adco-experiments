@@ -3,7 +3,7 @@ FROM ghcr.io/astral-sh/uv:python3.10-bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app \
-    JAVA_HOME=/usr/lib/jvm/default-java \
+    JAVA_HOME=/opt/java8 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
@@ -47,6 +47,15 @@ RUN mkdir -p /usr/local/lib/docker/cli-plugins \
     && chmod +x /usr/local/lib/docker/cli-plugins/docker-compose \
     && ln -sf /usr/local/lib/docker/cli-plugins/docker-compose /usr/local/bin/docker-compose \
     && docker compose version
+
+# Temurin 8 JRE for Py-DBridge's SCIRPy gateway (needs Java 8; bookworm apt has no openjdk-8).
+# Java 17 (default-jre-headless above) is kept; JAVA_HOME redirect is enough for the bridge.
+RUN ARCH="$(dpkg --print-architecture)" \
+    && case "$ARCH" in amd64) ADOPT_ARCH=x64;; arm64) ADOPT_ARCH=aarch64;; *) echo "unsupported arch: $ARCH" >&2; exit 1;; esac \
+    && curl -fsSL "https://api.adoptium.net/v3/binary/latest/8/ga/linux/${ADOPT_ARCH}/jre/hotspot/normal/eclipse" -o /tmp/jre8.tar.gz \
+    && mkdir -p /opt/java8 \
+    && tar -xzf /tmp/jre8.tar.gz -C /opt/java8 --strip-components=1 \
+    && rm /tmp/jre8.tar.gz
 
 COPY workload/src/requirements.txt /tmp/requirements.txt
 RUN uv pip install --system -r /tmp/requirements.txt \

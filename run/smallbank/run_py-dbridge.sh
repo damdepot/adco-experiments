@@ -27,19 +27,12 @@ export result_output_path="out/app_layer/Py-DBridge-results"
 
 CMDPyDBridge=./scripts/common/app_layer/exp1_Baselines/runExperiment1-Py-DBridge.sh
 CMDRunSmallbank=./scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-Py-DBridge.sh
-CMDDocker=./scripts/_lib/docker.sh
 CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
 
-db_container="adcoexp-db"
-db_service="pgdb"
+SEED_DB_SMALLBANK="smallbank_seed"
 
-# Cold buffers + settled data before every measure. No seed/snapshot/restore
-# here: each workload self-loads (test/--reset), then measures.
-measure_prep() {
-    "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
-    "${CMDDocker}" WaitFor "${db_container}"
-    bench_settle
-}
+echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
+bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 
 
 ###  Rewrite + Workload: Smallbank
@@ -49,8 +42,7 @@ workload_path="workload/apps/smallbank"
 source_file="drivers/postgresdriver.py"
 if $CMDPyDBridge ${workload_path} ${source_file} postgres smallbank; then
     echo '-------------------<< Running the Smallbank workload >>-------------------'
-    measure_prep
-    PHASE=load $CMDRunSmallbank postgres "${ACCOUNTS:-1000000}" "${TRANSACTIONS:-60000}" smallbank
+    bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
     PHASE=execute $CMDRunSmallbank postgres "${ACCOUNTS:-1000000}" "${TRANSACTIONS:-60000}" smallbank
 else
     echo 'WARNING: Py-DBridge Smallbank rewrite failed; skipping its measurement.' >&2

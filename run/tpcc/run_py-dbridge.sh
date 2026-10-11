@@ -27,19 +27,12 @@ export result_output_path="out/app_layer/Py-DBridge-results"
 
 CMDPyDBridge=./scripts/common/app_layer/exp1_Baselines/runExperiment1-Py-DBridge.sh
 CMDRunTPCC=./scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh
-CMDDocker=./scripts/_lib/docker.sh
 CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
 
-db_container="adcoexp-db"
-db_service="pgdb"
+SEED_DB_TPCC="tpcc_seed"
 
-# Cold buffers + settled data before every measure. No seed/snapshot/restore
-# here: each workload self-loads (test/--reset), then measures.
-measure_prep() {
-    "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
-    "${CMDDocker}" WaitFor "${db_container}"
-    bench_settle
-}
+echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
+bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 
 
 ###  Rewrite + Workload: TPCC
@@ -49,8 +42,7 @@ workload_path="workload/apps/tpcc"
 source_file="drivers/postgresdriver.py"
 if $CMDPyDBridge ${workload_path} ${source_file} postgres tpcc; then
     echo '-------------------<< Running the TPCC workload >>-------------------'
-    measure_prep
-    PHASE=load $CMDRunTPCC postgres "${WAREHOUSES}" "${CLIENTS}" tpcc
+    bench_restore "tpcc" "${SEED_DB_TPCC}"
     PHASE=execute $CMDRunTPCC postgres "${WAREHOUSES}" "${CLIENTS}" tpcc
 else
     echo 'WARNING: Py-DBridge TPCC rewrite failed; skipping its measurement.' >&2
