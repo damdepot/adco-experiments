@@ -19,11 +19,8 @@ if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
     echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
     exit 2
 fi
-db_container="${DB_CONTAINER:-adcoexp-db}"
-
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 base_log_fname="${exp_path}/results/smallbank/baseline/benchmarks/runExperiment1-smallbank-${dbms}"
-CMDDocker="${CMDDOCKER:-${exp_path}/scripts/_lib/docker.sh}"
 
 cd "${exp_path}/workload/apps/smallbank"
 source venv/bin/activate
@@ -42,7 +39,6 @@ else
             log_fname="${base_log_fname}_r${rep}"
         fi
         echo "----------------->> Smallbank rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
-        "${CMDDocker}" Checkpoint "${db_container}"
         python main.py run \
                         --driver "${dbms}" \
                         --accounts "${accounts}" \

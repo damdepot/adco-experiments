@@ -12,8 +12,6 @@ set -euo pipefail
 
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/smallbank"
-BENCH_CMDDOCKER="${BENCH_CMDDOCKER:-${exp_path}/scripts/_lib/docker.sh}"
-DB_CONTAINER="${DB_CONTAINER:-${BENCH_DB_CONTAINER:-adcoexp-db}}"
 
 ACCOUNTS="${ACCOUNTS:-1000000}"
 TRANSACTIONS="${TRANSACTIONS:-60000}"
@@ -68,7 +66,6 @@ if [[ "${2:-}" == *.csv* ]]; then
         fi
         log_fname="${results_dir}/${rep_file}"
         echo "----------------->> SMALLBANK rep ${rep}/${reps} (${rep_file}) <<-----------------"
-        "${BENCH_CMDDOCKER}" Checkpoint "${DB_CONTAINER}"
         cd "${workdir}"
         python main.py run \
             --driver "${dbms}" \
@@ -113,7 +110,6 @@ case "${phase}" in
             else
                 out="${log_fname}_r${rep}"
             fi
-            "${BENCH_CMDDOCKER}" Checkpoint "${DB_CONTAINER}"
             python main.py run \
                 --driver "${dbms}" \
                 --accounts "${accounts}" \

@@ -22,13 +22,11 @@ if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
 fi
 # Benchmarks-scale load parallelism, env-overridable (canonical bench protocol).
 load_threads="${LOAD_THREADS:-8}"
-db_container="${DB_CONTAINER:-adcoexp-db}"
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 benchmarks_dir="${exp_path}/results/${benchmark}/py-dbridge/benchmarks"
 base_log_fname="${exp_path}/results/${benchmark}/py-dbridge/benchmarks/runExperiment1-${benchmark}-${dbms}"
 rewrite_dir="${exp_path}/out/app_layer/Py-DBridge-results/Rewrite/${dbms}/${benchmark}-Py-DBridge"
-CMDDocker="${CMDDOCKER:-${exp_path}/scripts/_lib/docker.sh}"
 
 cd "${exp_path}/workload/apps/smallbank"
 source venv/bin/activate
@@ -51,7 +49,6 @@ else
             primary_fname="${benchmarks_dir}/py-dbridge_r${rep}.csv"
         fi
         echo "----------------->> Smallbank/Py-DBridge rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
-        "${CMDDocker}" Checkpoint "${db_container}"
         python main.py run \
                         --driver "${dbms}" \
                         --accounts "${accounts}" \

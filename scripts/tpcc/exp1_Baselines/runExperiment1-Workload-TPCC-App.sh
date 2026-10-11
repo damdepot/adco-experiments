@@ -26,12 +26,10 @@ if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
     echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
     exit 2
 fi
-db_container="${DB_CONTAINER:-adcoexp-db}"
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/tpcc"
 base_log_fname="${exp_path}/results/tpcc/baseline/benchmarks/runExperiment1-tpcc-${dbms}"
-CMDDocker="${CMDDOCKER:-${exp_path}/scripts/_lib/docker.sh}"
 
 cd "${workload_path}"
 source venv/bin/activate
@@ -55,7 +53,6 @@ else
             log_fname="${base_log_fname}_r${rep}"
         fi
         echo "----------------->> TPCC rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
-        "${CMDDocker}" Checkpoint "${db_container}"
         if [ "${warmup}" -gt 0 ]; then
             echo "----------------->> TPCC warmup ${warmup}s (rep ${rep}/${reps}) <<-----------------"
             $CMD --duration="${warmup}" --no-load

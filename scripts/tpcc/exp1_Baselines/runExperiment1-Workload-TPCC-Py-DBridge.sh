@@ -28,14 +28,11 @@ if ! [[ "${warmup}" =~ ^[0-9]+$ ]]; then
     echo "Usage: warmup must be a non-negative integer (got '${warmup}')" >&2
     exit 2
 fi
-db_container="${DB_CONTAINER:-adcoexp-db}"
-
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/${benchmark}"
 benchmarks_dir="${exp_path}/results/${benchmark}/py-dbridge/benchmarks"
 base_log_fname="${exp_path}/results/${benchmark}/py-dbridge/benchmarks/runExperiment1-${benchmark}-${dbms}"
 rewrite_dir="${exp_path}/out/app_layer/Py-DBridge-results/Rewrite/${dbms}/${benchmark}-Py-DBridge"
-CMDDocker="${CMDDOCKER:-${exp_path}/scripts/_lib/docker.sh}"
 
 cd "${workload_path}"
 source venv/bin/activate
@@ -58,7 +55,6 @@ else
             primary_fname="${benchmarks_dir}/py-dbridge_r${rep}.csv"
         fi
         echo "----------------->> TPCC/Py-DBridge rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
-        "${CMDDocker}" Checkpoint "${db_container}"
         if [ "${warmup}" -gt 0 ]; then
             echo "----------------->> TPCC warmup ${warmup}s (rep ${rep}/${reps}) <<-----------------"
             python tpcc.py "${dbms}" \

@@ -17,8 +17,6 @@ set -euo pipefail
 
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/tpcc"
-BENCH_CMDDOCKER="${BENCH_CMDDOCKER:-${exp_path}/scripts/_lib/docker.sh}"
-DB_CONTAINER="${DB_CONTAINER:-${BENCH_DB_CONTAINER:-adcoexp-db}}"
 
 WAREHOUSES="${WAREHOUSES:-6}"
 CLIENTS="${CLIENTS:-6}"
@@ -81,7 +79,6 @@ if [[ "${2:-}" == *.csv* ]]; then
         fi
         log_fname="${results_dir}/${rep_file}"
         echo "----------------->> TPCC rep ${rep}/${reps} (${rep_file}) <<-----------------"
-        "${BENCH_CMDDOCKER}" Checkpoint "${DB_CONTAINER}"
         if [ "${warmup}" -gt 0 ]; then
             echo "----------------->> TPCC warmup ${warmup}s (rep ${rep}/${reps}) <<-----------------"
             # shellcheck disable=SC2086
@@ -129,7 +126,6 @@ case "${phase}" in
                 out="${log_fname}_r${rep}"
             fi
             echo "----------------->> TPCC legacy execute rep ${rep}/${reps} <<-----------------"
-            "${BENCH_CMDDOCKER}" Checkpoint "${DB_CONTAINER}"
             if [ "${warmup}" -gt 0 ]; then
                 # shellcheck disable=SC2086
                 $base_cmd --duration="${warmup}" --no-load || true
