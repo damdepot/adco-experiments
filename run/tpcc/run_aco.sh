@@ -32,13 +32,18 @@ model="${MODEL:-gemini-3.5-flash-lite}"
 db_container="adcoexp-db"
 db_service="pgdb"
 
-# Cold buffers + settled data before every measure. No seed/snapshot/restore
-# here: each workload self-loads (test/--reset), then measures.
+# Restore from seed snapshot (ACo is rewrite-only, data identical), then cold
+# buffers + settled data before every measure; execute uses existing data.
 measure_prep() {
     "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
     "${CMDDocker}" WaitFor "${db_container}"
     bench_settle
 }
+
+SEED_DB_TPCC="tpcc_seed"
+
+echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
+bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 
 ### ACo
 ### **********
@@ -46,8 +51,8 @@ echo '-------------------<< ACo >>-------------------'
 echo '-------------------<< Generating ACo rewrite for TPCC >>-------------------'
 if $CMDADCo ACo ${model} postgres tpcc; then
     echo '-------------------<< Running ACo TPCC workload >>-------------------'
+    bench_restore "tpcc" "${SEED_DB_TPCC}"
     measure_prep
-    PHASE=load $CMDRunTPCC ${model} postgres "${WAREHOUSES}" "${CLIENTS}" tpcc aco
     PHASE=execute $CMDRunTPCC ${model} postgres "${WAREHOUSES}" "${CLIENTS}" tpcc aco
 else
     echo 'WARNING: ACo TPCC rewrite failed; skipping its measurement.' >&2
