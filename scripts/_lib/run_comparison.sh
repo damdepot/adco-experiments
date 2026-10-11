@@ -5,8 +5,9 @@
 # Files are fixed-name (each baseline runs once into a wiped method dir):
 # <label>.csv, or multi-rep <label>_r1.csv, _r2, ... Labels are
 # auto-discovered from <label>.csv / <label>_rN.csv files in RESULTS_DIR
-# (baseline first when present, otherwise alphabetical). runExperiment*
-# logs/aliases and old <label>_<RUN_ID>.csv files are ignored. For every
+# (baseline first when present, otherwise alphabetical), falling back to
+# run-stamped <label>_<RUN_ID>[_rN].csv (latest run wins). runExperiment*
+# logs/aliases stay ignored. For every
 # label the txn/s of column 4 is averaged across reps, per transaction
 # type, and printed alongside the percentage change relative to the first
 # present label. Higher is better.
@@ -43,12 +44,22 @@ def all_csvs():
 
 
 def label_of(basename):
-    # Fixed names only: <label>.csv or <label>_rN.csv. runExperiment* logs
-    # and legacy <label>_<RUN_ID>.csv files never match.
-    m = re.match(r"^([A-Za-z][A-Za-z0-9-]*?)(?:_r\d+)?\.csv$", basename)
-    if not m or basename.startswith("runExperiment"):
+    # Fixed names (<label>.csv or <label>_rN.csv) plus run-stamped
+    # <label>_<RUN_ID>[_rN].csv fallback. runExperiment* logs never match.
+    if basename.startswith("runExperiment"):
         return None
-    return m.group(1)
+    m = re.match(r"^([A-Za-z][A-Za-z0-9-]*?)(?:_r\d+)?\.csv$", basename)
+    if m:
+        return m.group(1)
+    m = re.match(r"^([A-Za-z][A-Za-z0-9-]*?)_(\d{8}_\d{6})(?:_r\d+)?\.csv$", basename)
+    if m:
+        return m.group(1)
+    return None
+
+
+def run_id_of(basename):
+    m = re.match(r"^[A-Za-z][A-Za-z0-9-]*?_(\d{8}_\d{6})(?:_r\d+)?\.csv$", basename)
+    return m.group(1) if m else ""
 
 
 def rep_files(label):
@@ -65,6 +76,21 @@ def rep_files(label):
             if os.path.isfile(plain):
                 files = [plain]
                 break
+    if not files:
+        # Fallback: run-stamped <label>_<RUN_ID>[_rN].csv; latest run wins.
+        stamped = glob.glob(
+            os.path.join(results_dir, f"{label}_*.csv")
+        ) + glob.glob(os.path.join(results_dir, "*", f"{label}_*.csv"))
+        by_run = {}
+        for f in stamped:
+            m = re.match(
+                r"^" + re.escape(label) + r"_(\d{8}_\d{6})(?:_r\d+)?\.csv$",
+                os.path.basename(f),
+            )
+            if m:
+                by_run.setdefault(m.group(1), []).append(f)
+        if by_run:
+            files = sorted(by_run[max(by_run)])
     return files
 
 
