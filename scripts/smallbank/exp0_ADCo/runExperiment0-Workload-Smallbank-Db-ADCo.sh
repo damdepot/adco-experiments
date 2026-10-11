@@ -131,7 +131,6 @@ case "${phase}" in
             else
                 out="${log_fname}_r${rep}"
             fi
-            "${BENCH_CMDDOCKER}" Checkpoint "${DB_CONTAINER}" 2>/dev/null || true
             python main.py test \
                 --driver "${dbms}" \
                 --threads 8 \

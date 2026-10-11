@@ -41,8 +41,8 @@ model="${MODEL}"
 db_container="adcoexp-db"
 db_service="pgdb"
 
-# Cold buffers + settled data before every measure. No seed/snapshot/restore
-# here: each workload self-loads (test/--reset), then measures.
+# Restore from seed snapshot (data identical; scrubs tuner screening writes),
+# then cold buffers + settled data before every measure; execute uses existing data.
 measure_prep() {
     "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
     "${CMDDocker}" WaitFor "${db_container}"
@@ -65,7 +65,6 @@ echo '-------------------<< Generating ADCo (ACo + DCo) for TPCC >>-------------
 if $CMDADCoApp ADCo ${model} postgres tpcc; then
     echo '-------------------<< Running ADCo TPCC workload >>-------------------'
     measure_prep
-    PHASE=load $CMDRunTPCC ${model} postgres "${WAREHOUSES}" "${CLIENTS}" tpcc adco
     PHASE=execute $CMDRunTPCC ${model} postgres "${WAREHOUSES}" "${CLIENTS}" tpcc adco
 else
     echo 'WARNING: ADCo TPCC generation failed; skipping its measurement.' >&2

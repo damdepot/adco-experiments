@@ -63,7 +63,11 @@ echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 
 echo "----------------->> DCo tpcc <<-----------------"
-bench_arm_from_seed "dco" "baseline" "tpcc" "${SEED_DB_TPCC}" run_dco_tpcc_tool
+bench_restore "tpcc" "${SEED_DB_TPCC}"
+run_dco_tpcc_tool
+"${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
+"${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
+bench_measure "baseline" "dco.csv"
 legacy_sync "${TPCC_RESULTS}" "dco" "${DCO_TPCC_BASE}" "tpcc"
 
 echo "----------------->> Comparison tpcc <<-----------------"

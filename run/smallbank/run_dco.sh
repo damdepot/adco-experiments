@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
 #
-# DCo experiments (SmallBank only) — canonical seed-once +
-# bench_arm_from_seed pattern (cf. benchmarks/run0_smallbank.sh,
+# DCo experiments (SmallBank only) — canonical seed-once + restore ->
+# tune -> restart -> measure (cf. benchmarks/run0_smallbank.sh,
 # run2_dco_smallbank.sh).
 #
-#   bench_lock, SEED_DB, bench_seed_once, per-arm bench_arm_from_seed
-#   with tool fns, comparison call per benchmark.
+#   bench_lock, SEED_DB, bench_ensure_seed, inline restore/tool/restart/
+#   measure, comparison call per benchmark.
 #
 # Contract (env-overridable, benchmarks scale):
 #   CPU_CORES=2 MEMORY_GB=8 REPS=3 DURATION=60 WARMUP=10
 #   WAREHOUSES=6 CLIENTS=6 ACCOUNTS=1000000 TRANSACTIONS=60000
 #
-# Post-tool bench_restore semantics come from bench_arm_from_seed (tool
-# screening writes are scrubbed), followed by Restart/WaitFor cold buffers
-# before measure. Knob settings live in postgresql.auto.conf and survive the
-# restore, so the restore resets data only, not tuning.
+# No post-tool restore: the DB is measured as the tuner left it, followed
+# by Restart/WaitFor cold buffers before measure. Knob settings live in
+# postgresql.auto.conf and survive the restart.
 #
 # Optimized arms run the baseline app path (knob-only delta, as in
 # run2_dco_smallbank.sh); DCo's rewritten sandbox is retained under
@@ -89,7 +88,11 @@ echo "----------------->> Seed smallbank (load once + snapshot) <<--------------
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 
 echo "----------------->> DCo smallbank <<-----------------"
-bench_arm_from_seed "dco" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_dco_smallbank_tool
+bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
+run_dco_smallbank_tool
+"${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
+"${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
+bench_measure "baseline" "dco.csv"
 legacy_sync "${SMALLBANK_RESULTS}" "dco" "${DCO_SMALLBANK_BASE}" "smallbank"
 
 echo "----------------->> Comparison smallbank <<-----------------"

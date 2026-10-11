@@ -25,20 +25,14 @@ mkdir -p out/app_layer/ACo-results
 # Define variables and command paths
 CMDADCo=./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh
 CMDRunSmallbank=./scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh
-CMDDocker=./scripts/_lib/docker.sh
 CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
 
 model="${MODEL:-gemini-3.5-flash-lite}"
-db_container="adcoexp-db"
-db_service="pgdb"
 
-# Cold buffers + settled data before every measure. No seed/snapshot/restore
-# here: each workload self-loads (test/--reset), then measures.
-measure_prep() {
-    "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
-    "${CMDDocker}" WaitFor "${db_container}"
-    bench_settle
-}
+SEED_DB_SMALLBANK="smallbank_seed"
+
+echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
+bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 
 ### ACo
 ### **********
@@ -46,8 +40,7 @@ echo '-------------------<< ACo >>-------------------'
 echo '-------------------<< Generating ACo rewrite for Smallbank >>-------------------'
 if $CMDADCo ACo ${model} postgres smallbank; then
     echo '-------------------<< Running ACo Smallbank workload >>-------------------'
-    measure_prep
-    PHASE=load $CMDRunSmallbank ${model} postgres "${ACCOUNTS:-1000000}" "${TRANSACTIONS:-60000}" smallbank aco
+    bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
     PHASE=execute $CMDRunSmallbank ${model} postgres "${ACCOUNTS:-1000000}" "${TRANSACTIONS:-60000}" smallbank aco
 else
     echo 'WARNING: ACo Smallbank rewrite failed; skipping its measurement.' >&2

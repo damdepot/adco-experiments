@@ -61,7 +61,6 @@ echo '-------------------<< Generating ADCo (ACo + DCo) for Smallbank >>--------
 if $CMDADCoApp ADCo ${model} postgres smallbank; then
     echo '-------------------<< Running ADCo Smallbank workload >>-------------------'
     measure_prep
-    PHASE=load $CMDRunSmallbankApp ${model} postgres "${ACCOUNTS:-1000000}" "${TRANSACTIONS:-60000}" smallbank adco
     PHASE=execute $CMDRunSmallbankApp ${model} postgres "${ACCOUNTS:-1000000}" "${TRANSACTIONS:-60000}" smallbank adco
 else
     echo 'WARNING: ADCo Smallbank generation failed; skipping its measurement.' >&2

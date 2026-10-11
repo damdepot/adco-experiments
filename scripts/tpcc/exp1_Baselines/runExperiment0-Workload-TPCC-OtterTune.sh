@@ -110,7 +110,6 @@ case "${phase}" in
     test)
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then out="${log_fname}"; else out="${log_fname}_r${rep}"; fi
-            "${BENCH_CMDDOCKER}" Checkpoint "${DB_CONTAINER}" 2>/dev/null || true
             # shellcheck disable=SC2086
             $base_cmd --output-path="${out}" --reset
         done
