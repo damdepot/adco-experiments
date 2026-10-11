@@ -43,6 +43,9 @@ def discover_workloads(results_dir, dbms):
             if glob.glob(pattern):
                 workloads.add(workload)
                 break
+            if glob.glob(os.path.join(bench_dir, f"{sys}.csv")) or glob.glob(os.path.join(bench_dir, f"{sys}_r*.csv")):
+                workloads.add(workload)
+                break
     return sorted(list(workloads))
 
 def parse_workload_data(results_dir, workload, dbms, systems):
@@ -63,7 +66,11 @@ def parse_workload_data(results_dir, workload, dbms, systems):
         # Search for files matching runExperiment*-{workload}-{dbms}*
         pattern1 = os.path.join(bench_dir, f"runExperiment*-{workload}-{dbms}*")
         pattern2 = os.path.join(bench_dir, f"*{workload}*{dbms}*")
-        matched_files = sorted(list(set(glob.glob(pattern1) + glob.glob(pattern2))))
+        fixed = sorted(list(set(glob.glob(os.path.join(bench_dir, f"{sys}.csv")) + glob.glob(os.path.join(bench_dir, f"{sys}_r*.csv")))))
+        if fixed:
+            matched_files = fixed
+        else:
+            matched_files = sorted(list(set(glob.glob(pattern1) + glob.glob(pattern2))))
         
         for filepath in matched_files:
             fname = os.path.basename(filepath)

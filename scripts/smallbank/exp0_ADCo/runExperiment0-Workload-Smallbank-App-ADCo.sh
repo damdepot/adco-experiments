@@ -35,6 +35,7 @@ load_threads="${LOAD_THREADS:-8}"
 db_container="${DB_CONTAINER:-adcoexp-db}"
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+benchmarks_dir="${exp_path}/results/${benchmark}/${res_name}/benchmarks"
 base_log_fname="${exp_path}/results/${benchmark}/${res_name}/benchmarks/runExperiment1-${benchmark}-${dbms}-${llm_model}"
 rewrite_dir="${exp_path}/out/app_layer/${out_name}/Rewrite/${dbms}/${benchmark}-${llm_model}"
 CMDDocker="${CMDDOCKER:-${exp_path}/scripts/_lib/docker.sh}"
@@ -54,8 +55,10 @@ else
     for (( rep = 1; rep <= reps; rep++ )); do
         if [ "${reps}" -eq 1 ]; then
             log_fname="${base_log_fname}"
+            primary_fname="${benchmarks_dir}/${res_name}.csv"
         else
             log_fname="${base_log_fname}_r${rep}"
+            primary_fname="${benchmarks_dir}/${res_name}_r${rep}.csv"
         fi
         echo "----------------->> Smallbank/${res_name} rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
         "${CMDDocker}" Checkpoint "${db_container}"
@@ -63,6 +66,7 @@ else
                         --driver "${dbms}" \
                         --accounts "${accounts}" \
                         --transactions "${transactions}" \
-                        --output-path "${log_fname}"
+                        --output-path "${primary_fname}"
+        cp "${primary_fname}" "${log_fname}"
     done
 fi
