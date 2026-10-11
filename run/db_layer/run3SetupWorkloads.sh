@@ -1,10 +1,12 @@
 #!/bin/bash
 
+set -euo pipefail
+
 root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 workload_path="${root_path}/workload/apps"
 
-mkdir -p ${workload_path}
-cd ${workload_path}
+mkdir -p "${workload_path}"
+cd "${workload_path}"
 
 venv_ok() {
     [ -x "${1}/venv/bin/python" ] \

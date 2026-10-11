@@ -1,8 +1,8 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
-root_path="$(cd "$(dirname "$0")/.." && pwd)"
+root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 env_file="${root_path}/.env"
 
 if [ -f "${env_file}" ]; then

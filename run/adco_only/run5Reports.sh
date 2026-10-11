@@ -1,8 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-rm -rf reports/adco_only
-mkdir -p reports/adco_only
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-CMDRunReports=./scripts/adco_only/run_report.sh
+rm -rf "${ROOT}/reports/adco_only"
+mkdir -p "${ROOT}/reports/adco_only"
 
-$CMDRunReports "$@"
+CMDRunReports="${ROOT}/scripts/adco_only/run_report.sh"
+
+"${CMDRunReports}" "$@"

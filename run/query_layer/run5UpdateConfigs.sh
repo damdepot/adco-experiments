@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Regenerate the API-keys and DB-config YAMLs of both baselines from .env.
-# Edit .env first, then: ./run/query_layer/run6UpdateConfigs.sh
+# Edit .env first, then: ./run/query_layer/run5UpdateConfigs.sh
 #
 # Files rewritten (they are untracked templates, safe to regenerate):
 #   baselines/ReSequel/src/main/python/APIKeys.yaml
 #   baselines/ReSequel/src/main/python/DBConfig.yaml
 #   baselines/R-Bot/my_rewriter/APIKeys.yaml
 #   baselines/R-Bot/my_rewriter/DBConfig.yaml
-#   baselines/ADCo/src/rewriter/.env
+#   baselines/ADCo/.env
+#   workload/src/DBConfig.yaml
 
 set -euo pipefail
 
@@ -25,7 +26,9 @@ fi
 while IFS= read -r line || [ -n "$line" ]; do
     line="${line%$'\r'}"
     case "$line" in ''|\#*) continue ;; esac
+    case "$line" in *=*) ;; *) continue ;; esac
     key="${line%%=*}"
+    case "$key" in ''|*[!A-Za-z0-9_]* ) continue ;; esac
     value="${line#*=}"
     case "$value" in
         \"*\") value="${value#\"}"; value="${value%\"}" ;;
@@ -78,6 +81,26 @@ write_dbconfig() {
 EOF
 }
 
+# Workload harness DB config (used by workload/src/main.py for measuring).
+write_workload_dbconfig() {
+    cat > "$1" <<EOF
+---
+
+- database: Postgres
+  user: '$(esc "$POSTGRES_USER")'
+  password: '$(esc "$POSTGRES_PASSWORD")'
+  host: '$(esc "$POSTGRES_HOST")'
+  port: ${POSTGRES_PORT:-5432}
+
+
+- database: MySQL
+  user: '$(esc "${MYSQL_USER:-admin}")'
+  password: '$(esc "${MYSQL_PASSWORD:-admin}")'
+  host: '$(esc "${MYSQL_HOST:-127.0.0.1}")'
+  port: ${MYSQL_PORT:-3306}
+EOF
+}
+
 write_adco_env() {
     mkdir -p "$(dirname "$1")"
     cat > "$1" <<EOF
@@ -98,5 +121,8 @@ write_dbconfig baselines/R-Bot/my_rewriter/DBConfig.yaml
 
 echo '-------------------<< Updating ADCo .env >>-------------------'
 write_adco_env baselines/ADCo/.env
+
+echo '-------------------<< Updating workload DBConfig.yaml >>-------------------'
+write_workload_dbconfig workload/src/DBConfig.yaml
 
 echo "Updated API keys and DB configs for ReSequel and R-Bot, and .env for ADCo."

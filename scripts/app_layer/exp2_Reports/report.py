@@ -4,6 +4,7 @@ import os
 import glob
 import csv
 import re
+import datetime
 from collections import defaultdict
 
 def calculate_median(values):
@@ -29,6 +30,54 @@ def geometric_mean(values):
     for v in valid:
         product *= v
     return product ** (1.0 / len(valid))
+
+def format_mtime(ts):
+    """Format an mtime epoch as 'YYYY-MM-DD HH:MM:SS (epoch)' in local time."""
+    try:
+        dt = datetime.datetime.fromtimestamp(ts)
+        return f"{dt.strftime('%Y-%m-%d %H:%M:%S')} ({int(ts)})"
+    except (OSError, OverflowError, ValueError):
+        return f"epoch {ts}"
+
+
+def describe_sources(sources, systems):
+    """Build printable source/warning lines from the provenance dict.
+
+    Returns (source_lines, warning_lines). Pure formatting, no I/O.
+    """
+    source_lines = []
+    warning_lines = []
+    all_mtimes = []
+    for sys in systems:
+        info = (sources or {}).get(sys, {})
+        bench_dir = info.get('dir', '')
+        exists = info.get('exists', False)
+        files = info.get('files', [])
+        if not exists:
+            warning_lines.append(
+                f"WARNING: results dir missing for arm '{sys}': {bench_dir} "
+                f"-- column will show N/A (stale/other-run data is NOT substituted)."
+            )
+            source_lines.append(f"  - {sys}: MISSING ({bench_dir})")
+        elif not files:
+            warning_lines.append(
+                f"WARNING: no result files found for arm '{sys}' in {bench_dir} "
+                f"-- column will show N/A."
+            )
+            source_lines.append(f"  - {sys}: no matching files in {bench_dir}")
+        else:
+            for path, mtime in files:
+                source_lines.append(f"  - {sys}: {path} (mtime: {format_mtime(mtime)})")
+                all_mtimes.append(mtime)
+    if len(set(int(m) for m in all_mtimes)) > 1:
+        span = int(max(all_mtimes)) - int(min(all_mtimes))
+        warning_lines.append(
+            f"WARNING: arms' source files have differing mtimes (span {span}s) -- "
+            f"they may come from different runs/scales. Compared as-is; "
+            f"verify the source list above before trusting speedups."
+        )
+    return source_lines, warning_lines
+
 
 def discover_workloads(results_dir, dbms):
     """Discover available workloads in results_dir for the given dbms."""
@@ -62,18 +111,30 @@ def parse_workload_data(results_dir, workload, dbms, systems):
     Returns:
         data: dict[sys][transaction] -> { 'executed': list, 'execution_time': list, 'transaction_rate': list }
         raw_records: list of [sys, workload, dbms, file_name, transaction, executed, execution_time, transaction_rate]
+        sources: dict[sys] -> { 'dir': bench_dir, 'exists': bool, 'files': [(filepath, mtime), ...] }
     """
     data = {sys: defaultdict(lambda: {'executed': [], 'execution_time': [], 'transaction_rate': []}) for sys in systems}
     raw_records = []
-    
+    sources = {}
+
     for sys in systems:
         bench_dir = os.path.join(results_dir, sys, 'benchmarks')
-        if not os.path.exists(bench_dir):
+        exists = os.path.exists(bench_dir)
+        if not exists:
+            sources[sys] = {'dir': bench_dir, 'exists': False, 'files': []}
             continue
-        
+
         pattern1 = os.path.join(bench_dir, f"runExperiment*-{workload}-{dbms}*")
         pattern2 = os.path.join(bench_dir, f"*{workload}*{dbms}*")
         matched_files = sorted(list(set(glob.glob(pattern1) + glob.glob(pattern2))))
+
+        file_entries = []
+        for filepath in matched_files:
+            try:
+                file_entries.append((filepath, os.path.getmtime(filepath)))
+            except OSError:
+                continue
+        sources[sys] = {'dir': bench_dir, 'exists': True, 'files': file_entries}
         
         for filepath in matched_files:
             fname = os.path.basename(filepath)
@@ -103,10 +164,10 @@ def parse_workload_data(results_dir, workload, dbms, systems):
                         raw_records.append([sys, workload, dbms, fname, txn_name, executed, exec_time, txn_rate])
             except Exception as e:
                 print(f"Error reading {filepath}: {e}")
-                
-    return data, raw_records
 
-def generate_workload_report(data, raw_records, workload, dbms, systems, system_display_names, output_dir):
+    return data, raw_records, sources
+
+def generate_workload_report(data, raw_records, workload, dbms, systems, system_display_names, output_dir, sources=None):
     # Collect all transaction names preserving order if possible (placing TOTAL last)
     all_txns = []
     seen = set()
@@ -142,6 +203,17 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
     lines.append(title)
     lines.append("=" * len(title))
     lines.append("")
+
+    # Provenance: source file path (and mtime) per arm column.
+    source_lines, warning_lines = describe_sources(sources, systems)
+    if source_lines:
+        lines.append("Data sources (one line per source file actually aggregated):")
+        lines.extend(source_lines)
+        lines.append("")
+    for w in warning_lines:
+        lines.append(w)
+    if warning_lines:
+        lines.append("")
     
     base_display = system_display_names.get(base_sys, base_sys.capitalize())
     header = f"{'Transaction':<20} | {f'{base_display} (txn/s)':<18}"
@@ -190,7 +262,15 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         
         md_lines = []
         md_lines.append(f"# Application Layer Performance Comparison: {workload.upper()} on {dbms}\n")
-        
+
+        # Provenance: source file path (and mtime) per arm column.
+        md_lines.append("## Data sources\n")
+        for sl in source_lines:
+            md_lines.append(f"- {sl.strip().lstrip('- ')}")
+        for w in warning_lines:
+            md_lines.append(f"\n> {w}")
+        md_lines.append("")
+
         # Table 1: Throughput (Transaction Rate)
         md_lines.append("## Transaction Rate / Throughput (txn/s)\n")
         md_header = f"| Transaction | {base_display} (txn/s) |"
@@ -315,8 +395,8 @@ def main():
         workloads = [args.workload.lower()]
         
     for wl in workloads:
-        data, raw_records = parse_workload_data(args.results_dir, wl, args.dbms, systems)
-        generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, args.output_dir)
+        data, raw_records, sources = parse_workload_data(args.results_dir, wl, args.dbms, systems)
+        generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, args.output_dir, sources)
 
 if __name__ == '__main__':
     main()

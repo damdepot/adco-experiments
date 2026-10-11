@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 

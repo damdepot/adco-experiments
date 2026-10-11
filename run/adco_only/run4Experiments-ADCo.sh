@@ -1,49 +1,92 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# clean original results
-rm -rf results/adco_only/adco
-mkdir -p results/adco_only/adco/benchmarks
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-rm -rf out/adco_only/ADCo-results
-mkdir -p out/adco_only/ADCo-results
+# Resource + workload contract (same defaults as the shared bench lib).
+export CPU_CORES="${CPU_CORES:-2}"
+export MEMORY_GB="${MEMORY_GB:-8}"
+export REPS="${REPS:-3}"
+export DURATION="${DURATION:-60}"
+export WARMUP="${WARMUP:-10}"
+export WAREHOUSES="${WAREHOUSES:-6}"
+export CLIENTS="${CLIENTS:-6}"
+export SETTLE_SECS="${SETTLE_SECS:-5}"
 
-CMDADCo=./scripts/adco_only/runExperiment0.sh
-CMDRunSmallbank=./scripts/adco_only/runExperiment0-Workload-Smallbank.sh
-CMDRunTPCC=./scripts/adco_only/runExperiment0-Workload-TPCC.sh
-CMDDocker=./scripts/db_layer/exp1_Baselines/runExperiment1-Production-Docker.sh
+# Workload-runner override must be exported before sourcing the shared lib.
+export BENCH_CMDRUNTPCC="${ROOT}/scripts/adco_only/runExperiment1-Workload-Smallbank.sh"
+export BENCH_CMDDOCKER="${BENCH_CMDDOCKER:-${ROOT}/scripts/_lib/docker.sh}"
 
-model="gemini-3.5-flash-lite"
-db_container="adcoexp-db"
-db_service="pgdb"
+source "${ROOT}/scripts/_lib/bench_lib.sh"
 
+CMDRunADCo="${ROOT}/scripts/adco_only/runExperiment0-ADCo.sh"
 
-### ADCo
-### **********
-echo '-------------------<< Refreshing docker production database >>-------------------'
-$CMDDocker Down ${db_container}
-$CMDDocker Up ${db_container} ${db_service}
-sleep 5s
-echo '-------------------<< ADCo >>-------------------'
-echo '-------------------<< Generating ADCo for Smallbank >>-------------------'
-$CMDADCo ADCo ${model} postgres smallbank
-$CMDDocker Restart ${db_container}
-sleep 3s
-echo '-------------------<< Running ADCo Smallbank workload >>-------------------'
-$CMDRunSmallbank ${model} postgres 100000 10000 smallbank adco
-echo '-------------------<< Refreshing docker production database >>-------------------'
-$CMDDocker Down ${db_container}
-$CMDDocker Up ${db_container} ${db_service}
-sleep 5s
+model="${MODEL:-gemini-3.5-flash-lite}"
+dbms="postgres"
 
-echo '-------------------<< Generating ADCo for TPCC >>-------------------'
-$CMDADCo ADCo ${model} postgres tpcc
-$CMDDocker Restart ${db_container}
-sleep 3s
-echo '-------------------<< Running ADCo TPCC workload >>-------------------'
-$CMDRunTPCC ${model} postgres 5 5 tpcc adco
-echo '-------------------<< Refreshing docker production database >>-------------------'
-$CMDDocker Down ${db_container}
-$CMDDocker Up ${db_container} ${db_service}
-sleep 5s
+RESULTS_SB="${ROOT}/results/adco_only/smallbank"
+RESULTS_TPCC="${ROOT}/results/adco_only/tpcc"
+mkdir -p "${RESULTS_SB}" "${RESULTS_TPCC}"
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+export RUN_ID
 
-echo '-------------------<< ADCo completes >>-------------------'
+# Single-writer: never Down/Restart the DB under a concurrent run.
+bench_lock "${ROOT}"
+
+# Pristine dataset snapshots: loaded once per workload, restored per arm in
+# seconds. Knob settings live in postgresql.auto.conf and survive the
+# restore, so the restore resets data only, not tuning.
+SEED_DB_SMALLBANK="smallbank_seed"
+SEED_DB_TPCC="tpcc_seed"
+
+# ADCo rewrite locations (relative to ${ROOT}/out); the workload runner
+# switches into them for non-baseline dirs.
+ADCo_SB_DIR="adco_only/ADCo-results/Rewrite/postgres/smallbank-${model}"
+ADCo_TPCC_DIR="adco_only/ADCo-results/Rewrite/postgres/tpcc-${model}"
+
+run_adco_smallbank_tool() {
+    if ! "${CMDRunADCo}" "${ROOT}/workload/apps/smallbank" "${model}" "${dbms}" "smallbank" "${CPU_CORES}" "${MEMORY_GB}"; then
+        echo "ERROR: ADCo tuning failed; skipping post-ADCo SmallBank measurement and CSV." >&2
+        return 1
+    fi
+}
+
+run_adco_tpcc_tool() {
+    if ! "${CMDRunADCo}" "${ROOT}/workload/apps/tpcc" "${model}" "${dbms}" "tpcc" "${CPU_CORES}" "${MEMORY_GB}"; then
+        echo "ERROR: ADCo tuning failed; skipping post-ADCo TPCC measurement and CSV." >&2
+        return 1
+    fi
+}
+
+# ── SmallBank: shared baseline (measured) + ADCo (rewrite + knobs) ──
+echo "----------------->> Seed SmallBank (load once + snapshot) <<-----------------"
+bench_seed_once "smallbank" "${SEED_DB_SMALLBANK}"
+
+echo "----------------->> Baseline SmallBank <<-----------------"
+export RESULTS_DIR="${RESULTS_SB}"
+bench_arm_from_seed "baseline" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
+
+# ADCo rewrites the app and tunes knobs.
+echo "----------------->> ADCo SmallBank <<-----------------"
+export RESULTS_DIR="${RESULTS_SB}"
+bench_arm_from_seed "adco" "${ADCo_SB_DIR}" "smallbank" "${SEED_DB_SMALLBANK}" run_adco_smallbank_tool || \
+    echo "WARNING: ADCo SmallBank arm failed; continuing with remaining arms." >&2
+
+# ── TPCC: shared baseline (measured) + ADCo (rewrite + knobs) ──
+export BENCH_CMDRUNTPCC="${ROOT}/scripts/adco_only/runExperiment1-Workload-TPCC.sh"
+
+echo "----------------->> Seed TPCC (load once + snapshot) <<-----------------"
+bench_seed_once "tpcc" "${SEED_DB_TPCC}"
+
+echo "----------------->> Baseline TPCC <<-----------------"
+export RESULTS_DIR="${RESULTS_TPCC}"
+bench_arm_from_seed "baseline" "baseline" "tpcc" "${SEED_DB_TPCC}"
+
+echo "----------------->> ADCo TPCC <<-----------------"
+export RESULTS_DIR="${RESULTS_TPCC}"
+bench_arm_from_seed "adco" "${ADCo_TPCC_DIR}" "tpcc" "${SEED_DB_TPCC}" run_adco_tpcc_tool || \
+    echo "WARNING: ADCo TPCC arm failed; continuing with remaining arms." >&2
+
+echo "----------------->> Comparison <<-----------------"
+RESULTS_DIR="${RESULTS_SB}" "${ROOT}/scripts/_lib/run_comparison.sh" "${RUN_ID}"
+RESULTS_DIR="${RESULTS_TPCC}" "${ROOT}/scripts/_lib/run_comparison.sh" "${RUN_ID}"

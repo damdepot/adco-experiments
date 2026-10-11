@@ -1,7 +1,8 @@
 #!/bin/bash
+set -euo pipefail
 
-dbms=$1
-accounts=$2
+dbms="${1:-postgres}"
+accounts="${2:-${ACCOUNTS:-1000000}}"
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 
@@ -10,6 +11,7 @@ source venv/bin/activate
 
 CMD="python main.py load \
                     --driver ${dbms} \
+                    --threads ${LOAD_THREADS:-8} \
                     --accounts ${accounts} \
                     --reset"
 $CMD

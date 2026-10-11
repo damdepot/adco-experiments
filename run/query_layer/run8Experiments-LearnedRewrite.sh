@@ -1,6 +1,9 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "${ROOT}"
 
 rm -rf results/query_layer/learnedrewrite
 mkdir -p results/query_layer/learnedrewrite/benchmarks

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 env_file="${root_path}/.env"
@@ -67,10 +67,10 @@ PY
 write_adco_env() {
     mkdir -p "$(dirname "$1")"
     cat > "$1" <<EOF
-GOOGLE_GENAI_USE_VERTEXAI=$GOOGLE_GENAI_USE_VERTEXAI
-GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT
-GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION
-GOOGLE_API_KEY=$GOOGLE_API_KEY
+GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-}
+GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-}
+GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-}
+GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
 EOF
 echo "updated $1"
 }

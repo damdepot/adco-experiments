@@ -3,7 +3,7 @@
 set -e
 
 root_path="$(cd "$(dirname "$0")/../.." && pwd)"
-stats_path="${root_path}/Experiments/data/stats"
+stats_path="${root_path}/data/stats"
 workload_path="${root_path}/workload/databases/MySQL/stats"
 
 env_file="${root_path}/.env"
@@ -14,7 +14,9 @@ fi
 while IFS= read -r line || [ -n "$line" ]; do
     line="${line%$'\r'}"
     case "$line" in ''|\#*) continue ;; esac
+    case "$line" in *=*) ;; *) continue ;; esac
     key="${line%%=*}"
+    case "$key" in ''|*[!A-Za-z0-9_]* ) continue ;; esac
     value="${line#*=}"
     case "$value" in
         \"*\") value="${value#\"}"; value="${value%\"}" ;;
@@ -31,7 +33,7 @@ import os
 import mysql.connector
 
 connection = mysql.connector.connect(
-    host=os.getenv("MYSQL_HOST", "db"),
+    host=os.getenv("MYSQL_HOST", "mysqldb"),
     port=int(os.getenv("MYSQL_PORT", "3306")),
     user=os.getenv("MYSQL_USER", "root"),
     password=os.getenv("MYSQL_PASSWORD", "root"),

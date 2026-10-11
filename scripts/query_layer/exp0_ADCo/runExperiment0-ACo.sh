@@ -9,11 +9,30 @@ exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 output_path="${exp_path}/out/query_layer/ACo-results/Rewrite/${dbms}/${benchmark}-${llm_model}"
 mkdir -p ${output_path}
 
-cd "${exp_path}/baselines/ADCo"
+# src.adco wants lowercase engine names; callers use workload-style names.
+case "${dbms}" in
+    PostgreSQL) adco_dbms="postgres" ;;
+    MySQL) adco_dbms="mysql" ;;
+    *) adco_dbms="${dbms}" ;;
+esac
 
-uv run python -m src.adco ${codebase_path} \
+# Sandbox pre-population (see app_layer wrapper): upstream copy_to_sandbox
+# may skip, so stage the codebase + managed marker beforehand.
+if [ ! -f ${output_path}/.adco_sandbox ]; then
+    ( cd ${codebase_path} && tar --exclude=.git --exclude=__pycache__ --exclude=.venv --exclude=venv -cf - . ) | ( cd ${output_path} && tar -xf - )
+    printf '%s' "adco-managed-sandbox-v1" > ${output_path}/.adco_sandbox
+fi
+
+# Run from the sandbox root (upstream optimizer tools resolve
+# sandbox-relative paths against CWD); venv python directly with PYTHONPATH.
+adco_venv="${exp_path}/baselines/ADCo/.venv/bin/python"
+[ -x "${adco_venv}" ] || adco_venv="${exp_path}/baselines/ADCo/venv/bin/python"
+cd ${output_path}
+PYTHONPATH="${exp_path}/baselines/ADCo" "${adco_venv}" -m src.adco ${codebase_path} \
     --model ${llm_model} \
     --mode rewrite-only \
+    --db-type ${adco_dbms} \
+    --db-name ${benchmark} \
     --sandbox-dir ${output_path} \
     --output-path ${output_path}/result.json \
     --verbose

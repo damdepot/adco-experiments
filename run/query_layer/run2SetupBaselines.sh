@@ -73,7 +73,7 @@ echo '-------------------<< Setting up R-Bot baseline >>-------------------'
 rbot_path="${root_path}/baselines/R-Bot"
 setup_venv "${rbot_path}"
 
-cd rag
+cd "${rbot_path}/rag"
 unzip -oq stackoverflow-rewrite-embed.zip
 # Build structure-semantics Q&A index.
-../venv/bin/python rag_gen.py
+"${rbot_path}/venv/bin/python" rag_gen.py

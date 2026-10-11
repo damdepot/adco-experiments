@@ -1,21 +1,164 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Canonical TPC-C workload runner (baseline).
+#
+# Two modes:
+#   Canonical (called by bench_lib via BENCH_CMDRUNTPCC):
+#     runExperiment1-Workload-TPCC.sh <dir> <file> [reps]
+#     PHASE=load|execute selects the phase (default: execute).
+#     <dir> is 'baseline' or an out/<dir> rewritten app (sandbox switch).
+#     Scale defaults to benchmarks scale, env-overridable:
+#       WAREHOUSES=6 CLIENTS=6 DURATION=60 WARMUP=10 REPS=3
+#   Legacy (standalone):
+#     runExperiment1-Workload-TPCC.sh <dbms> <warehouses> <clients>
+#     PHASE unset => full reset+execute with reps loop + CHECKPOINT + warmup.
+#
+set -euo pipefail
 
-dbms=$1
-warehouses=$2
-clients=$3
-
-exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/tpcc"
-log_fname="${exp_path}/results/db_layer/baseline/benchmarks/runExperiment1-tpcc-${dbms}"
+BENCH_CMDDOCKER="${BENCH_CMDDOCKER:-${exp_path}/scripts/_lib/docker.sh}"
+DB_CONTAINER="${DB_CONTAINER:-${BENCH_DB_CONTAINER:-adcoexp-db}}"
 
-cd "${workload_path}"
-source venv/bin/activate
+WAREHOUSES="${WAREHOUSES:-6}"
+CLIENTS="${CLIENTS:-6}"
+DURATION="${DURATION:-60}"
+WARMUP="${WARMUP:-10}"
+REPS_DEFAULT="${REPS:-3}"
 
-CMD="python tpcc.py ${dbms} \
+# ── Canonical mode: $2 looks like a CSV file ─────────────────────────────
+if [[ "${2:-}" == *.csv* ]]; then
+    dir="${1}"
+    file_name="${2}"
+    reps="${3:-${REPS_DEFAULT}}"
+    phase="${PHASE:-execute}"
+    dbms="postgres"
+    warehouses="${WAREHOUSES}"
+    clients="${CLIENTS}"
+    duration="${DURATION}"
+    warmup="${WARMUP}"
+
+    case "${phase}" in
+        load|execute) ;;
+        *) echo "Usage: PHASE must be 'load' or 'execute' (got '${phase}')" >&2; exit 2 ;;
+    esac
+
+    results_dir="${RESULTS_DIR:-${result_benchmark_path:-${exp_path}/results/db_layer/baseline/benchmarks}}"
+    mkdir -p "${results_dir}"
+
+    cd "${workload_path}"
+    # shellcheck disable=SC1091
+    source venv/bin/activate
+
+    if [ "${dir}" != "baseline" ]; then
+        output_path="${exp_path}/out/${dir}"
+        [ -d "${output_path}" ] || output_path="${workload_path}"
+    else
+        output_path="${workload_path}"
+    fi
+
+    base_cmd="python tpcc.py ${dbms} \
                 --config=${workload_path}/db.config \
                 --clients=${clients} \
                 --warehouses=${warehouses} \
-                --duration=60 \
-                --output-path=${log_fname} \
-                --reset"
-$CMD
+                --duration=${duration}"
+
+    if [ "${phase}" = "load" ]; then
+        # shellcheck disable=SC2086
+        $base_cmd --reset --no-execute
+        exit 0
+    fi
+
+    echo "------->>${output_path}<<-------"
+    cd "${output_path}"
+    for (( rep = 1; rep <= reps; rep++ )); do
+        if [ "${reps}" -eq 1 ]; then
+            rep_file="${file_name}"
+        elif [[ "${file_name}" == *.* ]]; then
+            rep_file="${file_name%.*}_r${rep}.${file_name##*.}"
+        else
+            rep_file="${file_name}_r${rep}"
+        fi
+        log_fname="${results_dir}/${rep_file}"
+        echo "----------------->> TPCC rep ${rep}/${reps} (${rep_file}) <<-----------------"
+        "${BENCH_CMDDOCKER}" Checkpoint "${DB_CONTAINER}"
+        if [ "${warmup}" -gt 0 ]; then
+            echo "----------------->> TPCC warmup ${warmup}s (rep ${rep}/${reps}) <<-----------------"
+            # shellcheck disable=SC2086
+            $base_cmd --duration="${warmup}" --no-load || true
+        fi
+        # shellcheck disable=SC2086
+        $base_cmd --output-path="${log_fname}" --no-load
+    done
+    exit 0
+fi
+
+# ── Legacy mode: <dbms> <warehouses> <clients> ────────────────────────────
+dbms="${1:-postgres}"
+warehouses="${2:-${WAREHOUSES}}"
+clients="${3:-${CLIENTS}}"
+phase="${PHASE:-test}"
+duration="${DURATION}"
+warmup="${WARMUP}"
+
+results_dir="${result_benchmark_path:-${exp_path}/results/db_layer/baseline/benchmarks}"
+mkdir -p "${results_dir}"
+log_fname="${results_dir}/runExperiment1-tpcc-${dbms}"
+
+cd "${workload_path}"
+# shellcheck disable=SC1091
+source venv/bin/activate
+
+reps="${REPS_DEFAULT}"
+base_cmd="python tpcc.py ${dbms} \
+                --config=${workload_path}/db.config \
+                --clients=${clients} \
+                --warehouses=${warehouses} \
+                --duration=${duration}"
+
+case "${phase}" in
+    load)
+        # shellcheck disable=SC2086
+        $base_cmd --reset --no-execute
+        ;;
+    execute)
+        for (( rep = 1; rep <= reps; rep++ )); do
+            if [ "${reps}" -eq 1 ]; then
+                out="${log_fname}"
+            else
+                out="${log_fname}_r${rep}"
+            fi
+            echo "----------------->> TPCC legacy execute rep ${rep}/${reps} <<-----------------"
+            "${BENCH_CMDDOCKER}" Checkpoint "${DB_CONTAINER}"
+            if [ "${warmup}" -gt 0 ]; then
+                # shellcheck disable=SC2086
+                $base_cmd --duration="${warmup}" --no-load || true
+            fi
+            # shellcheck disable=SC2086
+            $base_cmd --output-path="${out}" --no-load
+        done
+        if [ "${reps}" -gt 1 ]; then
+            cp "${log_fname}_r${reps}" "${log_fname}" 2>/dev/null || true
+        fi
+        ;;
+    test)
+        for (( rep = 1; rep <= reps; rep++ )); do
+            if [ "${reps}" -eq 1 ]; then
+                out="${log_fname}"
+            else
+                out="${log_fname}_r${rep}"
+            fi
+            echo "----------------->> TPCC legacy test rep ${rep}/${reps} <<-----------------"
+            "${BENCH_CMDDOCKER}" Checkpoint "${DB_CONTAINER}" 2>/dev/null || true
+            # shellcheck disable=SC2086
+            $base_cmd --output-path="${out}" --reset
+        done
+        if [ "${reps}" -gt 1 ]; then
+            cp "${log_fname}_r${reps}" "${log_fname}" 2>/dev/null || true
+        fi
+        ;;
+    *)
+        echo "Usage: PHASE must be 'load', 'execute' or 'test' (got '${phase}')" >&2
+        exit 2
+        ;;
+esac

@@ -1,6 +1,9 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "${ROOT}"
 
 rm -rf results/query_layer/r-bot
 mkdir -p results/query_layer/r-bot/benchmarks
@@ -17,7 +20,7 @@ CMDBaselineRBot=./scripts/query_layer/exp2_Baselines/runExperiment2-R-Bot.sh
 CMDRunRBotVerify=./scripts/query_layer/exp2_Baselines/runExperiment2-Workload-Verify-R-Bot.sh
 CMDRunWorkload=./scripts/query_layer/exp2_Baselines/runExperiment2-Workload.sh
 
-model=gemini-3.5-flash-lite
+model="gemini-3.5-flash-lite"
 
 ### Rewrite Stats with R-Bot
 #**************************

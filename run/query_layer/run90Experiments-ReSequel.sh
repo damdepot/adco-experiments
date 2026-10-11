@@ -1,5 +1,10 @@
 #!/bin/bash
 
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "${ROOT}"
+
 # clean original results
 rm -rf results/query_layer/resequel
 mkdir -p results/query_layer/resequel/benchmarks

@@ -6,27 +6,23 @@ Experiment harness for evaluating LLM-based SQL query rewriting approaches
 [Py-DBridge](https://github.com/dannykhant/py-dbridge)) against baseline execution,
 run on two layers:
 
-- **DB layer** — batch SQL workloads (STATS, stats, and other
-  `workload/databases` datasets) on PostgreSQL or MySQL.
+- **DB layer** — batch and OLTP SQL workloads (Smallbank, TPC-C, STATS) tuning PostgreSQL / MySQL configuration knobs ([ADCo](https://github.com/damdepot/ADCo), [AgentTune](https://github.com/dannykhant/AgentTune), [GPTuner](https://github.com/dannykhant/gptuner), [OtterTune](https://github.com/dannykhant/ottertune)).
 - **App layer** — OLTP application workloads (Smallbank, TPC-C) on PostgreSQL or MySQL.
 
 ## Repository layout
 
 | Path | Purpose |
 |------|---------|
-| `run/query_layer/run1SetupDependencies.sh` | Install system build dependencies |
-| `run/query_layer/run2DownloadBaselines.sh` | Clone ADCo, ReSequel, R-Bot, and LearnedRewrite into `baselines/` |
-| `run/query_layer/run3SetupBaselines.sh` | Create venvs and build artifacts for each baseline |
-| `run/query_layer/run4DownloadData.sh` | Download the STATS dataset CSVs into `data/stats/` |
-| `run/query_layer/run5PrepareData-*.sh` | Create and load the `stats` / `stats` databases (local or remote PostgreSQL, MySQL) |
-| `run/query_layer/initpgSQL.sh` | Start the locally compiled PostgreSQL instance used by the workload runner |
-| `run/query_layer/run6UpdateConfigs.sh` | Regenerate the baselines' `APIKeys.yaml` / `DBConfig.yaml` and ADCo's `.env` from `.env` |
-| `run/query_layer/run7Experiments-ADCo.sh` | Run the ADCo pipeline (compile, rewrite, decompile, verify) + workload |
-| `run/query_layer/run8Experiments-Baseline.sh` | Run the baseline (unrewritten) workload |
-| `run/query_layer/run91Experiments-ReSequel.sh` | Run the ReSequel pipeline (catalog build, templatization, rewrite, verify) + workload |
-| `run/query_layer/run92Experiments-R-Bot.sh` | Run the R-Bot pipeline (rewrite, verify) + workload |
-| `run/query_layer/run9Experiments-LearnedRewrite.sh` | Run the LearnedRewrite pipeline (rewrite, verify) + workload |
-| `run/query_layer/run93Reports.sh` | Generate comparison reports into `reports/` |
+| `run/db_layer/run1DownloadBaselines.sh` | Clone ADCo, AgentTune, GPTuner, and OtterTune into `baselines/` |
+| `run/db_layer/run2SetupBaselines.sh` | Create venvs and build artifacts for each DB-layer baseline |
+| `run/db_layer/run3SetupWorkloads.sh` | Clone Smallbank and TPC-C workload apps into `workload/apps/` |
+| `run/db_layer/run4UpdateConfigs.sh` | Regenerate baselines' configs from `.env` |
+| `run/db_layer/run5Experiments-Baselines.sh` | Run baseline (default DB) workload |
+| `run/db_layer/run6Experiments-ADCo.sh` | Run ADCo knob tuning + workload |
+| `run/db_layer/run7Experiments-AgentTune.sh` | Run AgentTune knob tuning + workload |
+| `run/db_layer/run8Experiments-GPTuner.sh` | Run GPTuner knob tuning + workload |
+| `run/db_layer/run9Experiments-OtterTune.sh` | Run OtterTune knob tuning + workload |
+| `run/db_layer/run91Reports.sh` | Generate comparison reports into `reports/` |
 | `run/app_layer/run1DownloadBaselines.sh` | Clone ADCo and Py-DBridge into `baselines/` |
 | `run/app_layer/run2SetupBaselines.sh` | Create venvs for the app-layer baselines |
 | `run/app_layer/run3SetupWorkloads.sh` | Clone the Smallbank and TPC-C workload apps into `workload/apps/` |
@@ -107,12 +103,12 @@ Then regenerate the baselines' config files:
 DB layer:
 
 ```bash
-./run/query_layer/run7Experiments-ADCo.sh           # ADCo pipeline + workload
-./run/query_layer/run8Experiments-Baseline.sh       # baseline (unrewritten) workload
-./run/query_layer/run91Experiments-ReSequel.sh      # ReSequel pipeline + workload
-./run/query_layer/run92Experiments-R-Bot.sh         # R-Bot pipeline + workload
-./run/query_layer/run9Experiments-LearnedRewrite.sh # LearnedRewrite pipeline + workload
-./run/query_layer/run93Reports.sh                   # comparison reports into reports/
+./run/db_layer/run5Experiments-Baselines.sh       # baseline (default DB) workload
+./run/db_layer/run6Experiments-ADCo.sh            # ADCo tuning + workload
+./run/db_layer/run7Experiments-AgentTune.sh       # AgentTune tuning + workload
+./run/db_layer/run8Experiments-GPTuner.sh         # GPTuner tuning + workload
+./run/db_layer/run9Experiments-OtterTune.sh       # OtterTune tuning + workload
+./run/db_layer/run91Reports.sh                    # comparison reports into reports/
 ```
 
 App layer:

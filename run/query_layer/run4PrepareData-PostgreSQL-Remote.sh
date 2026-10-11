@@ -14,7 +14,9 @@ fi
 while IFS= read -r line || [ -n "$line" ]; do
     line="${line%$'\r'}"
     case "$line" in ''|\#*) continue ;; esac
+    case "$line" in *=*) ;; *) continue ;; esac
     key="${line%%=*}"
+    case "$key" in ''|*[!A-Za-z0-9_]* ) continue ;; esac
     value="${line#*=}"
     case "$value" in
         \"*\") value="${value#\"}"; value="${value%\"}" ;;
@@ -24,7 +26,7 @@ while IFS= read -r line || [ -n "$line" ]; do
     export "$key"
 done < "$env_file"
 
-export PGHOST="${POSTGRES_HOST:-db}"
+export PGHOST="${POSTGRES_HOST:-pgdb}"
 export PGPORT="${POSTGRES_PORT:-5432}"
 export PGUSER="${POSTGRES_USER:-postgres}"
 export PGPASSWORD="${POSTGRES_PASSWORD:-postgres}"

@@ -1,8 +1,12 @@
 #!/bin/bash
 
-rm -rf reports/db_layer
-mkdir -p reports/db_layer
+set -euo pipefail
 
-CMDRunReports=./scripts/db_layer/exp2_Reports/run_report.sh
+EXP_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-$CMDRunReports "$@"
+rm -rf "${EXP_PATH}/reports/db_layer"
+mkdir -p "${EXP_PATH}/reports/db_layer"
+
+CMDRunReports="${EXP_PATH}/scripts/db_layer/exp2_Reports/run_report.sh"
+
+"$CMDRunReports" "$@"

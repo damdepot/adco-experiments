@@ -1,12 +1,14 @@
 #!/bin/bash
 
-root_path="$(pwd)"
+set -euo pipefail
+
+root_path="$(cd "$(dirname "$0")/../.." && pwd)"
 data_path="${root_path}/data"
 stats_path="${data_path}/stats"
 
 mkdir -p "${data_path}"
 rm -rf "${stats_path}"
-mkdir "${stats_path}"
+mkdir -p "${stats_path}"
 
 cd "${data_path}"
 rm -rf part-1 part-2 part-1.zip part-2.zip

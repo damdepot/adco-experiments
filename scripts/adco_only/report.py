@@ -30,8 +30,62 @@ def geometric_mean(values):
         product *= v
     return product ** (1.0 / len(valid))
 
+CANONICAL_LABELS = ('baseline', 'aco', 'dco', 'adco')
+_CANONICAL_RE = re.compile(r'^(baseline|aco|dco|adco)_(\d{8}_\d{6})(?:_r\d+)?\.csv$')
+
+
+def _newest_run_id(workload_dir):
+    """Newest RUN_ID in a canonical workload dir.
+
+    Prefers RUN_IDs that have baseline files (mirrors
+    scripts/_lib/run_comparison.sh), falls back to any label.
+    """
+    baseline_ids = set()
+    all_ids = set()
+    try:
+        names = os.listdir(workload_dir)
+    except OSError:
+        return None
+    for fname in names:
+        m = _CANONICAL_RE.match(fname)
+        if not m:
+            continue
+        all_ids.add(m.group(2))
+        if m.group(1) == 'baseline':
+            baseline_ids.add(m.group(2))
+    pool = sorted(baseline_ids) or sorted(all_ids)
+    return pool[-1] if pool else None
+
+
+def _rep_files(workload_dir, label, run_id):
+    """Rep files for one label+RUN_ID: <label>_<RUN_ID>_rN.csv, else plain."""
+    files = sorted(glob.glob(os.path.join(workload_dir, f"{label}_{run_id}_r*.csv")))
+    files = [f for f in files if re.search(r"_r\d+\.csv$", f)]
+    if not files:
+        plain = os.path.join(workload_dir, f"{label}_{run_id}.csv")
+        if os.path.isfile(plain):
+            files = [plain]
+    return files
+
+
 def discover_workloads(results_dir, dbms):
     """Discover available workloads in results_dir for the given dbms."""
+    # Canonical layout first: results/adco_only/<workload>/<label>_<RUN_ID>[_rN].csv
+    if os.path.isdir(results_dir):
+        workloads = []
+        for entry in sorted(os.listdir(results_dir)):
+            wdir = os.path.join(results_dir, entry)
+            if not os.path.isdir(wdir):
+                continue
+            try:
+                names = os.listdir(wdir)
+            except OSError:
+                continue
+            if any(_CANONICAL_RE.match(n) for n in names if not n.startswith('.')):
+                workloads.append(entry.lower())
+        if workloads:
+            return sorted(workloads)
+    # Legacy layout fallback: results/adco_only/<sys>/benchmarks/runExperiment*-<workload>-<dbms>*
     workloads = set()
     systems = ['baseline', 'aco', 'dco', 'adco']
     for sys in systems:
@@ -55,16 +109,58 @@ def discover_workloads(results_dir, dbms):
         workloads = {'smallbank', 'tpcc'}
     return sorted(list(workloads))
 
-def parse_workload_data(results_dir, workload, dbms, systems):
+def parse_workload_data(results_dir, workload, dbms, systems, run_id=None):
     """
     Parse benchmark files for a specific workload and dbms across systems.
+    Canonical layout: results/adco_only/<workload>/<label>_<RUN_ID>[_rN].csv
+    with header transaction,executed,execution_time,transaction_rate. Reps for
+    the selected RUN_ID (default: newest, preferring baseline) are averaged
+    by the caller (mean over reps, per transaction).
     Returns:
         data: dict[sys][transaction] -> { 'executed': list, 'execution_time': list, 'transaction_rate': list }
         raw_records: list of [sys, workload, dbms, file_name, transaction, executed, execution_time, transaction_rate]
+        selected_run_id: the RUN_ID used for the canonical layout, else None
     """
     data = {sys: defaultdict(lambda: {'executed': [], 'execution_time': [], 'transaction_rate': []}) for sys in systems}
     raw_records = []
-    
+
+    # Canonical layout branch.
+    workload_dir = os.path.join(results_dir, workload)
+    if os.path.isdir(workload_dir) and any(
+        _CANONICAL_RE.match(n) for n in os.listdir(workload_dir) if not n.startswith('.')
+    ):
+        selected = run_id or _newest_run_id(workload_dir)
+        if selected is None:
+            return data, raw_records, None
+        for sys in systems:
+            for filepath in _rep_files(workload_dir, sys, selected):
+                fname = os.path.basename(filepath)
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        reader = csv.reader(f)
+                        header_skipped = False
+                        for row in reader:
+                            if not row or len(row) < 4:
+                                continue
+                            if not header_skipped and row[0].strip().lower() == 'transaction':
+                                header_skipped = True
+                                continue
+                            txn_name = row[0].strip()
+                            try:
+                                executed = float(row[1].strip())
+                                exec_time = float(row[2].strip())
+                                txn_rate = float(row[3].strip())
+                            except ValueError:
+                                continue
+                            data[sys][txn_name]['executed'].append(executed)
+                            data[sys][txn_name]['execution_time'].append(exec_time)
+                            data[sys][txn_name]['transaction_rate'].append(txn_rate)
+                            raw_records.append([sys, workload, dbms, fname, txn_name, executed, exec_time, txn_rate])
+                except Exception as e:
+                    print(f"Error reading {filepath}: {e}")
+        return data, raw_records, selected
+
+    # Legacy layout fallback.
     for sys in systems:
         bench_dir = os.path.join(results_dir, sys, 'benchmarks')
         if not os.path.exists(bench_dir):
@@ -103,9 +199,9 @@ def parse_workload_data(results_dir, workload, dbms, systems):
             except Exception as e:
                 print(f"Error reading {filepath}: {e}")
                 
-    return data, raw_records
+    return data, raw_records, run_id
 
-def generate_workload_report(data, raw_records, workload, dbms, systems, system_display_names, output_dir):
+def generate_workload_report(data, raw_records, workload, dbms, systems, system_display_names, output_dir, run_id=None):
     
     # Collect all transaction names preserving order if possible (placing TOTAL last)
     all_txns = []
@@ -120,7 +216,8 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         all_txns.append('TOTAL')
     
     # Calculate stats per transaction
-    # We will use median for aggregation
+    # Canonical parsing logic (mirrors scripts/_lib/run_comparison.sh):
+    # average (mean) col-4 transaction_rate across reps, per transaction.
     stats = {sys: {} for sys in systems}
     for sys in systems:
         for txn in all_txns:
@@ -128,9 +225,9 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
             time_vals = data[sys][txn]['execution_time']
             exec_vals = data[sys][txn]['executed']
             stats[sys][txn] = {
-                'rate': calculate_median(rate_vals),
-                'time': calculate_median(time_vals),
-                'executed': calculate_median(exec_vals)
+                'rate': calculate_mean(rate_vals),
+                'time': calculate_mean(time_vals),
+                'executed': calculate_mean(exec_vals)
             }
             
     # Calculate Speedups relative to baseline (Throughput speedup = sys_rate / baseline_rate)
@@ -145,6 +242,8 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
     title = f"ADCo Performance Comparison: {workload.upper()} on {dbms}"
     lines.append(title)
     lines.append("=" * len(title))
+    if run_id:
+        lines.append(f"Source: results/adco_only/{workload} (RUN_ID {run_id})")
     lines.append("")
     
     header = f"{'Transaction':<20} | {'Baseline (txn/s)':<18}"
@@ -228,6 +327,8 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         
         md_lines = []
         md_lines.append(f"# ADCo Performance Comparison: {workload.upper()} on {dbms}\n")
+        if run_id:
+            md_lines.append(f"Source: `results/adco_only/{workload}` (RUN_ID {run_id})\n")
         
         # Table 1: Throughput (Transaction Rate)
         md_lines.append("## Transaction Rate / Throughput (txn/s)\n")
@@ -370,6 +471,7 @@ def main():
     parser.add_argument('--dbms', default='postgres', help='DBMS name (e.g. postgres, PostgreSQL)')
     parser.add_argument('--results-dir', default='results/adco_only', help='Base results directory for adco_only')
     parser.add_argument('--output-dir', default='reports/adco_only', help='Output directory for generated reports')
+    parser.add_argument('--run-id', default=None, help='RUN_ID to report on (default: newest RUN_ID per workload, preferring baseline)')
     args = parser.parse_args()
     
     systems = ['baseline', 'aco', 'dco', 'adco']
@@ -389,8 +491,8 @@ def main():
         workloads = [args.workload.lower()]
         
     for wl in workloads:
-        data, raw_records = parse_workload_data(args.results_dir, wl, args.dbms, systems)
-        generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, args.output_dir)
+        data, raw_records, selected = parse_workload_data(args.results_dir, wl, args.dbms, systems, run_id=args.run_id)
+        generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, args.output_dir, run_id=selected)
 
 if __name__ == '__main__':
     main()

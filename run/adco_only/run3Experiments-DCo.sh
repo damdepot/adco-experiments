@@ -1,54 +1,87 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-# clean original results
-rm -rf results/adco_only/dco
-mkdir -p results/adco_only/dco/benchmarks
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-rm -rf out/adco_only/DCo-results
-mkdir -p out/adco_only/DCo-results
+# Resource + workload contract (same defaults as the shared bench lib).
+export CPU_CORES="${CPU_CORES:-2}"
+export MEMORY_GB="${MEMORY_GB:-8}"
+export REPS="${REPS:-3}"
+export DURATION="${DURATION:-60}"
+export WARMUP="${WARMUP:-10}"
+export WAREHOUSES="${WAREHOUSES:-6}"
+export CLIENTS="${CLIENTS:-6}"
+export SETTLE_SECS="${SETTLE_SECS:-5}"
 
-CMDADCo=./scripts/adco_only/runExperiment0.sh
-CMDRunSmallbank=./scripts/adco_only/runExperiment0-Workload-Smallbank.sh
-CMDRunTPCC=./scripts/adco_only/runExperiment0-Workload-TPCC.sh
-CMDDocker=./scripts/db_layer/exp1_Baselines/runExperiment1-Production-Docker.sh
+# Workload-runner override must be exported before sourcing the shared lib.
+export BENCH_CMDRUNTPCC="${ROOT}/scripts/adco_only/runExperiment1-Workload-Smallbank.sh"
+export BENCH_CMDDOCKER="${BENCH_CMDDOCKER:-${ROOT}/scripts/_lib/docker.sh}"
 
-model="gemini-3.5-flash-lite"
-db_container="adcoexp-db"
-db_service="pgdb"
+source "${ROOT}/scripts/_lib/bench_lib.sh"
 
+CMDRunDCo="${ROOT}/scripts/adco_only/runExperiment0-DCo.sh"
 
-### DCo
-### **********
-echo '-------------------<< Refreshing docker production database >>-------------------'
-$CMDDocker Down ${db_container}
-$CMDDocker Up ${db_container} ${db_service}
-sleep 5s
-echo '-------------------<< DCo >>-------------------'
-echo '-------------------<< Running DCo for Smallbank >>-------------------'
-$CMDADCo DCo ${model} postgres smallbank
-$CMDDocker Restart ${db_container}
-sleep 3s
-echo "Verifying active PostgreSQL shared_buffers on ${db_container}..."
-docker exec "${db_container}" psql -U postgres -c "SHOW shared_buffers;"
-echo '-------------------<< Running DCo Smallbank workload >>-------------------'
-$CMDRunSmallbank ${model} postgres 100000 10000 smallbank dco
-echo '-------------------<< Refreshing docker production database >>-------------------'
-$CMDDocker Down ${db_container}
-$CMDDocker Up ${db_container} ${db_service}
-sleep 5s
+model="${MODEL:-gemini-3.5-flash-lite}"
+dbms="postgres"
 
-echo '-------------------<< Running DCo for TPCC >>-------------------'
-$CMDADCo DCo ${model} postgres tpcc
-$CMDDocker Restart ${db_container}
-sleep 3s
-echo "Verifying active PostgreSQL shared_buffers on ${db_container}..."
-docker exec "${db_container}" psql -U postgres -c "SHOW shared_buffers;"
-echo '-------------------<< Running DCo TPCC workload >>-------------------'
-$CMDRunTPCC ${model} postgres 5 5 tpcc dco
-echo '-------------------<< Refreshing docker production database >>-------------------'
-$CMDDocker Down ${db_container}
-$CMDDocker Up ${db_container} ${db_service}
-sleep 5s
+RESULTS_SB="${ROOT}/results/adco_only/smallbank"
+RESULTS_TPCC="${ROOT}/results/adco_only/tpcc"
+mkdir -p "${RESULTS_SB}" "${RESULTS_TPCC}"
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+export RUN_ID
 
-echo '-------------------<< DCo completes >>-------------------'
+# Single-writer: never Down/Restart the DB under a concurrent run.
+bench_lock "${ROOT}"
+
+# Pristine dataset snapshots: loaded once per workload, restored per arm in
+# seconds. Knob settings live in postgresql.auto.conf and survive the
+# restore, so the restore resets data only, not tuning.
+SEED_DB_SMALLBANK="smallbank_seed"
+SEED_DB_TPCC="tpcc_seed"
+
+run_dco_smallbank_tool() {
+    if ! "${CMDRunDCo}" "${ROOT}/workload/apps/smallbank" "${model}" "${dbms}" "smallbank" "${CPU_CORES}" "${MEMORY_GB}"; then
+        echo "ERROR: DCo tuning failed; skipping post-DCo SmallBank measurement and CSV." >&2
+        return 1
+    fi
+}
+
+run_dco_tpcc_tool() {
+    if ! "${CMDRunDCo}" "${ROOT}/workload/apps/tpcc" "${model}" "${dbms}" "tpcc" "${CPU_CORES}" "${MEMORY_GB}"; then
+        echo "ERROR: DCo tuning failed; skipping post-DCo TPCC measurement and CSV." >&2
+        return 1
+    fi
+}
+
+# ── SmallBank: shared baseline (measured) + DCo (knobs only) ──
+echo "----------------->> Seed SmallBank (load once + snapshot) <<-----------------"
+bench_seed_once "smallbank" "${SEED_DB_SMALLBANK}"
+
+echo "----------------->> Baseline SmallBank <<-----------------"
+export RESULTS_DIR="${RESULTS_SB}"
+bench_arm_from_seed "baseline" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
+
+# DCo's optimized arm runs the original app; only the knobs change.
+echo "----------------->> DCo SmallBank <<-----------------"
+export RESULTS_DIR="${RESULTS_SB}"
+bench_arm_from_seed "dco" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_dco_smallbank_tool || \
+    echo "WARNING: DCo SmallBank arm failed; continuing with remaining arms." >&2
+
+# ── TPCC: shared baseline (measured) + DCo (knobs only) ──
+export BENCH_CMDRUNTPCC="${ROOT}/scripts/adco_only/runExperiment1-Workload-TPCC.sh"
+
+echo "----------------->> Seed TPCC (load once + snapshot) <<-----------------"
+bench_seed_once "tpcc" "${SEED_DB_TPCC}"
+
+echo "----------------->> Baseline TPCC <<-----------------"
+export RESULTS_DIR="${RESULTS_TPCC}"
+bench_arm_from_seed "baseline" "baseline" "tpcc" "${SEED_DB_TPCC}"
+
+echo "----------------->> DCo TPCC <<-----------------"
+export RESULTS_DIR="${RESULTS_TPCC}"
+bench_arm_from_seed "dco" "baseline" "tpcc" "${SEED_DB_TPCC}" run_dco_tpcc_tool || \
+    echo "WARNING: DCo TPCC arm failed; continuing with remaining arms." >&2
+
+echo "----------------->> Comparison <<-----------------"
+RESULTS_DIR="${RESULTS_SB}" "${ROOT}/scripts/_lib/run_comparison.sh" "${RUN_ID}"
+RESULTS_DIR="${RESULTS_TPCC}" "${ROOT}/scripts/_lib/run_comparison.sh" "${RUN_ID}"
