@@ -43,9 +43,8 @@ else
         fi
         echo "----------------->> Smallbank rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
         "${CMDDocker}" Checkpoint "${db_container}"
-        python main.py test \
+        python main.py run \
                         --driver "${dbms}" \
-                        --threads "${LOAD_THREADS:-8}" \
                         --accounts "${accounts}" \
                         --transactions "${transactions}" \
                         --output-path "${log_fname}"
