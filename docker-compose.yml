@@ -8,7 +8,10 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     ports:
-      - "5432:5432"
+      # Localhost-only: never expose Postgres to the network. A 0.0.0.0
+      # binding invited brute-force attacks (rogue superusers, locked-out
+      # postgres role). The harness talks to pgdb over the compose network.
+      - "127.0.0.1:5432:5432"
     platform: linux/amd64
     deploy:
       resources:
