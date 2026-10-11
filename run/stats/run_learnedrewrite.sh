@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "${ROOT}"
+
+rm -rf results/stats/learnedrewrite
+mkdir -p results/stats/learnedrewrite/benchmarks
+
+rm -rf out/query_layer/LearnedRewrite-results
+mkdir -p out/query_layer/LearnedRewrite-results
+
+export iteration=5
+export result_dir="results/stats/learnedrewrite"
+export result_benchmark_path="results/stats/learnedrewrite/benchmarks"
+export result_output_path="out/query_layer/LearnedRewrite-results"
+
+CMDLearnedRewrite=./scripts/stats/exp2_Baselines/runExperiment2-LearnedRewrite.sh
+CMDRunLRVerify=./scripts/stats/exp2_Baselines/runExperiment2-Workload-Verify-LearnedRewrite.sh
+CMDRunWorkload=./scripts/stats/exp2_Baselines/runExperiment2-Workload.sh
+
+echo "-------------------<< Running Stats-Lite LearnedRewrite rewrites >>-------------------"
+$CMDLearnedRewrite stats PostgreSQL
+
+echo "-------------------<< Verifying LearnedRewrite rewrites for Stats-Lite dataset >>-------------------"
+$CMDRunLRVerify stats PostgreSQL
+
+echo "-------------------<< Running Workload for Stats-Lite dataset >>-------------------"
+$CMDRunWorkload stats PostgreSQL LearnedRewrite

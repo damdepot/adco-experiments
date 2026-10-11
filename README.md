@@ -13,54 +13,62 @@ run on two layers:
 
 | Path | Purpose |
 |------|---------|
-| `run/db_layer/run1DownloadBaselines.sh` | Clone ADCo, AgentTune, GPTuner, and OtterTune into `baselines/` |
-| `run/db_layer/run2SetupBaselines.sh` | Create venvs and build artifacts for each DB-layer baseline |
-| `run/db_layer/run3SetupWorkloads.sh` | Clone Smallbank and TPC-C workload apps into `workload/apps/` |
-| `run/db_layer/run4UpdateConfigs.sh` | Regenerate baselines' configs from `.env` |
-| `run/db_layer/run5Experiments-Baselines.sh` | Run baseline (default DB) workload |
-| `run/db_layer/run6Experiments-ADCo.sh` | Run ADCo knob tuning + workload |
-| `run/db_layer/run7Experiments-AgentTune.sh` | Run AgentTune knob tuning + workload |
-| `run/db_layer/run8Experiments-GPTuner.sh` | Run GPTuner knob tuning + workload |
-| `run/db_layer/run9Experiments-OtterTune.sh` | Run OtterTune knob tuning + workload |
-| `run/db_layer/run91Reports.sh` | Generate comparison reports into `reports/` |
-| `run/app_layer/run1DownloadBaselines.sh` | Clone ADCo and Py-DBridge into `baselines/` |
-| `run/app_layer/run2SetupBaselines.sh` | Create venvs for the app-layer baselines |
-| `run/app_layer/run3SetupWorkloads.sh` | Clone the Smallbank and TPC-C workload apps into `workload/apps/` |
-| `run/app_layer/run4UpdateConfigs.sh` | Write `db.config` for each workload app from `.env` |
-| `run/app_layer/run5Experiments-ADCo.sh` | Run ADCo rewrite + Smallbank/TPC-C workload |
-| `run/app_layer/run6Experiments-Baselines.sh` | Run the baseline Smallbank/TPC-C workload |
-| `run/app_layer/run7Experiments-Py-DBridge.sh` | Run the Py-DBridge rewrite + Smallbank/TPC-C workload |
+| `run/setup/db-download-baselines.sh` | Clone ADCo, AgentTune, GPTuner, and OtterTune into `baselines/` |
+| `run/setup/db-setup-baselines.sh` | Create venvs and build artifacts for each DB-layer baseline |
+| `run/setup/db-setup-workloads.sh` | Clone Smallbank and TPC-C workload apps into `workload/apps/` |
+| `run/setup/db-update-configs.sh` | Regenerate baselines' configs from `.env` |
+| `run/tpcc/run_baseline.sh` / `run/smallbank/run_baseline.sh` | Run baseline workload (app + DB layer) |
+| `run/tpcc/run_aco.sh` / `run/smallbank/run_aco.sh` | Run ACo rewrite + workload |
+| `run/tpcc/run_dco.sh` / `run/smallbank/run_dco.sh` | Run DCo knob tuning + workload |
+| `run/tpcc/run_adco.sh` / `run/smallbank/run_adco.sh` | Run ADCo rewrite + tuning + workload |
+| `run/tpcc/run_py-dbridge.sh` / `run/smallbank/run_py-dbridge.sh` | Run Py-DBridge rewrite + workload |
+| `run/tpcc/run_agenttune.sh` / `run/smallbank/run_agenttune.sh` | Run AgentTune knob tuning + workload |
+| `run/tpcc/run_gptuner.sh` / `run/smallbank/run_gptuner.sh` | Run GPTuner knob tuning + workload |
+| `run/tpcc/run_ottertune.sh` / `run/smallbank/run_ottertune.sh` | Run OtterTune knob tuning + workload |
+| `run/tpcc/run_reports.sh` / `run/smallbank/run_reports.sh` | Generate comparison reports into `reports/` |
+| `run/stats/run_baseline.sh` | Run stats baseline workload |
+| `run/stats/run_aco.sh` | Run stats ACo rewrite + workload |
+| `run/stats/run_adco.sh` | Run stats ADCo rewrite + tuning + workload |
+| `run/stats/run_resequel.sh` | Run ReSequel rewrite + workload |
+| `run/stats/run_r-bot.sh` | Run R-Bot rewrite + workload |
+| `run/stats/run_learnedrewrite.sh` | Run LearnedRewrite + workload |
+| `run/stats/run_reports.sh` | Generate stats comparison reports into `reports/` |
 | `.env-example` | Template for API keys, Postgres/MySQL credentials, and Vertex AI settings; copy to `.env` |
 | `workload/databases/` | Per-DBMS SQL workloads: schemas, indexes, queries, import scripts |
 | `workload/src/` | Python harness that replays DB-layer workloads and logs results (`DBConfig.yaml` holds its DB credentials) |
 | `workload/apps/` | Cloned OLTP workload apps (Smallbank, TPC-C) with their own drivers and `db.config` |
-| `scripts/query_layer/` | DB-layer experiment drivers called by `run/query_layer` entry points (`exp0_ADCo`, `exp1_ReSequel`, `exp2_Baselines`, `exp3_Reports`) |
-| `scripts/app_layer/` | App-layer experiment drivers called by `run/app_layer` entry points (`exp0_ADCo`, `exp1_Baselines`) |
+| `scripts/stats/` | DB-layer experiment drivers called by `run/stats` entry points (`exp0_ADCo`, `exp1_ReSequel`, `exp2_Baselines`, `exp3_Reports`) |
+| `scripts/common/app_layer/` | Benchmark-neutral app-layer drivers (ADCo, Py-DBridge, reports) shared by `run/tpcc` and `run/smallbank` |
+| `scripts/tpcc/` + `scripts/smallbank/` | Workload-specific app/DB-layer drivers called by `run/tpcc` and `run/smallbank` entry points |
+| `scripts/common/db_layer/` | Benchmark-neutral DB-layer drivers (ADCo/DCo, AgentTune/GPTuner/OtterTune, reports) shared by `run/tpcc` and `run/smallbank` |
+| `scripts/common/` | Benchmark-neutral drivers shared across workloads (`app_layer/`, `db_layer/`) |
+| `scripts/_lib/` | Shared shell harness (`bench_lib.sh`, `docker.sh`, `run_comparison.sh`) |
 | `catalog/` | Generated ReSequel catalog files (per-dataset JSONs, e.g. `catalog/stats/`) |
-| `results/query_layer/` | DB-layer results per approach (`results/query_layer/adco`, `resequel`, `r-bot`, `learnedrewrite`, `baseline`) |
-| `results/app_layer/` | App-layer results per approach (`results/app_layer/adco`, `py-dbridge`, `baseline`) |
+| `results/tpcc/` | TPC-C results per approach (`baseline`, `aco`, `dco`, `adco`, `py-dbridge`, `agenttune`, `ottertune`, `gptuner`) |
+| `results/smallbank/` | Smallbank results per approach (same set as TPC-C) |
+| `results/stats/` | Stats-dataset results per approach (`baseline`, `aco`, `adco`, `resequel`, `r-bot`, `learnedrewrite`) |
 | `out/query_layer/` | Rewritten queries for the DB layer (`ADCo-results/`, `ReSequel-results/`, `R-Bot-results/`, `LearnedRewrite-results/`) |
 | `out/app_layer/` | Rewritten code for the app layer (`ADCo-results/`, `Py-DBridge-results/`) |
-| `reports/` | Generated comparison reports (`run/query_layer/run93Reports.sh`) |
+| `reports/` | Generated comparison reports (`run/tpcc/run_reports.sh`, `run/smallbank/run_reports.sh`, `run/stats/run_reports.sh`) |
 | `docker/` | Container entrypoint used by the experiment image |
 | `docker-compose.yml` | `db` (PostgreSQL 17) service plus the experiment container |
 
 ## Setup (DB layer)
 
 ```bash
-./run/query_layer/run1SetupDependencies.sh
-./run/query_layer/run2DownloadBaselines.sh
-./run/query_layer/run3SetupBaselines.sh
-./run/query_layer/run4DownloadData.sh
-./run/query_layer/run5PrepareData-PostgreSQL-Remote.sh   # or -Local.sh / MySQL variant
+./run/setup/deps-local.sh
+./run/setup/stats-download-baselines.sh
+./run/setup/stats-setup-baselines.sh
+./run/setup/stats-download-data.sh
+./run/setup/stats-prepare-postgres-remote.sh   # or -local.sh / -mysql.sh variant
 ```
 
 ## Setup (App layer)
 
 ```bash
-./run/app_layer/run1DownloadBaselines.sh
-./run/app_layer/run2SetupBaselines.sh
-./run/app_layer/run3SetupWorkloads.sh
+./run/setup/app-download-baselines.sh
+./run/setup/app-setup-baselines.sh
+./run/setup/app-setup-workloads.sh
 ```
 
 ## Configuring baselines
@@ -94,30 +102,37 @@ GOOGLE_CLOUD_LOCATION=global
 Then regenerate the baselines' config files:
 
 ```bash
-./run/query_layer/run6UpdateConfigs.sh   # ReSequel/R-Bot YAML + ADCo .env
-./run/app_layer/run4UpdateConfigs.sh  # smallbank / tpcc db.config
+./run/setup/stats-update-configs.sh   # ReSequel/R-Bot YAML + ADCo .env
+./run/setup/app-update-configs.sh  # smallbank / tpcc db.config
 ```
 
 ## Running experiments
 
-DB layer:
+TPC-C / Smallbank (same scripts under `run/tpcc/` and `run/smallbank/`):
 
 ```bash
-./run/db_layer/run5Experiments-Baselines.sh       # baseline (default DB) workload
-./run/db_layer/run6Experiments-ADCo.sh            # ADCo tuning + workload
-./run/db_layer/run7Experiments-AgentTune.sh       # AgentTune tuning + workload
-./run/db_layer/run8Experiments-GPTuner.sh         # GPTuner tuning + workload
-./run/db_layer/run9Experiments-OtterTune.sh       # OtterTune tuning + workload
-./run/db_layer/run91Reports.sh                    # comparison reports into reports/
+./run/tpcc/run_baseline.sh    # baseline workload (same under run/smallbank/)
+./run/tpcc/run_aco.sh         # ACo rewrite + workload (same under run/smallbank/)
+./run/tpcc/run_dco.sh         # DCo tuning + workload (same under run/smallbank/)
+./run/tpcc/run_adco.sh        # ADCo rewrite + tuning + workload (same under run/smallbank/)
+./run/tpcc/run_py-dbridge.sh  # Py-DBridge rewrite + workload (same under run/smallbank/)
+./run/tpcc/run_agenttune.sh   # AgentTune tuning + workload (same under run/smallbank/)
+./run/tpcc/run_gptuner.sh     # GPTuner tuning + workload (same under run/smallbank/)
+./run/tpcc/run_ottertune.sh   # OtterTune tuning + workload (same under run/smallbank/)
+./run/tpcc/run_reports.sh     # comparison reports into reports/ (same under run/smallbank/)
 ```
 
-App layer:
+Stats:
 
 ```bash
-./run/app_layer/run5Experiments-ADCo.sh          # ADCo rewrite + Smallbank/TPC-C workload
-./run/app_layer/run6Experiments-Baselines.sh     # baseline Smallbank/TPC-C workload
-./run/app_layer/run7Experiments-Py-DBridge.sh    # Py-DBridge rewrite + Smallbank/TPC-C workload
+./run/stats/run_baseline.sh       # baseline workload
+./run/stats/run_aco.sh            # ACo rewrite + workload
+./run/stats/run_adco.sh           # ADCo rewrite + tuning + workload
+./run/stats/run_resequel.sh       # ReSequel rewrite + workload
+./run/stats/run_r-bot.sh          # R-Bot rewrite + workload
+./run/stats/run_learnedrewrite.sh # LearnedRewrite + workload
+./run/stats/run_reports.sh        # comparison reports into reports/
 ```
 
-Results are written to `results/query_layer/` and `results/app_layer/`, with rewritten
+Results are written to `results/tpcc/`, `results/smallbank/` and `results/stats/`, with rewritten
 queries in `out/query_layer/` and rewritten app code in `out/app_layer/`.

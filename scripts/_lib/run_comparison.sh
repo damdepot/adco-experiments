@@ -14,8 +14,8 @@
 #   scripts/_lib/run_comparison.sh [RUN_ID]
 #
 # RUN_ID defaults to the newest run that has baseline files. Results live in
-# <repo>/results/tpcc unless RESULTS_DIR is set. Labels with no parseable
-# rows are skipped with a WARNING.
+# <repo>/results/<workload> (e.g. results/tpcc or results/smallbank) unless
+# RESULTS_DIR is set. Labels with no parseable rows are skipped with a WARNING.
 # NOTE: RESULTS_DIR honors a caller-provided env override.
 
 set -euo pipefail
@@ -35,19 +35,34 @@ results_dir = sys.argv[1]
 run_id = sys.argv[2] if len(sys.argv) > 2 else ""
 
 
+def all_csvs():
+    # New layout: <RESULTS_DIR>/<label>/*.csv; also accept flat <RESULTS_DIR>/*.csv.
+    return sorted(
+        set(glob.glob(os.path.join(results_dir, "*.csv")))
+        | set(glob.glob(os.path.join(results_dir, "*", "*.csv")))
+    )
+
+
 def rep_files(label, run):
-    files = sorted(glob.glob(os.path.join(results_dir, f"{label}_{run}_r*.csv")))
+    files = sorted(
+        glob.glob(os.path.join(results_dir, label, f"{label}_{run}_r*.csv"))
+        + glob.glob(os.path.join(results_dir, f"{label}_{run}_r*.csv"))
+    )
     files = [f for f in files if re.search(r"_r\d+\.csv$", f)]
     if not files:
-        plain = os.path.join(results_dir, f"{label}_{run}.csv")
-        if os.path.isfile(plain):
-            files = [plain]
+        for plain in (
+            os.path.join(results_dir, label, f"{label}_{run}.csv"),
+            os.path.join(results_dir, f"{label}_{run}.csv"),
+        ):
+            if os.path.isfile(plain):
+                files = [plain]
+                break
     return files
 
 
 if not run_id:
     ids = set()
-    for path in glob.glob(os.path.join(results_dir, "baseline_*.csv")):
+    for path in all_csvs():
         m = re.search(r"baseline_(\d{8}_\d{6})(?:_r\d+)?\.csv$", os.path.basename(path))
         if m:
             ids.add(m.group(1))
@@ -60,7 +75,7 @@ if not run_id:
 
 # Auto-discover labels: filename prefix before _<RUN_ID> for this RUN_ID.
 candidates = set()
-for path in glob.glob(os.path.join(results_dir, "*.csv")):
+for path in all_csvs():
     m = re.match(r"^(.*)_(\d{8}_\d{6})(?:_r\d+)?\.csv$", os.path.basename(path))
     if m and m.group(2) == run_id and m.group(1):
         candidates.add(m.group(1))

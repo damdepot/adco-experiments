@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 WORKDIR /app
 
-# System deps mirror run/query_layer/run1SetupDependencies.sh (needed only on a
+# System deps mirror run/setup/deps-local.sh (needed only on a
 # physical host, not when building this image). Excluded here because the uv base
 # image already provides Python/venv/pip: python3.10-venv, python3-pip, python3-dev.
 RUN apt-get update && apt-get install -y --no-install-recommends \
