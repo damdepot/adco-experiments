@@ -177,7 +177,7 @@ def parse_workload_data(results_dir, workload, dbms, systems):
 
     return data, raw_records, sources
 
-def generate_workload_report(data, raw_records, workload, dbms, systems, system_display_names, output_dir, sources=None):
+def generate_workload_report(data, raw_records, workload, dbms, systems, system_display_names, output_dir, sources=None, title_prefix="Application Layer Performance Comparison", quiet=False):
     # Collect all transaction names preserving order if possible (placing TOTAL last)
     all_txns = []
     seen = set()
@@ -209,7 +209,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
     
     # Format terminal output
     lines = []
-    title = f"Application Layer Performance Comparison: {workload.upper()} on {dbms}"
+    title = f"{title_prefix}: {workload.upper()} on {dbms}"
     lines.append(title)
     lines.append("=" * len(title))
     lines.append("")
@@ -263,7 +263,11 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
     lines.append("")
     
     report_text = "\n".join(lines)
-    print(report_text)
+    if quiet:
+        for w in warning_lines:
+            print(w)
+    else:
+        print(report_text)
     
     # Markdown Report Generation
     if output_dir:
@@ -271,7 +275,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         md_path = os.path.join(output_dir, f"performance_comparison_{workload}_{dbms}.md")
         
         md_lines = []
-        md_lines.append(f"# Application Layer Performance Comparison: {workload.upper()} on {dbms}\n")
+        md_lines.append(f"# {title_prefix}: {workload.upper()} on {dbms}\n")
 
         # Provenance: source file path (and mtime) per arm column.
         md_lines.append("## Data sources\n")
@@ -384,16 +388,28 @@ def main():
     parser.add_argument('--workload', default='all', help="Workload name ('smallbank', 'tpcc', or 'all')")
     parser.add_argument('--dbms', default='postgres', help='DBMS name (e.g. postgres, PostgreSQL)')
     parser.add_argument('--results-dir', default='results', help='Base results directory (benchmark-first layout: <dir>/<workload>/<system>/benchmarks)')
+    parser.add_argument('--systems', default=None, help="Comma-separated systems to compare (default: baseline,adco,aco,py-dbridge)")
     parser.add_argument('--output-dir', default=None, help='Output directory for generated reports (default: reports/<workload>/app_layer)')
+    parser.add_argument('--quiet', action='store_true', help='Suppress terminal table output; still print warnings and saved-file lines')
     args = parser.parse_args()
-    
-    systems = ['baseline', 'adco', 'aco', 'py-dbridge']
+
+    default_systems = ['baseline', 'adco', 'aco', 'py-dbridge']
+    if args.systems is None:
+        systems = default_systems
+        title_prefix = "Application Layer Performance Comparison"
+    else:
+        systems = [s.strip() for s in args.systems.split(',') if s.strip()]
+        title_prefix = "Performance Comparison"
     system_display_names = {
         'baseline': 'Baseline',
         'adco': 'ADCo',
         'aco': 'ACo',
         'py-dbridge': 'Py-DBridge',
-        'pydbridge': 'Py-DBridge'
+        'pydbridge': 'Py-DBridge',
+        'dco': 'DCo',
+        'agenttune': 'AgentTune',
+        'gptuner': 'GPTuner',
+        'ottertune': 'OtterTune'
     }
     
     # Determine workloads to run
@@ -407,7 +423,7 @@ def main():
     for wl in workloads:
         data, raw_records, sources = parse_workload_data(args.results_dir, wl, args.dbms, systems)
         output_dir = args.output_dir or os.path.join('reports', wl, 'app_layer')
-        generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, output_dir, sources)
+        generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, output_dir, sources, title_prefix, quiet=args.quiet)
 
 if __name__ == '__main__':
     main()

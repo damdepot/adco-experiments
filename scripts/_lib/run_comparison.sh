@@ -3,7 +3,8 @@
 # Compare OLTP results across labels.
 #
 # Files are fixed-name (each baseline runs once into a wiped method dir):
-# <label>.csv, or multi-rep <label>_r1.csv, _r2, ... Labels are
+# <label>/benchmarks/*.csv, or multi-rep <label>_r1.csv, _r2, ... (plus
+# legacy flat/stamped). Labels are
 # auto-discovered from <label>.csv / <label>_rN.csv files in RESULTS_DIR
 # (baseline first when present, otherwise alphabetical), falling back to
 # run-stamped <label>_<RUN_ID>[_rN].csv (latest run wins). runExperiment*
@@ -36,10 +37,10 @@ results_dir = sys.argv[1]
 
 
 def all_csvs():
-    # New layout: <RESULTS_DIR>/<label>/*.csv; also accept flat <RESULTS_DIR>/*.csv.
+    # Layout: <RESULTS_DIR>/<label>/benchmarks/*.csv; also accept flat
+    # <RESULTS_DIR>/*.csv and legacy one-level <label>/*.csv (recursive).
     return sorted(
-        set(glob.glob(os.path.join(results_dir, "*.csv")))
-        | set(glob.glob(os.path.join(results_dir, "*", "*.csv")))
+        set(glob.glob(os.path.join(results_dir, "**", "*.csv"), recursive=True))
     )
 
 
@@ -64,23 +65,20 @@ def run_id_of(basename):
 
 def rep_files(label):
     files = sorted(
-        glob.glob(os.path.join(results_dir, label, f"{label}_r*.csv"))
-        + glob.glob(os.path.join(results_dir, f"{label}_r*.csv"))
+        glob.glob(os.path.join(results_dir, "**", f"{label}_r*.csv"), recursive=True)
     )
     files = [f for f in files if re.search(r"_r\d+\.csv$", f)]
     if not files:
-        for plain in (
-            os.path.join(results_dir, label, f"{label}.csv"),
-            os.path.join(results_dir, f"{label}.csv"),
-        ):
-            if os.path.isfile(plain):
-                files = [plain]
-                break
+        plains = sorted(
+            glob.glob(os.path.join(results_dir, "**", f"{label}.csv"), recursive=True)
+        )
+        if plains:
+            files = plains[:1]
     if not files:
         # Fallback: run-stamped <label>_<RUN_ID>[_rN].csv; latest run wins.
         stamped = glob.glob(
-            os.path.join(results_dir, f"{label}_*.csv")
-        ) + glob.glob(os.path.join(results_dir, "*", f"{label}_*.csv"))
+            os.path.join(results_dir, "**", f"{label}_*.csv"), recursive=True
+        )
         by_run = {}
         for f in stamped:
             m = re.match(
