@@ -26,20 +26,7 @@ mkdir -p results/tpcc/baseline/benchmarks
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
 
-CMDRunTPCC=./scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-App.sh
-CMDDocker=./scripts/_lib/docker.sh
 CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
-
-db_container="adcoexp-db"
-db_service="pgdb"
-
-# Restore-from-snapshot + cold buffers before every measure; workloads run
-# PHASE=execute (--no-load) against pristine seed data.
-measure_prep() {
-    "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
-    "${CMDDocker}" WaitFor "${db_container}"
-    bench_settle
-}
 
 # Copy canonical rep CSVs to single-file aliases for report.py compat.
 # $1=subdir $2=tag $3=benchmark
@@ -59,8 +46,8 @@ legacy_sync() {
     fi
 }
 
-# ── TPC-C db baseline (first: its log byproducts share names with the app
-# phase logs below, and the later phase always wins) ──────────────────────
+# ── TPC-C baseline (single db-arm measurement; its aliases feed both the
+# db-layer and app-layer reports, so no second app-phase run is needed) ──
 export BENCH_CMDRUNTPCC="${EXP_PATH}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
 TPCC_RESULTS="${EXP_PATH}/results/tpcc/baseline/benchmarks"
 mkdir -p "${TPCC_RESULTS}"
@@ -73,13 +60,6 @@ bench_seed_once "tpcc" "${SEED_DB_TPCC}"
 echo "----------------->> Baseline tpcc <<-----------------"
 bench_arm_from_seed "baseline" "baseline" "tpcc" "${SEED_DB_TPCC}"
 legacy_sync "${TPCC_RESULTS}" "baseline" "tpcc"
-
-### Workload: TPCC (app layer, last so its logs survive alongside the db files)
-### **********
-echo '-------------------<< Running the TPCC workload >>-------------------'
-bench_restore "tpcc" "${SEED_DB_TPCC}"
-measure_prep
-PHASE=execute $CMDRunTPCC postgres "${WAREHOUSES}" "${CLIENTS}"
 
 echo '-------------------<< Comparison >>-------------------'
 $CMDReport tpcc postgres
