@@ -8,13 +8,13 @@ target_sys=$4
 exp_path="$(pwd)"
 
 if [ "$target_sys" = "aco" ] || [ "$target_sys" = "ACo" ] || [ "$target_sys" = "ACo-results" ]; then
-    result_benchmark_path="results/stats/aco/benchmarks"
+    result_benchmark_path="${RESULTS_DATASET_DIR:-results/${dataset}}/aco/benchmarks"
     result_output_path="out/query_layer/ACo-results"
 elif [ "$target_sys" = "adco" ] || [ "$target_sys" = "ADCo" ] || [ "$target_sys" = "ADCo-results" ]; then
-    result_benchmark_path="results/stats/adco/benchmarks"
+    result_benchmark_path="${RESULTS_DATASET_DIR:-results/${dataset}}/adco/benchmarks"
     result_output_path="out/query_layer/ADCo-results"
 else
-    result_benchmark_path="${result_benchmark_path:-results/stats/adco/benchmarks}"
+    result_benchmark_path="${result_benchmark_path:-${RESULTS_DATASET_DIR:-results/${dataset}}/adco/benchmarks}"
     result_output_path="${result_output_path:-out/query_layer/ADCo-results}"
 fi
 

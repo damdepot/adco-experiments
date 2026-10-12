@@ -26,10 +26,10 @@ mkdir -p "${exp_path}/out/query_layer/R-Bot-results/cache/${dbms}"
 mkdir -p "${exp_path}/out/query_layer/R-Bot-results/cache/${dbms}/${dataset}"
 mkdir -p "${cache_path}"
 
-result_log_path="${exp_path}/results/stats/r-bot/Experiment2-R-Bot-Rewrite-${dataset}-${dbms}-${llm_model}.dat"
+result_log_path="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/r-bot/Experiment2-R-Bot-Rewrite-${dataset}-${dbms}-${llm_model}.dat"
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
-log_file_name="${exp_path}/results/stats/r-bot/runExperiment2-${dataset}-${dbms}-${baseline_name}-Analyze.dat"
+log_file_name="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/r-bot/runExperiment2-${dataset}-${dbms}-${baseline_name}-Analyze.dat"
 
 if [ $dataset == "publicbibenchmark" ]; then
     mkdir -p "${output_path}/queries"

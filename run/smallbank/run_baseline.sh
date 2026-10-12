@@ -68,8 +68,3 @@ echo "----------------->> Baseline smallbank <<-----------------"
 bench_arm_from_seed "baseline" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
 legacy_sync "${SMALLBANK_RESULTS}" "baseline" "smallbank"
 
-echo '-------------------<< Comparison >>-------------------'
-$CMDReport smallbank postgres
-
-echo "----------------->> Comparison smallbank <<-----------------"
-RESULTS_DIR="${SMALLBANK_RESULTS}" "${ROOT}/scripts/_lib/run_comparison.sh"

@@ -89,5 +89,4 @@ echo "----------------->> AgentTune tpcc <<-----------------"
 bench_arm_from_seed "agenttune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_agenttune_tpcc_tool
 legacy_sync "${TPCC_RESULTS}" "agenttune" "tpcc"
 
-echo "----------------->> Comparison tpcc <<-----------------"
-RESULTS_DIR="${TPCC_RESULTS}" "${EXP_PATH}/scripts/_lib/run_comparison.sh" || true
+

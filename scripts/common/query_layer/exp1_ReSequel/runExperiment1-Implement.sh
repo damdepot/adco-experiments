@@ -13,7 +13,8 @@ system_log="${exp_path}/out/query_layer/ReSequel-results/system-log-${date}.dat"
 output_path="${exp_path}/out/query_layer/ReSequel-results/Implement/${dataset}"
 mkdir -p ${output_path}
 
-result_log_path="${exp_path}/results/stats/resequel/Experiment1_LLM_Implement.dat"
+result_log_path="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/resequel/Experiment1_LLM_Implement.dat"
+mkdir -p "$(dirname "${result_log_path}")"
 
 cd "${exp_path}/baselines/ReSequel/src/main/python"
 source venv/bin/activate

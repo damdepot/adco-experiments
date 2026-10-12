@@ -11,7 +11,8 @@ workload_output="${exp_path}/out/query_layer/ReSequel-results/Template/${dbms}/$
 rm -rf $workload_output
 mkdir -p ${workload_output}
 
-log_file_name="${exp_path}/results/stats/resequel/Experiment1_Templatization.dat"
+log_file_name="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/resequel/Experiment1_Templatization.dat"
+mkdir -p "$(dirname "${log_file_name}")"
 
 if [ ! -f $log_file_name ]; then
     echo "dataset_name,dbms,time" > $log_file_name

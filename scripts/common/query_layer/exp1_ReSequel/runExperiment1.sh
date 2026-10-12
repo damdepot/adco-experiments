@@ -22,16 +22,16 @@ mkdir -p ${catalog_path}
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 
-CMDBuildCatalog=./scripts/stats/exp1_ReSequel/runExperiment1-BuildCatalog.sh
-CMDTemplatization=./scripts/stats/exp1_ReSequel/runExperiment1-Templatization.sh
-CMDReconstruct=./scripts/stats/exp1_ReSequel/runExperiment1-Reconstruct.sh
-CMDLabeling=./scripts/stats/exp1_ReSequel/runExperiment1-Label.sh
-CMDVerify=./scripts/stats/exp1_ReSequel/runExperiment1-Verify.sh
-CMDVerifyOR=./scripts/stats/exp1_ReSequel/runExperiment1-Verify-OR.sh
-CMDDownsampling=./scripts/stats/exp1_ReSequel/runExperiment1-Downsampling.sh
-CMDJudge=./scripts/stats/exp1_ReSequel/runExperiment1-Judge.sh
-CMDImplement="./scripts/stats/exp1_ReSequel/runExperiment1-Implement.sh ${dataset} ${catalog_path} ${dbms}"
-CMDReSequel="./scripts/stats/exp1_ReSequel/runExperiment1-ReSequel.sh ${dataset} ${catalog_path} ${llm_model} ${dbms}"
+CMDBuildCatalog=./scripts/common/query_layer/exp1_ReSequel/runExperiment1-BuildCatalog.sh
+CMDTemplatization=./scripts/common/query_layer/exp1_ReSequel/runExperiment1-Templatization.sh
+CMDReconstruct=./scripts/common/query_layer/exp1_ReSequel/runExperiment1-Reconstruct.sh
+CMDLabeling=./scripts/common/query_layer/exp1_ReSequel/runExperiment1-Label.sh
+CMDVerify=./scripts/common/query_layer/exp1_ReSequel/runExperiment1-Verify.sh
+CMDVerifyOR=./scripts/common/query_layer/exp1_ReSequel/runExperiment1-Verify-OR.sh
+CMDDownsampling=./scripts/common/query_layer/exp1_ReSequel/runExperiment1-Downsampling.sh
+CMDJudge=./scripts/common/query_layer/exp1_ReSequel/runExperiment1-Judge.sh
+CMDImplement="./scripts/common/query_layer/exp1_ReSequel/runExperiment1-Implement.sh ${dataset} ${catalog_path} ${dbms}"
+CMDReSequel="./scripts/common/query_layer/exp1_ReSequel/runExperiment1-ReSequel.sh ${dataset} ${catalog_path} ${llm_model} ${dbms}"
 
 
 if [ $op == "BuildCatalog" ]; then

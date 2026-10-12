@@ -10,11 +10,11 @@ type=${6:-"adco"}
 exp_path="$(pwd)"
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 
-CMDCompile=./scripts/stats/exp0_ADCo/runExperiment0-Compile.sh
-CMDACo=./scripts/stats/exp0_ADCo/runExperiment0-ACo.sh
-CMDADCo=./scripts/stats/exp0_ADCo/runExperiment0-ADCo.sh
-CMDDecompile=./scripts/stats/exp0_ADCo/runExperiment0-Decompile.sh
-CMDVerify=./scripts/stats/exp0_ADCo/runExperiment0-Verify.sh
+CMDCompile=./scripts/common/query_layer/exp0_ADCo/runExperiment0-Compile.sh
+CMDACo=./scripts/common/query_layer/exp0_ADCo/runExperiment0-ACo.sh
+CMDADCo=./scripts/common/query_layer/exp0_ADCo/runExperiment0-ADCo.sh
+CMDDecompile=./scripts/common/query_layer/exp0_ADCo/runExperiment0-Decompile.sh
+CMDVerify=./scripts/common/query_layer/exp0_ADCo/runExperiment0-Verify.sh
 
 if [ "$type" = "adco" ] || [ "$type" = "ADCo" ] || [ "$type" = "ADCo-results" ]; then
     res_dir="ADCo-results"

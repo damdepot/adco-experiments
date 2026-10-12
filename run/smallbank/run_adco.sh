@@ -71,8 +71,3 @@ else
     echo 'WARNING: ADCo Smallbank generation failed; skipping its measurement.' >&2
 fi
 
-echo '-------------------<< Comparison >>-------------------'
-$CMDReport smallbank postgres
-
-echo "----------------->> Comparison smallbank <<-----------------"
-RESULTS_DIR="${ROOT}/results/smallbank" "${ROOT}/scripts/_lib/run_comparison.sh"

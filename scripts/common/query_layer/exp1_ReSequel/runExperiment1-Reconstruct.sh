@@ -21,7 +21,8 @@ if [ $dataset == "publicbibenchmark" ]; then
     mkdir -p "${workload_output}"
 fi 
 
-log_file_name="${exp_path}/results/stats/resequel/Experiment1_Reconstruct.dat"
+log_file_name="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/resequel/Experiment1_Reconstruct.dat"
+mkdir -p "$(dirname "${log_file_name}")"
 
 if [ ! -f $log_file_name ]; then
     echo "dataset_name,dbms,llm_model,time" > $log_file_name

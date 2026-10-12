@@ -90,5 +90,4 @@ echo "----------------->> OtterTune tpcc <<-----------------"
 bench_arm_from_seed "ottertune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_ottertune_tpcc_tool
 legacy_sync "${TPCC_RESULTS}" "ottertune" "tpcc"
 
-echo "----------------->> Comparison tpcc <<-----------------"
-RESULTS_DIR="${TPCC_RESULTS}" "${EXP_PATH}/scripts/_lib/run_comparison.sh" || true
+

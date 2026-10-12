@@ -71,5 +71,3 @@ else
     echo 'WARNING: ADCo TPCC generation failed; skipping its measurement.' >&2
 fi
 
-echo "----------------->> Comparison tpcc <<-----------------"
-RESULTS_DIR="${EXP_PATH}/results/tpcc" "${EXP_PATH}/scripts/_lib/run_comparison.sh"

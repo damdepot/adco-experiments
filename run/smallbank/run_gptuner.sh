@@ -92,5 +92,4 @@ echo "----------------->> GPTuner smallbank <<-----------------"
 bench_arm_from_seed "gptuner" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_gptuner_smallbank_tool
 legacy_sync "${SMALLBANK_RESULTS}" "gptuner" "smallbank"
 
-echo "----------------->> Comparison smallbank <<-----------------"
-RESULTS_DIR="${SMALLBANK_RESULTS}" "${EXP_PATH}/scripts/_lib/run_comparison.sh" || true
+

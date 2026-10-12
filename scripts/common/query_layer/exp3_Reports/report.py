@@ -61,10 +61,11 @@ def main():
     
     file_prefix = f"runExperiment2-{args.dataset}-{args.dbms}"
     
-    # Benchmark-first layout: results/stats/<sys>/benchmarks (accept results/ or results/stats as --results-dir).
+    # Benchmark-first layout: results/<dataset>/<sys>/benchmarks (accept results/, results/<dataset>,
+    # or results/query-<dataset> as --results-dir).
     results_base = args.results_dir
-    if os.path.basename(os.path.normpath(results_base)) != 'stats':
-        results_base = os.path.join(results_base, 'stats')
+    if os.path.basename(os.path.normpath(results_base)) not in (args.dataset, f"query-{args.dataset}"):
+        results_base = os.path.join(results_base, args.dataset)
 
     for sys in systems:
         search_pattern = os.path.join(results_base, sys, 'benchmarks', f"{file_prefix}*.dat")

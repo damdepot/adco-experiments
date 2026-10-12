@@ -21,8 +21,8 @@ output_path="${exp_path}/out/query_layer/${output_dir}/Compile/${dbms}/${dataset
 rm -rf "$output_path"
 mkdir -p "${output_path}"
 
-mkdir -p "${exp_path}/results/stats/${log_dir}"
-log_file_name="${exp_path}/results/stats/${log_dir}/Experiment0_Compile.dat"
+mkdir -p "${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/${log_dir}"
+log_file_name="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/${log_dir}/Experiment0_Compile.dat"
 
 if [ ! -f "$log_file_name" ]; then
     echo "dataset_name,dbms,time" > "$log_file_name"

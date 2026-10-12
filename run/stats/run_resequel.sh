@@ -12,13 +12,13 @@ mkdir -p results/stats/resequel/benchmarks
 rm -rf out/query_layer/ReSequel-results
 mkdir -p out/query_layer/ReSequel-results
 
-export iteration=5
+export iteration=2
 export result_dir="results/stats/resequel"
 export result_benchmark_path="results/stats/resequel/benchmarks"
 export result_output_path="out/query_layer/ReSequel-results"
 
-CMDReSequel=./scripts/stats/exp1_ReSequel/runExperiment1.sh
-CMDRunWorkload=./scripts/stats/exp2_Baselines/runExperiment2-Workload.sh
+CMDReSequel=./scripts/common/query_layer/exp1_ReSequel/runExperiment1.sh
+CMDRunWorkload=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Workload.sh
 
 model="gemini-3.5-flash-lite"
 

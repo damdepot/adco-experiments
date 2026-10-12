@@ -14,7 +14,7 @@ mkdir -p ${output_path}
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 schema_path="${exp_path}/catalog/${dataset}/schema.json"
-log_file_name="${exp_path}/results/stats/learnedrewrite/runExperiment2-${dataset}-${dbms}-${baseline_name}.dat"
+log_file_name="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/learnedrewrite/runExperiment2-${dataset}-${dbms}-${baseline_name}.dat"
 mkdir -p "$(dirname "$log_file_name")"
 
 if [ $dataset == "publicbibenchmark" ]; then

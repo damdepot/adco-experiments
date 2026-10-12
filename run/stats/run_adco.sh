@@ -23,13 +23,13 @@ mkdir -p results/stats/adco/benchmarks
 rm -rf out/query_layer/ADCo-results
 mkdir -p out/query_layer/ADCo-results
 
-export iteration=5
+export iteration=2
 export result_dir="results/stats/adco"
 export result_benchmark_path="results/stats/adco/benchmarks"
 export result_output_path="out/query_layer/ADCo-results"
 
-CMDADCo=./scripts/stats/exp0_ADCo/runExperiment0.sh
-CMDRunWorkload=./scripts/stats/exp2_Baselines/runExperiment2-Workload.sh
+CMDADCo=./scripts/common/query_layer/exp0_ADCo/runExperiment0.sh
+CMDRunWorkload=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Workload.sh
 CMDDocker=./scripts/common/db_layer/exp1_Baselines/runExperiment1-Production-Docker.sh
 
 model="gemini-3.5-flash-lite"
@@ -59,6 +59,3 @@ else
 fi
 $CMDDocker Down ${db_container}
 $CMDDocker Up ${db_container} ${db_service}
-
-echo '-------------------<< Comparison >>-------------------'
-./scripts/stats/exp3_Reports/run_report.sh stats PostgreSQL

@@ -20,13 +20,10 @@ cd "${ROOT}"
 rm -rf results/stats/baseline
 mkdir -p results/stats/baseline/benchmarks
 
-export iteration=5
-CMDBaseline=./scripts/stats/exp2_Baselines/runExperiment2-Baseline.sh
+export iteration=2
+CMDBaseline=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Baseline.sh
 
 ## Run the baseline experiments
 #***************
 echo '-------------------<< Running the baseline experiments for Stats-Lite dataset >>-------------------'
 $CMDBaseline stats PostgreSQL 1
-
-echo '-------------------<< Comparison >>-------------------'
-./scripts/stats/exp3_Reports/run_report.sh stats PostgreSQL

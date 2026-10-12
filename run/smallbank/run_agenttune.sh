@@ -91,5 +91,4 @@ echo "----------------->> AgentTune smallbank <<-----------------"
 bench_arm_from_seed "agenttune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_agenttune_smallbank_tool
 legacy_sync "${SMALLBANK_RESULTS}" "agenttune" "smallbank"
 
-echo "----------------->> Comparison smallbank <<-----------------"
-RESULTS_DIR="${SMALLBANK_RESULTS}" "${EXP_PATH}/scripts/_lib/run_comparison.sh" || true
+

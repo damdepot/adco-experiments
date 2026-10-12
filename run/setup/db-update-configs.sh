@@ -121,6 +121,7 @@ rec['DB_Host'] = os.environ['PG_HOST']
 rec['DB_Name'] = 'agenttune'
 rec['DB_Port'] = os.environ['PG_PORT']
 rec['benchmark'] = 'SYSBENCH'
+rec['iteration'] = '10'
 
 with open(cfg, 'w') as f:
     c.write(f)

@@ -15,7 +15,8 @@ output_path="${exp_path}/out/query_layer/ReSequel-results/Rewrite/${dbms}/${data
 mkdir -p "${exp_path}/out/query_layer/ReSequel-results/Rewrite"
 mkdir -p ${output_path}
 
-result_log_path="${exp_path}/results/stats/resequel/Experiment1-LLM-Rewrite-${dataset}-${dbms}.dat"
+result_log_path="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/resequel/Experiment1-LLM-Rewrite-${dataset}-${dbms}.dat"
+mkdir -p "$(dirname "${result_log_path}")"
 
 workload_output="${exp_path}/out/query_layer/ReSequel-results/Rewrite-Template/${dbms}/${dataset}/${llm_model}"
 rm -rf "${workload_output}"

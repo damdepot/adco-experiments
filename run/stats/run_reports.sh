@@ -19,6 +19,6 @@ cd "${ROOT}"
 rm -rf reports/stats
 mkdir -p reports/stats
 
-CMDRunReports=./scripts/stats/exp3_Reports/run_report.sh
+CMDRunReports=./scripts/common/query_layer/exp3_Reports/run_report.sh
 
 $CMDRunReports "$@"

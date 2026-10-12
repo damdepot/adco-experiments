@@ -18,8 +18,8 @@ if [ $dataset == "publicbibenchmark" ]; then
     mkdir -p "${output_path_verify}/queries"
 fi    
 
-verify_log_path="${exp_path}/results/stats/r-bot/Experiment2_RBot_Verify_${dbms}_${dataset}.dat"
-mkdir -p "${exp_path}/results/stats/r-bot"
+verify_log_path="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/r-bot/Experiment2_RBot_Verify_${dbms}_${dataset}.dat"
+mkdir -p "${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/r-bot"
 
 cd "${exp_path}/workload/src"
 source venv/bin/activate

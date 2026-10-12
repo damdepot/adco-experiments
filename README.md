@@ -37,16 +37,18 @@ run on two layers:
 | `workload/databases/` | Per-DBMS SQL workloads: schemas, indexes, queries, import scripts |
 | `workload/src/` | Python harness that replays DB-layer workloads and logs results (`DBConfig.yaml` holds its DB credentials) |
 | `workload/apps/` | Cloned OLTP workload apps (Smallbank, TPC-C) with their own drivers and `db.config` |
-| `scripts/stats/` | DB-layer experiment drivers called by `run/stats` entry points (`exp0_ADCo`, `exp1_ReSequel`, `exp2_Baselines`, `exp3_Reports`) |
+| `scripts/common/query_layer/` | Dataset-neutral query-layer experiment drivers called by `run/stats`, `run/tpcc/query` and `run/smallbank/query` entry points (`exp0_ADCo`, `exp1_ReSequel`, `exp2_Baselines`, `exp3_Reports`) |
 | `scripts/common/app_layer/` | Benchmark-neutral app-layer drivers (ADCo, Py-DBridge, reports) shared by `run/tpcc` and `run/smallbank` |
 | `scripts/tpcc/` + `scripts/smallbank/` | Workload-specific app/DB-layer drivers called by `run/tpcc` and `run/smallbank` entry points |
 | `scripts/common/db_layer/` | Benchmark-neutral DB-layer drivers (ADCo/DCo, AgentTune/GPTuner/OtterTune, reports) shared by `run/tpcc` and `run/smallbank` |
-| `scripts/common/` | Benchmark-neutral drivers shared across workloads (`app_layer/`, `db_layer/`) |
+| `scripts/common/` | Benchmark-neutral drivers shared across workloads (`app_layer/`, `db_layer/`, `query_layer/`) |
 | `scripts/_lib/` | Shared shell harness (`bench_lib.sh`, `docker.sh`, `run_comparison.sh`) |
 | `catalog/` | Generated ReSequel catalog files (per-dataset JSONs, e.g. `catalog/stats/`) |
 | `results/tpcc/` | TPC-C results per approach (`baseline`, `aco`, `dco`, `adco`, `py-dbridge`, `agenttune`, `ottertune`, `gptuner`) |
 | `results/smallbank/` | Smallbank results per approach (same set as TPC-C) |
 | `results/stats/` | Stats-dataset results per approach (`baseline`, `aco`, `adco`, `resequel`, `r-bot`, `learnedrewrite`) |
+| `results/query-tpcc/` | TPCC query-layer results per approach (same set as stats) |
+| `results/query-smallbank/` | Smallbank query-layer results per approach (same set as stats) |
 | `out/query_layer/` | Rewritten queries for the DB layer (`ADCo-results/`, `ReSequel-results/`, `R-Bot-results/`, `LearnedRewrite-results/`) |
 | `out/app_layer/` | Rewritten code for the app layer (`ADCo-results/`, `Py-DBridge-results/`) |
 | `reports/` | Generated comparison reports (`run/tpcc/run_reports.sh`, `run/smallbank/run_reports.sh`, `run/stats/run_reports.sh`) |
@@ -134,5 +136,6 @@ Stats:
 ./run/stats/run_reports.sh        # comparison reports into reports/
 ```
 
-Results are written to `results/tpcc/`, `results/smallbank/` and `results/stats/`, with rewritten
+Results are written to `results/tpcc/`, `results/smallbank/` and `results/stats/`, plus the query-layer
+namespaces `results/query-tpcc/` and `results/query-smallbank/`, with rewritten
 queries in `out/query_layer/` and rewritten app code in `out/app_layer/`.

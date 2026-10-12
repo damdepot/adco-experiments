@@ -100,5 +100,4 @@ run_dco_smallbank_tool
 bench_measure "baseline" "dco.csv"
 legacy_sync "${SMALLBANK_RESULTS}" "dco" "${DCO_SMALLBANK_BASE}" "smallbank"
 
-echo "----------------->> Comparison smallbank <<-----------------"
-RESULTS_DIR="${EXP_PATH}/results/smallbank" "${EXP_PATH}/scripts/_lib/run_comparison.sh"
+

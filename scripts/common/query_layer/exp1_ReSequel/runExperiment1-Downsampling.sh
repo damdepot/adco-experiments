@@ -18,7 +18,8 @@ workload_output="${exp_path}/out/query_layer/ReSequel-results/Downsampling/${dbm
 rm -rf $workload_output
 mkdir -p ${workload_output}
 
-log_file_name="${exp_path}/results/stats/resequel/Experiment1_Downsampling.dat"
+log_file_name="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/resequel/Experiment1_Downsampling.dat"
+mkdir -p "$(dirname "${log_file_name}")"
 
 if [ ! -f $log_file_name ]; then
     echo "dataset_name,dbms,llm_model,time" > $log_file_name

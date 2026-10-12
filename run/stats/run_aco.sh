@@ -23,13 +23,13 @@ mkdir -p results/stats/aco/benchmarks
 rm -rf out/query_layer/ACo-results
 mkdir -p out/query_layer/ACo-results
 
-export iteration=5
+export iteration=2
 export result_dir="results/stats/aco"
 export result_benchmark_path="results/stats/aco/benchmarks"
 export result_output_path="out/query_layer/ACo-results"
 
-CMDADCo=./scripts/stats/exp0_ADCo/runExperiment0.sh
-CMDRunWorkload=./scripts/stats/exp2_Baselines/runExperiment2-Workload.sh
+CMDADCo=./scripts/common/query_layer/exp0_ADCo/runExperiment0.sh
+CMDRunWorkload=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Workload.sh
 
 model="gemini-3.5-flash-lite"
 
@@ -53,6 +53,3 @@ if aco_pipeline; then
 else
     echo 'WARNING: ACo rewrite pipeline failed; skipping its workload measurement.' >&2
 fi
-
-echo '-------------------<< Comparison >>-------------------'
-./scripts/stats/exp3_Reports/run_report.sh stats PostgreSQL

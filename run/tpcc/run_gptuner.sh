@@ -90,5 +90,4 @@ echo "----------------->> GPTuner tpcc <<-----------------"
 bench_arm_from_seed "gptuner" "baseline" "tpcc" "${SEED_DB_TPCC}" run_gptuner_tpcc_tool
 legacy_sync "${TPCC_RESULTS}" "gptuner" "tpcc"
 
-echo "----------------->> Comparison tpcc <<-----------------"
-RESULTS_DIR="${TPCC_RESULTS}" "${EXP_PATH}/scripts/_lib/run_comparison.sh" || true
+

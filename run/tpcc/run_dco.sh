@@ -72,5 +72,4 @@ run_dco_tpcc_tool
 bench_measure "baseline" "dco.csv"
 legacy_sync "${TPCC_RESULTS}" "dco" "${DCO_TPCC_BASE}" "tpcc"
 
-echo "----------------->> Comparison tpcc <<-----------------"
-RESULTS_DIR="${EXP_PATH}/results/tpcc" "${EXP_PATH}/scripts/_lib/run_comparison.sh"
+

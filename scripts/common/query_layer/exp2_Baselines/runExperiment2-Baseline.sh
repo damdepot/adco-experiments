@@ -5,13 +5,15 @@ dbms=$2
 scale=$3
 
 exp_path="$(pwd)"
-log_fname="${exp_path}/results/stats/baseline/benchmarks/runExperiment2-${dataset}-${dbms}"
-query_log_fname="${exp_path}/results/stats/baseline/${dbms}/${dataset}"
+log_fname="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/baseline/benchmarks/runExperiment2-${dataset}-${dbms}"
+query_log_fname="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/baseline/${dbms}/${dataset}"
+mkdir -p "$(dirname "${log_fname}")" "$(dirname "${query_log_fname}")"
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
 database_path="${exp_path}/data/duckdb"
 
 for itr in $(seq 1 "$iteration"); do
+    echo "[baseline] iteration ${itr}/${iteration} (${dataset}/${dbms}) starting..."
     sync
     echo 3 | tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true
 

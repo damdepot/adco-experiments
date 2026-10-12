@@ -6,7 +6,7 @@ llm_model=$3
 main_dataset=$4
 
 exp_path="$(pwd)"
-log_fname="${exp_path}/results/stats/runExperiment2-${dataset}-${dbms}-${llm_model}"
+log_fname="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/runExperiment2-${dataset}-${dbms}-${llm_model}"
 query_log_fname="${exp_path}/out/query_layer/log-baseline/${dbms}/${dataset}-${llm_model}"
 
 database_path="${exp_path}/data/duckdb"

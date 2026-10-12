@@ -9,7 +9,8 @@ exp_path="$(pwd)"
 
 date=$(date '+%Y-%m-%d-%H-%M-%S')
 
-log_file_name="${exp_path}/results/stats/resequel/Experiment1-Labeling-${dataset}-${llm_model}.dat"
+log_file_name="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/resequel/Experiment1-Labeling-${dataset}-${llm_model}.dat"
+mkdir -p "$(dirname "${log_file_name}")"
 
 cd "${exp_path}/baselines/ReSequel/src/main/python"
 source venv/bin/activate

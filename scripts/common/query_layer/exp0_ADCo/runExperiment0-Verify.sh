@@ -39,8 +39,8 @@ elif [ "$dbms" == "MySQL" ]; then
     sleep 10 
 fi 
 
-mkdir -p "${exp_path}/results/stats/${log_dir}"
-verify_log_path="${exp_path}/results/stats/${log_dir}/Experiment0_Verify.dat"
+mkdir -p "${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/${log_dir}"
+verify_log_path="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/${log_dir}/Experiment0_Verify.dat"
 
 cd "${exp_path}/workload/src"
 source venv/bin/activate

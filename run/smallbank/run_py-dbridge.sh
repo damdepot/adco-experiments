@@ -56,5 +56,4 @@ else
     echo 'WARNING: Py-DBridge Smallbank rewrite failed; skipping its measurement.' >&2
 fi
 
-echo '-------------------<< Comparison >>-------------------'
-$CMDReport smallbank postgres
+
