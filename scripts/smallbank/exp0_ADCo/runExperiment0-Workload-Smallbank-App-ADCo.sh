@@ -4,7 +4,7 @@ set -euo pipefail
 llm_model="${1:-${MODEL:-gemini-3.5-flash-lite}}"
 dbms="${2:-postgres}"
 accounts="${3:-${ACCOUNTS:-5000000}}"
-transactions="${4:-${TRANSACTIONS:-300000}}"
+transactions="${4:-${TRANSACTIONS:-60000}}"
 benchmark="${5:-smallbank}"
 dir_name="${6:-adco}"
 

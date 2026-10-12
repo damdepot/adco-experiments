@@ -10,7 +10,7 @@ exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/smallbank"
 
 ACCOUNTS="${ACCOUNTS:-5000000}"
-TRANSACTIONS="${TRANSACTIONS:-300000}"
+TRANSACTIONS="${TRANSACTIONS:-60000}"
 LOAD_THREADS="${LOAD_THREADS:-4}"
 REPS_DEFAULT="${REPS:-2}"
 TOOL_RESULTS="${exp_path}/results/smallbank/agenttune/benchmarks"

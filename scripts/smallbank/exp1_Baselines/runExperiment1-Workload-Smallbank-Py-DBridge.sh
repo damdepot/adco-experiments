@@ -3,7 +3,7 @@ set -euo pipefail
 
 dbms="${1:-postgres}"
 accounts="${2:-${ACCOUNTS:-5000000}}"
-transactions="${3:-${TRANSACTIONS:-300000}}"
+transactions="${3:-${TRANSACTIONS:-60000}}"
 benchmark="${4:-smallbank}"
 
 # Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.

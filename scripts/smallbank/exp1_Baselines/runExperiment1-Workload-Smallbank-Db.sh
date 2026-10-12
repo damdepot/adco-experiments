@@ -9,7 +9,7 @@
 #     <dir> is 'baseline' or an out/<dir> rewritten app (sandbox switch).
 #     <file> is the CSV name; reps default to $REPS (benchmarks scale: 2).
 #     Scale defaults to benchmarks scale, env-overridable:
-#       ACCOUNTS=5000000 TRANSACTIONS=300000 LOAD_THREADS=4 REPS=2
+#       ACCOUNTS=5000000 TRANSACTIONS=60000 LOAD_THREADS=4 REPS=2
 #   Legacy (standalone):
 #     runExperiment1-Workload-Smallbank.sh <dbms> <accounts> <transactions>
 #     PHASE unset => legacy `test` (reset+load+run) with reps loop + CHECKPOINT.
@@ -21,7 +21,7 @@ exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/smallbank"
 
 ACCOUNTS="${ACCOUNTS:-5000000}"
-TRANSACTIONS="${TRANSACTIONS:-300000}"
+TRANSACTIONS="${TRANSACTIONS:-60000}"
 LOAD_THREADS="${LOAD_THREADS:-4}"
 REPS_DEFAULT="${REPS:-2}"
 

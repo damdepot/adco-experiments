@@ -14,7 +14,7 @@ export WARMUP="${WARMUP:-30}"
 export WAREHOUSES="${WAREHOUSES:-32}"
 export CLIENTS="${CLIENTS:-8}"
 export ACCOUNTS="${ACCOUNTS:-5000000}"
-export TRANSACTIONS="${TRANSACTIONS:-300000}"
+export TRANSACTIONS="${TRANSACTIONS:-60000}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
@@ -51,7 +51,7 @@ if $CMDPyDBridge ${workload_path} ${source_file} postgres smallbank; then
     restore_defaults
     bench_assert_fresh_knobs
     bench_assert_rows "smallbank" "accounts" "${ACCOUNTS}"
-    PHASE=execute $CMDRunSmallbank postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-300000}" smallbank
+    PHASE=execute $CMDRunSmallbank postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-60000}" smallbank
 else
     echo 'WARNING: Py-DBridge Smallbank rewrite failed; skipping its measurement.' >&2
 fi

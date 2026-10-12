@@ -14,7 +14,7 @@ export WARMUP="${WARMUP:-30}"
 export WAREHOUSES="${WAREHOUSES:-32}"
 export CLIENTS="${CLIENTS:-8}"
 export ACCOUNTS="${ACCOUNTS:-5000000}"
-export TRANSACTIONS="${TRANSACTIONS:-300000}"
+export TRANSACTIONS="${TRANSACTIONS:-60000}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
 export DBMS="${DBMS:-postgres}"
 MODEL="${MODEL:-gemini-3.5-flash-lite}"
@@ -66,7 +66,7 @@ echo '-------------------<< Generating ADCo (ACo + DCo) for Smallbank >>--------
 if $CMDADCoApp ADCo ${model} postgres smallbank; then
     echo '-------------------<< Running ADCo Smallbank workload >>-------------------'
     measure_prep
-    PHASE=execute $CMDRunSmallbankApp ${model} postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-300000}" smallbank adco
+    PHASE=execute $CMDRunSmallbankApp ${model} postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-60000}" smallbank adco
 else
     echo 'WARNING: ADCo Smallbank generation failed; skipping its measurement.' >&2
 fi
