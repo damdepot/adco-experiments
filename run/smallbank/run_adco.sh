@@ -50,11 +50,16 @@ SEED_DB_SMALLBANK="smallbank_seed"
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
+bench_assert_seed "${SEED_DB_SMALLBANK}"
 
 ### ADCo (unified rewrite+tune, single run; rewritten-app arm measured only)
 ### **********
 echo "----------------->> Restore seed for single ADCo run <<-----------------"
 bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
+# Fresh data + default knobs verified before tool (abort on failure).
+restore_defaults
+bench_assert_fresh_knobs
+bench_assert_rows "smallbank" "accounts" "${ACCOUNTS}"
 
 echo '-------------------<< ADCo (unified single run: ACo rewrite + DCo tune) >>-------------------'
 echo '-------------------<< Generating ADCo (ACo + DCo) for Smallbank >>-------------------'

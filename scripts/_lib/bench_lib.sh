@@ -171,6 +171,8 @@ bench_arm_from_seed() {
 
     bench_restore "${db}" "${seed}"
     if [ -n "${tool_fn}" ]; then
+        restore_defaults
+        bench_assert_fresh_knobs
         "${tool_fn}"
         bench_restore "${db}" "${seed}"
     fi
@@ -242,11 +244,49 @@ else:
 }
 
 restore_defaults() {
-    psql -d "${DB}" -c "ALTER SYSTEM RESET ALL;" >/dev/null 2>&1 || true
-    psql -d "${DB}" -c "SELECT pg_reload_conf();" >/dev/null 2>&1 || true
+    # Load-bearing: failures must abort loudly (no suppression), so a
+    # half-reset can never pass silently into a measurement.
+    psql -d "${DB:-postgres}" -c "ALTER SYSTEM RESET ALL;"
+    psql -d "${DB:-postgres}" -c "SELECT pg_reload_conf();"
     if [ "${RESTORE_RESTART:-1}" = "1" ]; then
-        "${CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}" >/dev/null 2>&1 || true
-        "${CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}" >/dev/null 2>&1 || true
+        "${CMDDOCKER:-${BENCH_CMDDOCKER}}" Restart "${BENCH_DB_CONTAINER}"
+        "${CMDDOCKER:-${BENCH_CMDDOCKER}}" WaitFor "${BENCH_DB_CONTAINER}"
+    fi
+}
+
+bench_assert_seed() {
+    local seed="${1:-}"
+    local got
+    got="$(psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname='${seed}'" 2>/dev/null || true)"
+    if [ "${got}" != "1" ]; then
+        echo "ERROR: seed database '${seed}' not found; run the baseline first (or RESEED=1)." >&2
+        exit 1
+    fi
+}
+
+bench_assert_fresh_knobs() {
+    # Tuner pollution lands in postgresql.auto.conf, which always sets
+    # sourcefile (PG17 reports auto.conf entries as source='configuration
+    # file'). The 7 permanent source='override' rows with NULL sourcefile
+    # (file-location GUCs + image-level transaction_* defaults) are
+    # environmental constants, present even on a fresh container — ignored.
+    local n
+    n="$(psql -d postgres -tA -c "SELECT count(*) FROM pg_settings WHERE sourcefile LIKE '%postgresql.auto.conf'" 2>/dev/null || true)"
+    if [ "${n}" != "0" ]; then
+        echo "ERROR: stale knobs from a previous arm persist (auto.conf override count=${n}); re-run (reset failed)." >&2
+        exit 1
+    fi
+}
+
+bench_assert_rows() {
+    local db="${1:-}"
+    local table="${2:-}"
+    local expected="${3:-}"
+    local actual
+    actual="$(psql -d "${db}" -tA -c "SELECT count(*) FROM \"${table}\"" 2>/dev/null || true)"
+    if ! [ "${actual:-0}" -eq "${expected}" ] 2>/dev/null; then
+        echo "ERROR: row count mismatch in '${db}.${table}': expected ${expected}, got ${actual}; RESEED=1 to reload." >&2
+        exit 1
     fi
 }
 

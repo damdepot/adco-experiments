@@ -3,7 +3,7 @@
 # AgentTune experiments (SmallBank only) — canonical seed-once +
 # bench_arm_from_seed pattern (cf. benchmarks/run0_smallbank.sh).
 #
-# bench_lock, SEED_DB, bench_seed_once, per-arm bench_arm_from_seed
+# bench_lock, SEED_DB, bench_ensure_seed, per-arm bench_arm_from_seed
 # with tool fns, comparison call per benchmark.
 #
 # Baseline compat: the existing
@@ -84,6 +84,8 @@ run_agenttune_smallbank_tool() {
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
+bench_assert_seed "${SEED_DB_SMALLBANK}"
+bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${ACCOUNTS}"
 
 echo "----------------->> AgentTune smallbank <<-----------------"
 bench_arm_from_seed "agenttune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_agenttune_smallbank_tool

@@ -36,14 +36,19 @@ SEED_DB_SMALLBANK="smallbank_seed"
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
+bench_assert_seed "${SEED_DB_SMALLBANK}"
 
 ### ACo
 ### **********
 echo '-------------------<< ACo >>-------------------'
+bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
+# Fresh data + default knobs verified before rewrite execute (abort on failure).
+restore_defaults
+bench_assert_fresh_knobs
+bench_assert_rows "smallbank" "accounts" "${ACCOUNTS}"
 echo '-------------------<< Generating ACo rewrite for Smallbank >>-------------------'
 if $CMDADCo ACo ${model} postgres smallbank; then
     echo '-------------------<< Running ACo Smallbank workload >>-------------------'
-    bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
     PHASE=execute $CMDRunSmallbank ${model} postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-300000}" smallbank aco
 else
     echo 'WARNING: ACo Smallbank rewrite failed; skipping its measurement.' >&2

@@ -46,9 +46,13 @@ SEED_DB_TPCC="tpcc_seed"
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
+bench_assert_seed "${SEED_DB_TPCC}"
 
-# Single restore for the run: fresh snapshot before the rewrite.
+# Single restore for the run: fresh snapshot + default knobs before the rewrite.
 bench_restore "tpcc" "${SEED_DB_TPCC}"
+restore_defaults
+bench_assert_fresh_knobs
+bench_assert_rows "tpcc" "warehouse" "${WAREHOUSES}"
 
 
 ###  Rewrite + Workload: TPCC

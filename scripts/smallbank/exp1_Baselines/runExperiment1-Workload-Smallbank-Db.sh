@@ -7,7 +7,7 @@
 #     runExperiment1-Workload-Smallbank.sh <dir> <file> [reps]
 #     PHASE=load|execute selects the phase (default: execute).
 #     <dir> is 'baseline' or an out/<dir> rewritten app (sandbox switch).
-#     <file> is the CSV name; reps default to $REPS (benchmarks scale: 5).
+#     <file> is the CSV name; reps default to $REPS (benchmarks scale: 2).
 #     Scale defaults to benchmarks scale, env-overridable:
 #       ACCOUNTS=5000000 TRANSACTIONS=300000 LOAD_THREADS=4 REPS=2
 #   Legacy (standalone):

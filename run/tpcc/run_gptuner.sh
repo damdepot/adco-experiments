@@ -3,7 +3,7 @@
 # GPTuner experiments — canonical seed-once + bench_arm_from_seed pattern
 # (cf. benchmarks/run0_smallbank.sh).
 #
-# bench_lock, SEED_DB, bench_seed_once, per-arm bench_arm_from_seed
+# bench_lock, SEED_DB, bench_ensure_seed, per-arm bench_arm_from_seed
 # with tool fns, comparison call per benchmark.
 #
 # Baseline compat: the existing
@@ -83,6 +83,8 @@ run_gptuner_tpcc_tool() {
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
+bench_assert_seed "${SEED_DB_TPCC}"
+bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${WAREHOUSES}"
 
 echo "----------------->> GPTuner tpcc <<-----------------"
 bench_arm_from_seed "gptuner" "baseline" "tpcc" "${SEED_DB_TPCC}" run_gptuner_tpcc_tool

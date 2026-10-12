@@ -36,6 +36,7 @@ SEED_DB_SMALLBANK="smallbank_seed"
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
+bench_assert_seed "${SEED_DB_SMALLBANK}"
 
 
 ###  Rewrite + Workload: Smallbank
@@ -46,6 +47,10 @@ source_file="drivers/postgresdriver.py"
 if $CMDPyDBridge ${workload_path} ${source_file} postgres smallbank; then
     echo '-------------------<< Running the Smallbank workload >>-------------------'
     bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
+    # Fresh data + default knobs verified before rewrite execute (abort on failure).
+    restore_defaults
+    bench_assert_fresh_knobs
+    bench_assert_rows "smallbank" "accounts" "${ACCOUNTS}"
     PHASE=execute $CMDRunSmallbank postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-300000}" smallbank
 else
     echo 'WARNING: Py-DBridge Smallbank rewrite failed; skipping its measurement.' >&2

@@ -52,9 +52,13 @@ SEED_DB_TPCC="tpcc_seed"
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
+bench_assert_seed "${SEED_DB_TPCC}"
 
 echo "----------------->> ADCo tpcc (unified single run) <<-----------------"
 bench_restore "tpcc" "${SEED_DB_TPCC}"
+restore_defaults
+bench_assert_fresh_knobs
+bench_assert_rows "tpcc" "warehouse" "${WAREHOUSES}"
 
 ### ADCo (single unified run: ACo rewrite + DCo tune, rewritten-app arm measured)
 ### **********

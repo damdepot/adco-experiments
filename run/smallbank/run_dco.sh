@@ -4,8 +4,8 @@
 # tune -> restart -> measure (cf. benchmarks/run0_smallbank.sh,
 # run2_dco_smallbank.sh).
 #
-#   bench_lock, SEED_DB, bench_ensure_seed, inline restore/tool/restart/
-#   measure, comparison call per benchmark.
+#   bench_lock, SEED_DB, bench_ensure_seed, inline restore/reset/asserts/
+#   tool/restart/measure, comparison call per benchmark.
 #
 # Contract (env-overridable, benchmarks scale):
 #   CPU_CORES=2 MEMORY_GB=4 REPS=2 DURATION=180 WARMUP=30
@@ -86,9 +86,14 @@ run_dco_smallbank_tool() {
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
+bench_assert_seed "${SEED_DB_SMALLBANK}"
 
 echo "----------------->> DCo smallbank <<-----------------"
 bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
+# Fresh data + default knobs verified before tool (abort on failure).
+restore_defaults
+bench_assert_fresh_knobs
+bench_assert_rows "smallbank" "accounts" "${ACCOUNTS}"
 run_dco_smallbank_tool
 "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
 "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"

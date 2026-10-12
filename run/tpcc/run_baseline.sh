@@ -55,7 +55,13 @@ export RESULTS_DIR="${TPCC_RESULTS}"
 SEED_DB_TPCC="tpcc_seed"
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
-bench_seed_once "tpcc" "${SEED_DB_TPCC}"
+bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
+# Snapshot taken once (load only when missing/stale, else reuse).
+# restore_defaults => default knobs; asserts prove it + catch stale scale.
+bench_assert_seed "${SEED_DB_TPCC}"
+restore_defaults
+bench_assert_fresh_knobs
+bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${WAREHOUSES}"
 
 echo "----------------->> Baseline tpcc <<-----------------"
 bench_arm_from_seed "baseline" "baseline" "tpcc" "${SEED_DB_TPCC}"

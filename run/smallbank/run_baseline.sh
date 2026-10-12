@@ -55,7 +55,14 @@ export RESULTS_DIR="${SMALLBANK_RESULTS}"
 SEED_DB_SMALLBANK="smallbank_seed"
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
-bench_seed_once "smallbank" "${SEED_DB_SMALLBANK}"
+bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
+
+# Snapshot taken once (load only when missing/stale, else reuse).
+# restore_defaults => default knobs; asserts prove it + catch stale scale.
+bench_assert_seed "${SEED_DB_SMALLBANK}"
+restore_defaults
+bench_assert_fresh_knobs
+bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${ACCOUNTS}"
 
 echo "----------------->> Baseline smallbank <<-----------------"
 bench_arm_from_seed "baseline" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
