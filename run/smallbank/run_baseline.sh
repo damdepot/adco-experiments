@@ -25,20 +25,7 @@ bench_lock "${ROOT}"
 rm -rf results/smallbank/baseline
 mkdir -p results/smallbank/baseline/benchmarks
 
-CMDRunSmallbank=./scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-App.sh
-CMDDocker=./scripts/_lib/docker.sh
 CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
-
-db_container="adcoexp-db"
-db_service="pgdb"
-
-# Restore-from-snapshot + cold buffers before every measure; workloads run
-# PHASE=execute against pristine seed data.
-measure_prep() {
-    "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
-    "${CMDDocker}" WaitFor "${db_container}"
-    bench_settle
-}
 
 # Copy canonical rep CSVs to single-file aliases for report.py compat.
 # $1=subdir $2=tag $3=benchmark
@@ -58,8 +45,8 @@ legacy_sync() {
     fi
 }
 
-### Baseline: Smallbank (db layer first: its log byproducts share names with
-### the app phase logs below, and the later phase always wins)
+### Baseline: Smallbank (single db-arm measurement; its aliases feed both the
+### db-layer and app-layer reports, so no second app-phase run is needed)
 ### **********
 export BENCH_CMDRUNTPCC="${ROOT}/scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-Db.sh"
 SMALLBANK_RESULTS="${ROOT}/results/smallbank/baseline/benchmarks"
@@ -73,13 +60,6 @@ bench_seed_once "smallbank" "${SEED_DB_SMALLBANK}"
 echo "----------------->> Baseline smallbank <<-----------------"
 bench_arm_from_seed "baseline" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
 legacy_sync "${SMALLBANK_RESULTS}" "baseline" "smallbank"
-
-### Workload: Smallbank (app layer, last so its logs survive alongside the db files)
-### **********
-echo '-------------------<< Running the Smallbank workload >>-------------------'
-bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
-measure_prep
-PHASE=execute $CMDRunSmallbank postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-300000}"
 
 echo '-------------------<< Comparison >>-------------------'
 $CMDReport smallbank postgres
