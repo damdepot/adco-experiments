@@ -10,7 +10,7 @@ exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/tpcc"
 
 WAREHOUSES="${WAREHOUSES:-32}"
-CLIENTS="${CLIENTS:-16}"
+CLIENTS="${CLIENTS:-8}"
 DURATION="${DURATION:-180}"
 WARMUP="${WARMUP:-30}"
 REPS_DEFAULT="${REPS:-5}"

@@ -21,7 +21,7 @@ export REPS="${REPS:-5}"
 export DURATION="${DURATION:-180}"
 export WARMUP="${WARMUP:-30}"
 export WAREHOUSES="${WAREHOUSES:-32}"
-export CLIENTS="${CLIENTS:-16}"
+export CLIENTS="${CLIENTS:-8}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
 
 # Fresh default config + empty DB; CPU_CORES/MEMORY_GB already exported so the
@@ -46,10 +46,16 @@ bench_settle() {
     sleep "${SETTLE_SECS:-5}"
 }
 
-# Load the shared baseline dataset via the original app, checkpoint, settle.
+# Load the shared baseline dataset via the original app, vacuum, checkpoint,
+# settle. Optional $2 (db name): VACUUM (ANALYZE) so the snapshot inherits
+# clean visibility maps + planner stats and in-run autovacuum stays quiet.
 bench_load() {
     local file="$1"
+    local db="${2:-}"
     PHASE=load "${BENCH_CMDRUNTPCC}" baseline "${file}"
+    if [ -n "${db}" ]; then
+        psql -d "${db}" -c "VACUUM (ANALYZE);"
+    fi
     "${BENCH_CMDDOCKER}" Checkpoint "${BENCH_DB_CONTAINER}"
     bench_settle
 }
@@ -88,20 +94,23 @@ bench_arm() {
 }
 
 # Snapshot a pristine dataset once so multi-arm runs load only once.
-# bench_snapshot <db> <seed>: CHECKPOINT, settle, then
-#   CREATE DATABASE <seed> TEMPLATE <db>. The template stays untouched;
-#   per-arm resets recreate <db> from it in seconds.
+# bench_snapshot <db> <seed>: CREATE DATABASE <seed> TEMPLATE <db>.
+#   Caller (bench_seed_once) runs bench_load first, which ends with
+#   CHECKPOINT + settle and no writes after — so no checkpoint here.
+#   The template stays untouched; per-arm restores recreate <db> from
+#   it in seconds.
 # bench_restore <db> <seed>: DROP + recreate <db> from <seed>, then
 #   checkpoint and settle so measurement starts from identical data.
 # Knob settings (postgresql.auto.conf) are cluster-level and survive both.
 bench_snapshot() {
     local db="$1"
     local seed="$2"
-    "${BENCH_CMDDOCKER}" Checkpoint "${BENCH_DB_CONTAINER}"
-    bench_settle
     psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('${db}', '${seed}') AND pid <> pg_backend_pid();"
     psql -d postgres -c "DROP DATABASE IF EXISTS \"${seed}\" WITH (FORCE);"
     psql -d postgres -c "CREATE DATABASE \"${seed}\" TEMPLATE \"${db}\";"
+    local size
+    size="$(docker exec -u postgres "${BENCH_DB_CONTAINER}" psql -tA -c "SELECT pg_size_pretty(pg_database_size('${seed}'));" 2>/dev/null || echo "unknown size")"
+    echo "-------------------<< Database snapshot saved: '${seed}' (${size}) from '${db}' >>-------------------"
 }
 
 bench_restore() {
@@ -109,6 +118,7 @@ bench_restore() {
     local seed="$2"
     psql -d postgres -c "DROP DATABASE IF EXISTS \"${db}\" WITH (FORCE);"
     psql -d postgres -c "CREATE DATABASE \"${db}\" TEMPLATE \"${seed}\";"
+    echo "-------------------<< Database restored: '${db}' from snapshot '${seed}' >>-------------------"
     "${BENCH_CMDDOCKER}" Checkpoint "${BENCH_DB_CONTAINER}"
     bench_settle
 }
@@ -120,7 +130,7 @@ bench_seed_once() {
     local db="$1"
     local seed="$2"
     bench_reset
-    bench_load "load_seed.csv"
+    bench_load "load_seed.csv" "${db}"
     bench_snapshot "${db}" "${seed}"
 }
 

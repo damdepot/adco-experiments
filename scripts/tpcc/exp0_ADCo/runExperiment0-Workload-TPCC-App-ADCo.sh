@@ -4,7 +4,7 @@ set -euo pipefail
 llm_model="${1:-${MODEL:-gemini-3.5-flash-lite}}"
 dbms="${2:-postgres}"
 warehouses="${3:-${WAREHOUSES:-32}}"
-clients="${4:-${CLIENTS:-16}}"
+clients="${4:-${CLIENTS:-8}}"
 benchmark="${5:-tpcc}"
 dir_name="${6:-adco}"
 duration="${DURATION:-180}"

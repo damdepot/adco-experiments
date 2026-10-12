@@ -12,7 +12,7 @@ export REPS="${REPS:-5}"
 export DURATION="${DURATION:-180}"
 export WARMUP="${WARMUP:-30}"
 export WAREHOUSES="${WAREHOUSES:-32}"
-export CLIENTS="${CLIENTS:-16}"
+export CLIENTS="${CLIENTS:-8}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"

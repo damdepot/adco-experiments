@@ -3,7 +3,7 @@ set -euo pipefail
 
 dbms="${1:-postgres}"
 warehouses="${2:-${WAREHOUSES:-32}}"
-clients="${3:-${CLIENTS:-16}}"
+clients="${3:-${CLIENTS:-8}}"
 benchmark="${4:-tpcc}"
 duration="${DURATION:-180}"
 

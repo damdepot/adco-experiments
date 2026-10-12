@@ -9,7 +9,7 @@
 #
 # Contract (env-overridable, benchmarks scale):
 #   CPU_CORES=2 MEMORY_GB=4 REPS=5 DURATION=180 WARMUP=30
-#   WAREHOUSES=32 CLIENTS=16 ACCOUNTS=5000000 TRANSACTIONS=300000
+#   WAREHOUSES=32 CLIENTS=8 ACCOUNTS=5000000 TRANSACTIONS=300000
 #
 # No post-tool restore: the DB is measured as the tuner left it, followed
 # by Restart/WaitFor cold buffers before measure. Knob settings live in
@@ -35,7 +35,7 @@ export REPS="${REPS:-5}"
 export DURATION="${DURATION:-180}"
 export WARMUP="${WARMUP:-30}"
 export WAREHOUSES="${WAREHOUSES:-32}"
-export CLIENTS="${CLIENTS:-16}"
+export CLIENTS="${CLIENTS:-8}"
 export ACCOUNTS="${ACCOUNTS:-5000000}"
 export TRANSACTIONS="${TRANSACTIONS:-300000}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
