@@ -1,0 +1,4 @@
+SELECT
+  (SELECT custid FROM ACCOUNTS WHERE custid = 100),
+  (SELECT bal FROM SAVINGS WHERE custid = 100),
+  (SELECT bal FROM CHECKING WHERE custid = 100);
