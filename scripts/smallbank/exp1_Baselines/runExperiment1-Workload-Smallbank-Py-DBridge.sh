@@ -15,7 +15,7 @@ case "${phase}" in
         exit 2
         ;;
 esac
-reps="${REPS:-5}"
+reps="${REPS:-2}"
 if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
     echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
     exit 2

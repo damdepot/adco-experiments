@@ -17,7 +17,7 @@ BENCH_DB_SERVICE="${BENCH_DB_SERVICE:-pgdb}"
 # the exact values the runners measure with.
 export CPU_CORES="${CPU_CORES:-2}"
 export MEMORY_GB="${MEMORY_GB:-4}"
-export REPS="${REPS:-5}"
+export REPS="${REPS:-2}"
 export DURATION="${DURATION:-180}"
 export WARMUP="${WARMUP:-30}"
 export WAREHOUSES="${WAREHOUSES:-32}"

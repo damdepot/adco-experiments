@@ -13,7 +13,7 @@ WAREHOUSES="${WAREHOUSES:-32}"
 CLIENTS="${CLIENTS:-8}"
 DURATION="${DURATION:-180}"
 WARMUP="${WARMUP:-30}"
-REPS_DEFAULT="${REPS:-5}"
+REPS_DEFAULT="${REPS:-2}"
 TOOL_RESULTS="${exp_path}/results/tpcc/ottertune/benchmarks"
 
 if [[ "${2:-}" == *.csv* ]]; then

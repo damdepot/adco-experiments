@@ -5,7 +5,7 @@
 # Canonical (bench_lib): <dir> <file> [reps], PHASE=load|execute (default execute).
 # Legacy: <model> <dbms> <warehouses> <clients> <benchmark> <dir_name>
 # Scale defaults to benchmarks scale, env-overridable:
-#   WAREHOUSES=32 CLIENTS=8 DURATION=180 WARMUP=30 REPS=5
+#   WAREHOUSES=32 CLIENTS=8 DURATION=180 WARMUP=30 REPS=2
 #
 set -euo pipefail
 
@@ -16,7 +16,7 @@ WAREHOUSES="${WAREHOUSES:-32}"
 CLIENTS="${CLIENTS:-8}"
 DURATION="${DURATION:-180}"
 WARMUP="${WARMUP:-30}"
-REPS_DEFAULT="${REPS:-5}"
+REPS_DEFAULT="${REPS:-2}"
 
 if [[ "${2:-}" == *.csv* ]]; then
     dir="${1}"

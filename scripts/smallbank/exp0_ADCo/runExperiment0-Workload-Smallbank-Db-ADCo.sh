@@ -6,7 +6,7 @@
 # Legacy: <model> <dbms> <accounts> <transactions> <benchmark> <dir_name>
 #   (all positional args optional; env overrides win for scale).
 # Scale defaults to benchmarks scale, env-overridable:
-#   ACCOUNTS=5000000 TRANSACTIONS=300000 LOAD_THREADS=4 REPS=5
+#   ACCOUNTS=5000000 TRANSACTIONS=300000 LOAD_THREADS=4 REPS=2
 #
 set -euo pipefail
 
@@ -16,7 +16,7 @@ workload_path="${exp_path}/workload/apps/smallbank"
 ACCOUNTS="${ACCOUNTS:-5000000}"
 TRANSACTIONS="${TRANSACTIONS:-300000}"
 LOAD_THREADS="${LOAD_THREADS:-4}"
-REPS_DEFAULT="${REPS:-5}"
+REPS_DEFAULT="${REPS:-2}"
 
 if [[ "${2:-}" == *.csv* ]]; then
     dir="${1}"

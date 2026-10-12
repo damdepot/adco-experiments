@@ -8,7 +8,7 @@
 #   measure, comparison call per benchmark.
 #
 # Contract (env-overridable, benchmarks scale):
-#   CPU_CORES=2 MEMORY_GB=4 REPS=5 DURATION=180 WARMUP=30
+#   CPU_CORES=2 MEMORY_GB=4 REPS=2 DURATION=180 WARMUP=30
 #   WAREHOUSES=32 CLIENTS=8 ACCOUNTS=5000000 TRANSACTIONS=300000
 #
 # No post-tool restore: the DB is measured as the tuner left it, followed
@@ -31,7 +31,7 @@ LIB="${EXP_PATH}/scripts/_lib/bench_lib.sh"
 
 export CPU_CORES="${CPU_CORES:-2}"
 export MEMORY_GB="${MEMORY_GB:-4}"
-export REPS="${REPS:-5}"
+export REPS="${REPS:-2}"
 export DURATION="${DURATION:-180}"
 export WARMUP="${WARMUP:-30}"
 export WAREHOUSES="${WAREHOUSES:-32}"
