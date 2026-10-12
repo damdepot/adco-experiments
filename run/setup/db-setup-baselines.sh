@@ -70,4 +70,8 @@ setup_venv "${gptuner_path}"
 ### OtterTune
 echo '-------------------<< Setting up OtterTune baseline >>-------------------'
 ottertune_path="${root_path}/baselines/OtterTune"
-docker build --platform linux/amd64 -t ottertune-tuner "${ottertune_path}"
+if docker image inspect ottertune-tuner:latest >/dev/null 2>&1; then
+    echo 'ottertune-tuner image already exists, skipping'
+else
+    docker build --platform linux/amd64 -t ottertune-tuner "${ottertune_path}"
+fi

@@ -33,7 +33,6 @@ bench_lock "${ROOT}"
 CMDADCoApp=./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh
 CMDRunTPCC=./scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh
 CMDDocker=./scripts/_lib/docker.sh
-CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
 
 model="${MODEL}"
 db_container="adcoexp-db"
@@ -71,9 +70,6 @@ if $CMDADCoApp ADCo ${model} postgres tpcc; then
 else
     echo 'WARNING: ADCo TPCC generation failed; skipping its measurement.' >&2
 fi
-
-echo '-------------------<< Comparison >>-------------------'
-$CMDReport tpcc postgres
 
 echo "----------------->> Comparison tpcc <<-----------------"
 RESULTS_DIR="${EXP_PATH}/results/tpcc" "${EXP_PATH}/scripts/_lib/run_comparison.sh"

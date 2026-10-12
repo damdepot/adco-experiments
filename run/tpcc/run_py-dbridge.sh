@@ -29,7 +29,6 @@ export result_output_path="out/app_layer/Py-DBridge-results"
 CMDPyDBridge=./scripts/common/app_layer/exp1_Baselines/runExperiment1-Py-DBridge.sh
 CMDRunTPCC=./scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh
 CMDDocker=./scripts/_lib/docker.sh
-CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
 
 db_container="adcoexp-db"
 db_service="pgdb"
@@ -67,6 +66,3 @@ if $CMDPyDBridge ${workload_path} ${source_file} postgres tpcc; then
 else
     echo 'WARNING: Py-DBridge TPCC rewrite failed; skipping its measurement.' >&2
 fi
-
-echo '-------------------<< Comparison >>-------------------'
-$CMDReport tpcc postgres

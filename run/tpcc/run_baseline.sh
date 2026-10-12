@@ -26,8 +26,6 @@ mkdir -p results/tpcc/baseline/benchmarks
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
 
-CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
-
 # Copy canonical rep CSVs to single-file aliases for report.py compat.
 # $1=subdir $2=tag $3=benchmark
 legacy_sync() {
@@ -66,9 +64,6 @@ bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${WAREHOUSES}"
 echo "----------------->> Baseline tpcc <<-----------------"
 bench_arm_from_seed "baseline" "baseline" "tpcc" "${SEED_DB_TPCC}"
 legacy_sync "${TPCC_RESULTS}" "baseline" "tpcc"
-
-echo '-------------------<< Comparison >>-------------------'
-$CMDReport tpcc postgres
 
 echo "----------------->> Comparison tpcc <<-----------------"
 RESULTS_DIR="${TPCC_RESULTS}" "${EXP_PATH}/scripts/_lib/run_comparison.sh"

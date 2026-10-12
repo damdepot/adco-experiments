@@ -26,7 +26,6 @@ mkdir -p out/app_layer/ACo-results
 # Define variables and command paths
 CMDADCo=./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh
 CMDRunTPCC=./scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh
-CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
 
 model="${MODEL:-gemini-3.5-flash-lite}"
 
@@ -50,6 +49,3 @@ if $CMDADCo ACo ${model} postgres tpcc; then
 else
     echo 'WARNING: ACo TPCC rewrite failed; skipping its measurement.' >&2
 fi
-
-echo '-------------------<< Comparison >>-------------------'
-$CMDReport tpcc postgres

@@ -35,6 +35,11 @@ mkdir -p "${log_dir}" "${record_dir}" "${output_dir}/benchmarks"
 
 echo "-------------------<< Running OtterTune Bayesian Optimization for ${benchmark} >>-------------------"
 
+if ! docker image inspect ottertune-tuner:latest >/dev/null 2>&1; then
+    echo "ERROR: image 'ottertune-tuner:latest' not found; build it first via ./run/setup/db-setup-baselines.sh (or: docker build -t ottertune-tuner baselines/OtterTune)." >&2
+    exit 1
+fi
+
 # Inspect the network of the database container to attach to the same bridge network
 DB_NETWORK=$(docker inspect "${CONTAINER_NAME}" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || echo "adco-experiments_default")
 
