@@ -9,10 +9,10 @@ set -euo pipefail
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/smallbank"
 
-ACCOUNTS="${ACCOUNTS:-1000000}"
-TRANSACTIONS="${TRANSACTIONS:-60000}"
-LOAD_THREADS="${LOAD_THREADS:-8}"
-REPS_DEFAULT="${REPS:-3}"
+ACCOUNTS="${ACCOUNTS:-5000000}"
+TRANSACTIONS="${TRANSACTIONS:-300000}"
+LOAD_THREADS="${LOAD_THREADS:-4}"
+REPS_DEFAULT="${REPS:-5}"
 TOOL_RESULTS="${exp_path}/results/smallbank/agenttune/benchmarks"
 
 if [[ "${2:-}" == *.csv* ]]; then
@@ -91,7 +91,7 @@ case "${phase}" in
     test)
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then out="${log_fname}"; else out="${log_fname}_r${rep}"; fi
-            python main.py test --driver "${dbms}" --threads 8 \
+            python main.py test --driver "${dbms}" --threads "${LOAD_THREADS}" \
                 --accounts "${accounts}" --transactions "${transactions}" --output-path "${out}"
         done
         if [ "${reps}" -gt 1 ]; then cp "${log_fname}_r${reps}" "${log_fname}" 2>/dev/null || true; fi

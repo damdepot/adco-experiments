@@ -104,7 +104,7 @@ knob['base_url'] = 'https://generativelanguage.googleapis.com/v1beta/openai/'
 knob['model'] = 'gemini-3.5-flash-lite'
 knob['database_kernel'] = 'PostgreSQL 17'
 knob['database_scale'] = '2GB'
-knob['hardware'] = '2 cores, 8 GB RAM'
+knob['hardware'] = '2 cores, 4 GB RAM'
 
 pruner = c['range pruner']
 pruner['model'] = 'gemini-3.5-flash-lite'

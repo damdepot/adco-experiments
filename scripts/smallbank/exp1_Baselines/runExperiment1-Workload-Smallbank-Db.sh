@@ -7,9 +7,9 @@
 #     runExperiment1-Workload-Smallbank.sh <dir> <file> [reps]
 #     PHASE=load|execute selects the phase (default: execute).
 #     <dir> is 'baseline' or an out/<dir> rewritten app (sandbox switch).
-#     <file> is the CSV name; reps default to $REPS (benchmarks scale: 3).
+#     <file> is the CSV name; reps default to $REPS (benchmarks scale: 5).
 #     Scale defaults to benchmarks scale, env-overridable:
-#       ACCOUNTS=1000000 TRANSACTIONS=60000 LOAD_THREADS=8 REPS=3
+#       ACCOUNTS=5000000 TRANSACTIONS=300000 LOAD_THREADS=4 REPS=5
 #   Legacy (standalone):
 #     runExperiment1-Workload-Smallbank.sh <dbms> <accounts> <transactions>
 #     PHASE unset => legacy `test` (reset+load+run) with reps loop + CHECKPOINT.
@@ -20,10 +20,10 @@ set -euo pipefail
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/smallbank"
 
-ACCOUNTS="${ACCOUNTS:-1000000}"
-TRANSACTIONS="${TRANSACTIONS:-60000}"
-LOAD_THREADS="${LOAD_THREADS:-8}"
-REPS_DEFAULT="${REPS:-3}"
+ACCOUNTS="${ACCOUNTS:-5000000}"
+TRANSACTIONS="${TRANSACTIONS:-300000}"
+LOAD_THREADS="${LOAD_THREADS:-4}"
+REPS_DEFAULT="${REPS:-5}"
 
 # ── Canonical mode: $2 looks like a CSV file ─────────────────────────────
 if [[ "${2:-}" == *.csv* ]]; then
@@ -134,7 +134,7 @@ case "${phase}" in
             echo "----------------->> SMALLBANK legacy test rep ${rep}/${reps} <<-----------------"
             python main.py test \
                 --driver "${dbms}" \
-                --threads 8 \
+                --threads "${LOAD_THREADS}" \
                 --accounts "${accounts}" \
                 --transactions "${transactions}" \
                 --output-path "${out}"

@@ -9,11 +9,11 @@ set -euo pipefail
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/tpcc"
 
-WAREHOUSES="${WAREHOUSES:-6}"
-CLIENTS="${CLIENTS:-6}"
-DURATION="${DURATION:-60}"
-WARMUP="${WARMUP:-10}"
-REPS_DEFAULT="${REPS:-3}"
+WAREHOUSES="${WAREHOUSES:-32}"
+CLIENTS="${CLIENTS:-16}"
+DURATION="${DURATION:-180}"
+WARMUP="${WARMUP:-30}"
+REPS_DEFAULT="${REPS:-5}"
 TOOL_RESULTS="${exp_path}/results/tpcc/gptuner/benchmarks"
 
 if [[ "${2:-}" == *.csv* ]]; then

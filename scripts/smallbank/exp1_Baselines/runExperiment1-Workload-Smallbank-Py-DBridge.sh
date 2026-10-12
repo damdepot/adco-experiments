@@ -2,8 +2,8 @@
 set -euo pipefail
 
 dbms="${1:-postgres}"
-accounts="${2:-${ACCOUNTS:-1000000}}"
-transactions="${3:-${TRANSACTIONS:-60000}}"
+accounts="${2:-${ACCOUNTS:-5000000}}"
+transactions="${3:-${TRANSACTIONS:-300000}}"
 benchmark="${4:-smallbank}"
 
 # Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.
@@ -15,13 +15,13 @@ case "${phase}" in
         exit 2
         ;;
 esac
-reps="${REPS:-3}"
+reps="${REPS:-5}"
 if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
     echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
     exit 2
 fi
 # Benchmarks-scale load parallelism, env-overridable (canonical bench protocol).
-load_threads="${LOAD_THREADS:-8}"
+load_threads="${LOAD_THREADS:-4}"
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 benchmarks_dir="${exp_path}/results/${benchmark}/py-dbridge/benchmarks"

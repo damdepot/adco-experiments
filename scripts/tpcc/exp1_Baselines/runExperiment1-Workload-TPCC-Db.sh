@@ -8,7 +8,7 @@
 #     PHASE=load|execute selects the phase (default: execute).
 #     <dir> is 'baseline' or an out/<dir> rewritten app (sandbox switch).
 #     Scale defaults to benchmarks scale, env-overridable:
-#       WAREHOUSES=6 CLIENTS=6 DURATION=60 WARMUP=10 REPS=3
+#       WAREHOUSES=32 CLIENTS=16 DURATION=180 WARMUP=30 REPS=5
 #   Legacy (standalone):
 #     runExperiment1-Workload-TPCC.sh <dbms> <warehouses> <clients>
 #     PHASE unset => full reset+execute with reps loop + CHECKPOINT + warmup.
@@ -18,11 +18,11 @@ set -euo pipefail
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/tpcc"
 
-WAREHOUSES="${WAREHOUSES:-6}"
-CLIENTS="${CLIENTS:-6}"
-DURATION="${DURATION:-60}"
-WARMUP="${WARMUP:-10}"
-REPS_DEFAULT="${REPS:-3}"
+WAREHOUSES="${WAREHOUSES:-32}"
+CLIENTS="${CLIENTS:-16}"
+DURATION="${DURATION:-180}"
+WARMUP="${WARMUP:-30}"
+REPS_DEFAULT="${REPS:-5}"
 
 # ── Canonical mode: $2 looks like a CSV file ─────────────────────────────
 if [[ "${2:-}" == *.csv* ]]; then

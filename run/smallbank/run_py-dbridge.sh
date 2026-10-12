@@ -7,11 +7,14 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 
 # Fixed resource + workload contract (matches benchmarks harness).
 export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-8}"
-export REPS="${REPS:-3}"
-export DURATION="${DURATION:-60}"
-export WAREHOUSES="${WAREHOUSES:-6}"
-export CLIENTS="${CLIENTS:-6}"
+export MEMORY_GB="${MEMORY_GB:-4}"
+export REPS="${REPS:-5}"
+export DURATION="${DURATION:-180}"
+export WARMUP="${WARMUP:-30}"
+export WAREHOUSES="${WAREHOUSES:-32}"
+export CLIENTS="${CLIENTS:-16}"
+export ACCOUNTS="${ACCOUNTS:-5000000}"
+export TRANSACTIONS="${TRANSACTIONS:-300000}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
@@ -43,7 +46,7 @@ source_file="drivers/postgresdriver.py"
 if $CMDPyDBridge ${workload_path} ${source_file} postgres smallbank; then
     echo '-------------------<< Running the Smallbank workload >>-------------------'
     bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
-    PHASE=execute $CMDRunSmallbank postgres "${ACCOUNTS:-1000000}" "${TRANSACTIONS:-60000}" smallbank
+    PHASE=execute $CMDRunSmallbank postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-300000}" smallbank
 else
     echo 'WARNING: Py-DBridge Smallbank rewrite failed; skipping its measurement.' >&2
 fi

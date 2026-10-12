@@ -2,10 +2,10 @@
 set -euo pipefail
 
 dbms="${1:-postgres}"
-warehouses="${2:-${WAREHOUSES:-6}}"
-clients="${3:-${CLIENTS:-6}}"
+warehouses="${2:-${WAREHOUSES:-32}}"
+clients="${3:-${CLIENTS:-16}}"
 benchmark="${4:-tpcc}"
-duration="${DURATION:-60}"
+duration="${DURATION:-180}"
 
 # Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.
 phase="${PHASE:-execute}"
@@ -16,14 +16,14 @@ case "${phase}" in
         exit 2
         ;;
 esac
-reps="${REPS:-3}"
+reps="${REPS:-5}"
 if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
     echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
     exit 2
 fi
 # Seconds of throwaway workload before each measured rep; 0 disables
 # (canonical bench protocol).
-warmup="${WARMUP:-10}"
+warmup="${WARMUP:-30}"
 if ! [[ "${warmup}" =~ ^[0-9]+$ ]]; then
     echo "Usage: warmup must be a non-negative integer (got '${warmup}')" >&2
     exit 2

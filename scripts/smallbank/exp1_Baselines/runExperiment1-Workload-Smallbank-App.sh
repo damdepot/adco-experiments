@@ -2,8 +2,8 @@
 set -euo pipefail
 
 dbms="${1:-postgres}"
-accounts="${2:-${ACCOUNTS:-1000000}}"
-transactions="${3:-${TRANSACTIONS:-60000}}"
+accounts="${2:-${ACCOUNTS:-5000000}}"
+transactions="${3:-${TRANSACTIONS:-300000}}"
 
 # Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.
 phase="${PHASE:-execute}"
@@ -14,7 +14,7 @@ case "${phase}" in
         exit 2
         ;;
 esac
-reps="${REPS:-3}"
+reps="${REPS:-5}"
 if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
     echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
     exit 2
@@ -28,7 +28,7 @@ source venv/bin/activate
 if [ "${phase}" = "load" ]; then
     python main.py load \
                     --driver "${dbms}" \
-                    --threads "${LOAD_THREADS:-8}" \
+                    --threads "${LOAD_THREADS:-4}" \
                     --accounts "${accounts}" \
                     --reset
 else

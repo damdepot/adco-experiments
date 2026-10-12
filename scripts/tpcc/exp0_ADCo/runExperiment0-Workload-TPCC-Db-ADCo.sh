@@ -5,18 +5,18 @@
 # Canonical (bench_lib): <dir> <file> [reps], PHASE=load|execute (default execute).
 # Legacy: <model> <dbms> <warehouses> <clients> <benchmark> <dir_name>
 # Scale defaults to benchmarks scale, env-overridable:
-#   WAREHOUSES=6 CLIENTS=6 DURATION=60 WARMUP=10 REPS=3
+#   WAREHOUSES=32 CLIENTS=16 DURATION=180 WARMUP=30 REPS=5
 #
 set -euo pipefail
 
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/tpcc"
 
-WAREHOUSES="${WAREHOUSES:-6}"
-CLIENTS="${CLIENTS:-6}"
-DURATION="${DURATION:-60}"
-WARMUP="${WARMUP:-10}"
-REPS_DEFAULT="${REPS:-3}"
+WAREHOUSES="${WAREHOUSES:-32}"
+CLIENTS="${CLIENTS:-16}"
+DURATION="${DURATION:-180}"
+WARMUP="${WARMUP:-30}"
+REPS_DEFAULT="${REPS:-5}"
 
 if [[ "${2:-}" == *.csv* ]]; then
     dir="${1}"

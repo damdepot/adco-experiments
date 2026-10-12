@@ -6,7 +6,7 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 
 # Fixed resource + workload contract (matches benchmarks harness).
 export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-8}"
+export MEMORY_GB="${MEMORY_GB:-4}"
 export REPS="${REPS:-3}"
 export DURATION="${DURATION:-60}"
 export WAREHOUSES="${WAREHOUSES:-6}"

@@ -7,11 +7,12 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 
 # Fixed resource + workload contract (matches benchmarks harness).
 export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-8}"
-export REPS="${REPS:-3}"
-export DURATION="${DURATION:-60}"
-export WAREHOUSES="${WAREHOUSES:-6}"
-export CLIENTS="${CLIENTS:-6}"
+export MEMORY_GB="${MEMORY_GB:-4}"
+export REPS="${REPS:-5}"
+export DURATION="${DURATION:-180}"
+export WARMUP="${WARMUP:-30}"
+export WAREHOUSES="${WAREHOUSES:-32}"
+export CLIENTS="${CLIENTS:-16}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"

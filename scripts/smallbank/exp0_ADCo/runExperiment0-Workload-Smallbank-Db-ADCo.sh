@@ -6,17 +6,17 @@
 # Legacy: <model> <dbms> <accounts> <transactions> <benchmark> <dir_name>
 #   (all positional args optional; env overrides win for scale).
 # Scale defaults to benchmarks scale, env-overridable:
-#   ACCOUNTS=1000000 TRANSACTIONS=60000 LOAD_THREADS=8 REPS=3
+#   ACCOUNTS=5000000 TRANSACTIONS=300000 LOAD_THREADS=4 REPS=5
 #
 set -euo pipefail
 
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 workload_path="${exp_path}/workload/apps/smallbank"
 
-ACCOUNTS="${ACCOUNTS:-1000000}"
-TRANSACTIONS="${TRANSACTIONS:-60000}"
-LOAD_THREADS="${LOAD_THREADS:-8}"
-REPS_DEFAULT="${REPS:-3}"
+ACCOUNTS="${ACCOUNTS:-5000000}"
+TRANSACTIONS="${TRANSACTIONS:-300000}"
+LOAD_THREADS="${LOAD_THREADS:-4}"
+REPS_DEFAULT="${REPS:-5}"
 
 if [[ "${2:-}" == *.csv* ]]; then
     dir="${1}"
@@ -129,7 +129,7 @@ case "${phase}" in
             fi
             python main.py test \
                 --driver "${dbms}" \
-                --threads 8 \
+                --threads "${LOAD_THREADS}" \
                 --accounts "${accounts}" \
                 --transactions "${transactions}" \
                 --output-path "${out}"

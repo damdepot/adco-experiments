@@ -8,8 +8,8 @@
 #   measure, comparison call per benchmark.
 #
 # Contract (env-overridable, benchmarks scale):
-#   CPU_CORES=2 MEMORY_GB=8 REPS=3 DURATION=60 WARMUP=10
-#   WAREHOUSES=6 CLIENTS=6 ACCOUNTS=1000000 TRANSACTIONS=60000
+#   CPU_CORES=2 MEMORY_GB=4 REPS=5 DURATION=180 WARMUP=30
+#   WAREHOUSES=32 CLIENTS=16 ACCOUNTS=5000000 TRANSACTIONS=300000
 #
 # No post-tool restore: the DB is measured as the tuner left it, followed
 # by Restart/WaitFor cold buffers before measure. Knob settings live in
@@ -30,14 +30,14 @@ EXP_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LIB="${EXP_PATH}/scripts/_lib/bench_lib.sh"
 
 export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-8}"
-export REPS="${REPS:-3}"
-export DURATION="${DURATION:-60}"
-export WARMUP="${WARMUP:-10}"
-export WAREHOUSES="${WAREHOUSES:-6}"
-export CLIENTS="${CLIENTS:-6}"
-export ACCOUNTS="${ACCOUNTS:-1000000}"
-export TRANSACTIONS="${TRANSACTIONS:-60000}"
+export MEMORY_GB="${MEMORY_GB:-4}"
+export REPS="${REPS:-5}"
+export DURATION="${DURATION:-180}"
+export WARMUP="${WARMUP:-30}"
+export WAREHOUSES="${WAREHOUSES:-32}"
+export CLIENTS="${CLIENTS:-16}"
+export ACCOUNTS="${ACCOUNTS:-5000000}"
+export TRANSACTIONS="${TRANSACTIONS:-300000}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
 export DBMS="${DBMS:-postgres}"
 MODEL="${MODEL:-gemini-3.5-flash-lite}"

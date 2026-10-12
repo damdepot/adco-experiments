@@ -3,8 +3,8 @@ set -euo pipefail
 
 llm_model="${1:-${MODEL:-gemini-3.5-flash-lite}}"
 dbms="${2:-postgres}"
-accounts="${3:-${ACCOUNTS:-1000000}}"
-transactions="${4:-${TRANSACTIONS:-60000}}"
+accounts="${3:-${ACCOUNTS:-5000000}}"
+transactions="${4:-${TRANSACTIONS:-300000}}"
 benchmark="${5:-smallbank}"
 dir_name="${6:-adco}"
 
@@ -25,13 +25,13 @@ case "${phase}" in
         exit 2
         ;;
 esac
-reps="${REPS:-3}"
+reps="${REPS:-5}"
 if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
     echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
     exit 2
 fi
 # Benchmarks-scale load parallelism, env-overridable (canonical bench protocol).
-load_threads="${LOAD_THREADS:-8}"
+load_threads="${LOAD_THREADS:-4}"
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 benchmarks_dir="${exp_path}/results/${benchmark}/${res_name}/benchmarks"

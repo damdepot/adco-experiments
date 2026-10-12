@@ -16,12 +16,12 @@ BENCH_DB_SERVICE="${BENCH_DB_SERVICE:-pgdb}"
 # MEMORY_GB) and tpcc.sh (REPS / DURATION / WARMUP / WAREHOUSES / CLIENTS) read
 # the exact values the runners measure with.
 export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-8}"
-export REPS="${REPS:-3}"
-export DURATION="${DURATION:-60}"
-export WARMUP="${WARMUP:-10}"
-export WAREHOUSES="${WAREHOUSES:-6}"
-export CLIENTS="${CLIENTS:-6}"
+export MEMORY_GB="${MEMORY_GB:-4}"
+export REPS="${REPS:-5}"
+export DURATION="${DURATION:-180}"
+export WARMUP="${WARMUP:-30}"
+export WAREHOUSES="${WAREHOUSES:-32}"
+export CLIENTS="${CLIENTS:-16}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
 
 # Fresh default config + empty DB; CPU_CORES/MEMORY_GB already exported so the
