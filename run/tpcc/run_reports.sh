@@ -10,3 +10,6 @@ DBMS="${1:-postgres}"
 
 "${ROOT}/scripts/common/app_layer/exp2_Reports/run_report.sh" tpcc "${DBMS}"
 "${ROOT}/scripts/common/db_layer/exp2_Reports/run_report.sh" tpcc "${DBMS}"
+
+echo "----------------->> Comparison tpcc <<-----------------"
+RESULTS_DIR="${ROOT}/results/tpcc" "${ROOT}/scripts/_lib/run_comparison.sh"
