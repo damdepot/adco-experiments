@@ -38,8 +38,8 @@ model="${MODEL}"
 db_container="adcoexp-db"
 db_service="pgdb"
 
-# Cold buffers + settled data before every measure. No seed/snapshot/restore
-# here: each workload self-loads (test/--reset), then measures.
+# Restore-from-snapshot + cold buffers before every measure; workloads run
+# PHASE=execute against pristine seed data.
 measure_prep() {
     "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
     "${CMDDocker}" WaitFor "${db_container}"

@@ -32,8 +32,8 @@ CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
 db_container="adcoexp-db"
 db_service="pgdb"
 
-# Cold buffers + settled data before every measure. No seed/snapshot/restore
-# here: each workload self-loads (test/--reset), then measures.
+# Restore-from-snapshot + cold buffers before every measure; workloads run
+# PHASE=execute against pristine seed data.
 measure_prep() {
     "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
     "${CMDDocker}" WaitFor "${db_container}"
@@ -77,8 +77,8 @@ legacy_sync "${SMALLBANK_RESULTS}" "baseline" "smallbank"
 ### Workload: Smallbank (app layer, last so its logs survive alongside the db files)
 ### **********
 echo '-------------------<< Running the Smallbank workload >>-------------------'
+bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
 measure_prep
-PHASE=load $CMDRunSmallbank postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-300000}"
 PHASE=execute $CMDRunSmallbank postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-300000}"
 
 echo '-------------------<< Comparison >>-------------------'
