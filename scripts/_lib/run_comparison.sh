@@ -154,27 +154,27 @@ if not present:
 ref = present[0]
 base = data[ref]
 
-print(f"OLTP comparison — transaction rate (txn/s), % change vs {ref}")
+print(f"OLTP txn/s vs {ref} (higher better)")
 print(f"Source: {results_dir}")
 print()
 
-header = f"{'TRANSACTION':<14}"
+header = f"{'TRANSACTION':<12}"
 for label in present:
-    header += f"{'|':^3}{label:>18}"
+    header += f"|{label[:13]:^13}"
 print(header)
 
 for txn in order:
-    line = f"{txn:<14}"
+    line = f"{txn[:12]:<12}"
     for label in present:
         rates = data[label]
         if txn not in rates:
-            line += f"{'|':^3}{'-':>18}"
+            line += f"|{'-':^13}"
         elif label == ref:
-            line += f"{'|':^3}{rates[txn]:>18.2f}"
+            line += f"|{rates[txn]:>13.1f}"
         else:
             b = base.get(txn, 0.0)
             pct = (rates[txn] - b) / b * 100 if b > 0 else 0.0
-            line += f"{'|':^3}{f'{rates[txn]:.2f} ({pct:+.1f}%)':>18}"
+            line += f"|{f'{rates[txn]:.1f} ({pct:+.0f}%)':>13}"
     print(line)
 
 print()
