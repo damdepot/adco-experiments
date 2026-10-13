@@ -22,6 +22,25 @@ if [ $dataset == "publicbibenchmark" ]; then
 fi 
 
 cd "${exp_path}/baselines/LearnedRewrite"
+# LearnedRewrite's Calcite/JPype bridge requires Java 17 (JPype refuses
+# Java ≤8). Pin JAVA_HOME so it never picks up a Java 8 default; an
+# explicit LEARNEDREWRITE_JAVA_HOME wins.
+if [ -n "${LEARNEDREWRITE_JAVA_HOME:-}" ]; then
+    export JAVA_HOME="${LEARNEDREWRITE_JAVA_HOME}"
+elif [ -x /usr/lib/jvm/default-java/bin/java ]; then
+    export JAVA_HOME=/usr/lib/jvm/default-java
+fi
+_lr_java_bin="${JAVA_HOME:+$JAVA_HOME/bin/java}"
+if [ -n "${_lr_java_bin:-}" ] && [ -x "${_lr_java_bin}" ]; then
+    _lr_ver="$("${_lr_java_bin}" -version 2>&1 | head -1)"
+else
+    _lr_ver="$(java -version 2>&1 | head -1 || true)"
+fi
+case "${_lr_ver}" in
+    *17.*) ;;
+    *) echo "WARNING: LearnedRewrite Calcite/JPype bridge wants Java 17 (got: ${_lr_ver})." >&2 ;;
+esac
+unset _lr_java_bin _lr_ver
 source venv/bin/activate
 
 CMD="python my_rewriter/main.py --workload-path ${workload_path} \
