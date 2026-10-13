@@ -2,8 +2,9 @@
 """Report knobs overridden in the production Postgres container.
 
 A knob is "updated" when its value comes from postgresql.auto.conf (i.e. it was
-set on top of the defaults), which is exactly the signal bench_lib's
-bench_assert_fresh_knobs uses to detect tuned state.
+set on top of the defaults). We read pg_file_settings, not pg_settings: the
+latter reports a pending restart-required knob (e.g. shared_buffers) as coming
+from postgresql.conf until the server is restarted, so it is invisible there.
 """
 
 import os
@@ -11,7 +12,7 @@ import subprocess
 import sys
 
 CONTAINER = os.environ.get("BENCH_DB_CONTAINER", "adcoexp-db")
-QUERY = "SELECT name FROM pg_settings WHERE sourcefile LIKE '%postgresql.auto.conf' ORDER BY name;"
+QUERY = "SELECT DISTINCT name FROM pg_file_settings WHERE sourcefile LIKE '%postgresql.auto.conf' ORDER BY name;"
 
 
 def format_knobs(names):
