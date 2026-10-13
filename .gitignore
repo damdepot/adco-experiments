@@ -224,6 +224,12 @@ __marimo__/
 opencode.json
 AGENTS.md
 baselines/*
+# NaiveLLM is an in-repo baseline (not a git clone), so track it.
+!baselines/NaiveLLM/
+!baselines/NaiveLLM/**
+baselines/NaiveLLM/venv/
+baselines/NaiveLLM/.venv/
+baselines/NaiveLLM/**/__pycache__/
 data/
 catalog/
 results/
@@ -235,3 +241,4 @@ ADCo-results/
 reports/
 out/
 workload/apps/*
+.venv_hash

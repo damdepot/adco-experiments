@@ -22,6 +22,7 @@ run on two layers:
 | `run/tpcc/run_dco.sh` / `run/smallbank/run_dco.sh` | Run DCo knob tuning + workload |
 | `run/tpcc/run_adco.sh` / `run/smallbank/run_adco.sh` | Run ADCo rewrite + tuning + workload |
 | `run/tpcc/run_py-dbridge.sh` / `run/smallbank/run_py-dbridge.sh` | Run Py-DBridge rewrite + workload |
+| `run/tpcc/run_naive-llm.sh` / `run/smallbank/run_naive-llm.sh` | Run Naive-LLM (single-shot LLM app rewrite) + workload |
 | `run/tpcc/run_agenttune.sh` / `run/smallbank/run_agenttune.sh` | Run AgentTune knob tuning + workload |
 | `run/tpcc/run_gptuner.sh` / `run/smallbank/run_gptuner.sh` | Run GPTuner knob tuning + workload |
 | `run/tpcc/run_ottertune.sh` / `run/smallbank/run_ottertune.sh` | Run OtterTune knob tuning + workload |
@@ -44,13 +45,13 @@ run on two layers:
 | `scripts/common/` | Benchmark-neutral drivers shared across workloads (`app_layer/`, `db_layer/`, `query_layer/`) |
 | `scripts/_lib/` | Shared shell harness (`bench_lib.sh`, `docker.sh`, `run_comparison.sh`) |
 | `catalog/` | Generated ReSequel catalog files (per-dataset JSONs, e.g. `catalog/stats/`) |
-| `results/tpcc/` | TPC-C results per approach (`baseline`, `aco`, `dco`, `adco`, `py-dbridge`, `agenttune`, `ottertune`, `gptuner`) |
+| `results/tpcc/` | TPC-C results per approach (`baseline`, `aco`, `dco`, `adco`, `py-dbridge`, `naive-llm`, `agenttune`, `ottertune`, `gptuner`) |
 | `results/smallbank/` | Smallbank results per approach (same set as TPC-C) |
 | `results/stats/` | Stats-dataset results per approach (`baseline`, `aco`, `adco`, `resequel`, `r-bot`, `learnedrewrite`) |
 | `results/query-tpcc/` | TPCC query-layer results per approach (same set as stats) |
 | `results/query-smallbank/` | Smallbank query-layer results per approach (same set as stats) |
 | `out/query_layer/` | Rewritten queries for the DB layer (`ADCo-results/`, `ReSequel-results/`, `R-Bot-results/`, `LearnedRewrite-results/`) |
-| `out/app_layer/` | Rewritten code for the app layer (`ADCo-results/`, `Py-DBridge-results/`) |
+| `out/app_layer/` | Rewritten code for the app layer (`ADCo-results/`, `Py-DBridge-results/`, `NaiveLLM-results/`) |
 | `reports/` | Generated comparison reports (`run/tpcc/run_reports.sh`, `run/smallbank/run_reports.sh`, `run/stats/run_reports.sh`) |
 | `docker/` | Container entrypoint used by the experiment image |
 | `docker-compose.yml` | `db` (PostgreSQL 17) service plus the experiment container |
@@ -118,6 +119,7 @@ TPC-C / Smallbank (same scripts under `run/tpcc/` and `run/smallbank/`):
 ./run/tpcc/run_dco.sh         # DCo tuning + workload (same under run/smallbank/)
 ./run/tpcc/run_adco.sh        # ADCo rewrite + tuning + workload (same under run/smallbank/)
 ./run/tpcc/run_py-dbridge.sh  # Py-DBridge rewrite + workload (same under run/smallbank/)
+./run/tpcc/run_naive-llm.sh    # Naive-LLM rewrite + workload (same under run/smallbank/)
 ./run/tpcc/run_agenttune.sh   # AgentTune tuning + workload (same under run/smallbank/)
 ./run/tpcc/run_gptuner.sh     # GPTuner tuning + workload (same under run/smallbank/)
 ./run/tpcc/run_ottertune.sh   # OtterTune tuning + workload (same under run/smallbank/)
