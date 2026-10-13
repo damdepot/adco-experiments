@@ -17,6 +17,14 @@ schema_path="${exp_path}/catalog/${dataset}/schema.json"
 log_file_name="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/learnedrewrite/runExperiment2-${dataset}-${dbms}-${baseline_name}.dat"
 mkdir -p "$(dirname "$log_file_name")"
 
+# LearnedRewrite reads ReSequel's generated catalog. Fail with an actionable
+# message instead of a Java FileNotFoundException when it is missing.
+if [ ! -f "${schema_path}" ]; then
+    echo "ERROR: schema catalog not found: ${schema_path}." >&2
+    echo "Build it first, e.g.: ./scripts/common/query_layer/exp1_ReSequel/runExperiment1.sh BuildCatalog ${dataset} ${dbms} 1" >&2
+    exit 1
+fi
+
 if [ $dataset == "publicbibenchmark" ]; then
     mkdir -p "${output_path}/queries"
 fi 
