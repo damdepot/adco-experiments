@@ -1,24 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-source "${ROOT}/scripts/_lib/bench_lib.sh"
 
-# Fixed resource + workload contract (matches benchmarks harness).
-export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-4}"
-export REPS="${REPS:-3}"
-export DURATION="${DURATION:-60}"
-export WAREHOUSES="${WAREHOUSES:-6}"
-export CLIENTS="${CLIENTS:-6}"
+rm -rf "${ROOT}/reports/stats"
+mkdir -p "${ROOT}/reports/stats"
 
-# Single-writer: reports run under the same lock as measurements.
-bench_lock "${ROOT}"
-cd "${ROOT}"
+DBMS="${1:-PostgreSQL}"
 
-rm -rf reports/stats
-mkdir -p reports/stats
+python3 "${ROOT}/scripts/common/query_layer/exp3_Reports/report.py" \
+    --dataset stats \
+    --dbms "${DBMS}" \
+    --results-dir "${ROOT}/results/stats" \
+    --output-dir "${ROOT}/reports/stats"
 
-CMDRunReports=./scripts/common/query_layer/exp3_Reports/run_report.sh
-
-$CMDRunReports "$@"
+echo "----------------->> Comparison stats <<-----------------"
