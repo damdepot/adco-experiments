@@ -12,6 +12,14 @@ python3 "${ROOT}/scripts/common/query_layer/exp3_Reports/report.py" \
     --dataset stats \
     --dbms "${DBMS}" \
     --results-dir "${ROOT}/results/stats" \
-    --output-dir "${ROOT}/reports/stats"
+    --output-dir "${ROOT}/reports/stats" \
+    --quiet
 
 echo "----------------->> Comparison stats <<-----------------"
+
+python3 "${ROOT}/scripts/common/query_layer/exp3_Reports/report.py" \
+    --dataset stats \
+    --dbms "${DBMS}" \
+    --results-dir "${ROOT}/results/stats" \
+    --output-dir "${ROOT}/reports/stats" \
+    --summary-only

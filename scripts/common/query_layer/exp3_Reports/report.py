@@ -37,12 +37,53 @@ def geometric_mean(values):
         product *= v
     return product ** (1.0 / len(values))
 
+def print_summary(total_time, speedups, systems, system_display_names, results_base, ref='baseline'):
+    # Compact post-banner comparison mirroring scripts/_lib/run_comparison.sh.
+    ref_name = system_display_names.get(ref, ref.capitalize())
+    ref_tot = total_time.get(ref, 0.0)
+    print(f"Query exec time (ms) vs {ref_name} (lower better)")
+    print(f"Source: {results_base}")
+    print()
+
+    header = f"{'':<12}"
+    for s in systems:
+        header += f"|{system_display_names.get(s, s.capitalize())[:13]:^13}"
+    print(header)
+
+    row = f"{'TOTAL (ms)':<12}"
+    for s in systems:
+        t = total_time.get(s, 0.0)
+        if s == ref:
+            row += f"|{t:>13.1f}"
+        elif t > 0:
+            spd = ref_tot / t if ref_tot > 0 else None
+            cell = f"{t:.1f} ({spd:.2f}x)" if spd is not None else f"{t:.1f}"
+            row += f"|{cell:>13}"
+        else:
+            row += f"|{'N/A':>13}"
+    print(row)
+
+    row = f"{'Geo Mean Spd':<12}"
+    for s in systems:
+        if s == ref:
+            row += f"|{'-':^13}"
+        else:
+            g = geometric_mean(speedups.get(s, []))
+            cell = f"{g:.2f}x" if g > 0 else "N/A"
+            row += f"|{cell:>13}"
+    print(row)
+
+    print()
+    print(f"Note: lower is better; speedups are relative to {ref_name}.")
+
 def main():
     parser = argparse.ArgumentParser(description='Parse benchmark results and output performance comparisons.')
     parser.add_argument('--dataset', default='stats', help='Dataset name')
     parser.add_argument('--dbms', default='PostgreSQL', help='DBMS name')
     parser.add_argument('--results-dir', default='results', help='Base results directory')
     parser.add_argument('--output-dir', default='reports/stats', help='Output directory for the report')
+    parser.add_argument('--quiet', action='store_true', help='Suppress the full per-query terminal table (warnings and saved-file lines still print)')
+    parser.add_argument('--summary-only', action='store_true', help='Print only a compact totals comparison; do not print the full table or write report files')
     args = parser.parse_args()
 
     systems = ['baseline', 'aco', 'adco', 'learnedrewrite', 'r-bot', 'resequel']
@@ -140,7 +181,11 @@ def main():
                     row[f'{sys}_speedup'] = None
                     
         results.append(row)
-        
+
+    if args.summary_only:
+        print_summary(total_time, speedups, systems, system_display_names, results_base)
+        return
+
     # Generate Output (Terminal)
     lines = []
     
@@ -209,7 +254,8 @@ def main():
     lines.append(line)
     
     report_content = "\n".join(lines)
-    print(report_content)
+    if not args.quiet:
+        print(report_content)
     
     if args.output_dir:
         os.makedirs(args.output_dir, exist_ok=True)
