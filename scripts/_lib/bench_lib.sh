@@ -200,7 +200,10 @@ bench_lock() {
             echo "ERROR: another benchmark run holds ${root}/.bench.lock.dir; refusing to run concurrently." >&2
             exit 1
         fi
-        trap 'rmdir "${root}/.bench.lock.dir" 2>/dev/null || true' EXIT
+        # NB: double quotes so ${root} expands now (function-local $root
+        # is out of scope when the EXIT trap fires; single quotes + set -u
+        # would fail and leave a stale lock dir behind).
+        trap "rmdir \"${root}/.bench.lock.dir\" 2>/dev/null || true" EXIT
     fi
 }
 
