@@ -37,34 +37,54 @@ def geometric_mean(values):
         product *= v
     return product ** (1.0 / len(values))
 
-def print_summary(total_time, speedups, systems, system_display_names, results_base, ref='baseline'):
+def print_summary(total_time, speedups, query_counts, medians, all_queries, systems, system_display_names, results_base, ref='baseline'):
     # Compact post-banner comparison mirroring scripts/_lib/run_comparison.sh.
+    # Like run_comparison, show only arms that have result data.
+    present = [s for s in systems if total_time.get(s, 0.0) > 0]
+    if not present:
+        print(f"No result data found in {results_base} (nothing to compare).")
+        return
     ref_name = system_display_names.get(ref, ref.capitalize())
     ref_tot = total_time.get(ref, 0.0)
+    ref_meds = medians.get(ref, {})
     print(f"Query exec time (ms) vs {ref_name} (lower better)")
     print(f"Source: {results_base}")
     print()
 
-    header = f"{'':<12}"
-    for s in systems:
+    header = f"{'Query ID':<12}"
+    for s in present:
         header += f"|{system_display_names.get(s, s.capitalize())[:13]:^13}"
     print(header)
 
+    for q in all_queries:
+        row = f"{q[:12]:<12}"
+        base = ref_meds.get(q, 0.0)
+        for s in present:
+            t = medians.get(s, {}).get(q, 0.0)
+            if s == ref:
+                row += f"|{t:>13.1f}" if t > 0 else f"|{'-':^13}"
+            elif t > 0 and base > 0:
+                pct = (base - t) / base * 100
+                row += f"|{f'{t:.1f} ({pct:+.0f}%)':>13}"
+            elif t > 0:
+                row += f"|{t:>13.1f}"
+            else:
+                row += f"|{'-':^13}"
+        print(row)
+
     row = f"{'TOTAL (ms)':<12}"
-    for s in systems:
+    for s in present:
         t = total_time.get(s, 0.0)
         if s == ref:
             row += f"|{t:>13.1f}"
-        elif t > 0:
-            spd = ref_tot / t if ref_tot > 0 else None
-            cell = f"{t:.1f} ({spd:.2f}x)" if spd is not None else f"{t:.1f}"
-            row += f"|{cell:>13}"
         else:
-            row += f"|{'N/A':>13}"
+            pct = (ref_tot - t) / ref_tot * 100 if ref_tot > 0 else None
+            cell = f"{t:.1f} ({pct:+.0f}%)" if pct is not None else f"{t:.1f}"
+            row += f"|{cell:>13}"
     print(row)
 
     row = f"{'Geo Mean Spd':<12}"
-    for s in systems:
+    for s in present:
         if s == ref:
             row += f"|{'-':^13}"
         else:
@@ -73,8 +93,13 @@ def print_summary(total_time, speedups, systems, system_display_names, results_b
             row += f"|{cell:>13}"
     print(row)
 
+    row = f"{'Queries':<12}"
+    for s in present:
+        row += f"|{query_counts.get(s, 0):^13}"
+    print(row)
+
     print()
-    print(f"Note: lower is better; speedups are relative to {ref_name}.")
+    print(f"Note: lower is better; percentages are relative to {ref_name}.")
 
 def main():
     parser = argparse.ArgumentParser(description='Parse benchmark results and output performance comparisons.')
@@ -183,7 +208,8 @@ def main():
         results.append(row)
 
     if args.summary_only:
-        print_summary(total_time, speedups, systems, system_display_names, results_base)
+        query_counts = {sys: sum(1 for times in data[sys].values() if times) for sys in systems}
+        print_summary(total_time, speedups, query_counts, medians, all_queries, systems, system_display_names, results_base)
         return
 
     # Generate Output (Terminal)

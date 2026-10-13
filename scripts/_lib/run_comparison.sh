@@ -175,6 +175,36 @@ for txn in order:
             line += f"|{f'{rates[txn]:.1f} ({pct:+.0f}%)':>13}"
     print(line)
 
+# Geometric mean of per-transaction speedups vs ref (TOTAL excluded).
+geo = {}
+for label in present:
+    if label == ref:
+        continue
+    vals = []
+    for txn in order:
+        if txn.upper() == 'TOTAL':
+            continue
+        b = base.get(txn, 0.0)
+        r = data[label].get(txn)
+        if b and r:
+            vals.append(r / b)
+    if vals:
+        p = 1.0
+        for v in vals:
+            p *= v
+        geo[label] = p ** (1.0 / len(vals))
+    else:
+        geo[label] = 0.0
+
+gline = f"{'Geo Mean Spd':<12}"
+for label in present:
+    if label == ref:
+        gline += f"|{'-':^13}"
+    else:
+        g = geo.get(label, 0.0)
+        gline += f"|{f'{g:.2f}x' if g > 0 else 'N/A':>13}"
+print(gline)
+
 print()
 print(f"Note: higher is better; percentages are relative to {ref}.")
 PY
