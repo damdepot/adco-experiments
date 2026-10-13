@@ -75,5 +75,12 @@ setup_venv "${rbot_path}"
 
 cd "${rbot_path}/rag"
 unzip -oq stackoverflow-rewrite-embed.zip
-# Build structure-semantics Q&A index.
+# Build structure-semantics Q&A index. rag_gen imports my_rewriter.rewrite,
+# which starts a JPype JVM at import time; JPype refuses Java ≤8, so pin
+# JAVA_HOME to 17 (an explicit RBOT_JAVA_HOME wins).
+if [ -n "${RBOT_JAVA_HOME:-}" ]; then
+    export JAVA_HOME="${RBOT_JAVA_HOME}"
+elif [ -x /usr/lib/jvm/default-java/bin/java ]; then
+    export JAVA_HOME=/usr/lib/jvm/default-java
+fi
 "${rbot_path}/venv/bin/python" rag_gen.py
