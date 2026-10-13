@@ -82,7 +82,7 @@ def describe_sources(sources, systems):
 def discover_workloads(results_dir, dbms):
     """Discover available workloads in results_dir for the given dbms."""
     workloads = set()
-    systems = ['baseline', 'adco', 'aco', 'py-dbridge']
+    systems = ['baseline', 'adco', 'aco', 'py-dbridge', 'naive-llm']
     for workload in ['smallbank', 'tpcc']:
         for sys in systems:
             bench_dir = os.path.join(results_dir, workload, sys, 'benchmarks')
@@ -406,6 +406,7 @@ def main():
         'aco': 'ACo',
         'py-dbridge': 'Py-DBridge',
         'pydbridge': 'Py-DBridge',
+        'naive-llm': 'Naive-LLM',
         'dco': 'DCo',
         'agenttune': 'AgentTune',
         'gptuner': 'GPTuner',

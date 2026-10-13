@@ -58,3 +58,8 @@ setup_venv_uv "${adco_path}"
 echo '-------------------<< Setting up Py-DBridge baseline >>-------------------'
 py_dbridge_path="${root_path}/baselines/Py-DBridge"
 setup_venv_uv "${py_dbridge_path}"
+
+### NaiveLLM
+echo '-------------------<< Setting up NaiveLLM baseline >>-------------------'
+naive_llm_path="${root_path}/baselines/NaiveLLM"
+setup_venv "${naive_llm_path}"

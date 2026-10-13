@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 
 WORKLOAD="tpcc"
-BASELINES=(baseline aco py-dbridge dco adco agenttune ottertune gptuner)
+BASELINES=(baseline aco py-dbridge dco adco agenttune ottertune gptuner naive-llm)
 
 RUN_TS="$(date '+%Y-%m-%d-%H-%M-%S')"
 LOG_DIR="${ROOT}/out/logs/${WORKLOAD}"
