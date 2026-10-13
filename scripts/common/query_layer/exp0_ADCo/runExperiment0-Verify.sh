@@ -22,6 +22,14 @@ rewrite_path="${exp_path}/out/query_layer/${output_dir}/Decompile/${dbms}/${data
 output_path_verify="${exp_path}/out/query_layer/${output_dir}/Select/${dbms}/${dataset}-${llm_model}-select"
 database_path="${exp_path}/data/duckdb"
 
+# Fail loudly when there is nothing to verify (e.g. empty Decompile dir
+# from a failed Rewrite); otherwise every query logs "File not found" and
+# the workload measures 0 queries. Checked before wiping the Select dir.
+if [ -z "$(find "${rewrite_path}" -maxdepth 2 -name '*.sql' -print -quit 2>/dev/null)" ]; then
+    echo "ERROR: no query files to verify in rewrite path ${rewrite_path}." >&2
+    exit 1
+fi
+
 rm -rf "${output_path_verify}"
 mkdir -p "${output_path_verify}"
 

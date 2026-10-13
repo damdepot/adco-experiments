@@ -40,3 +40,11 @@ $SCRIPT
 end=$(date +%s%N)
 
 echo ${dataset}",${dbms},"$((($end - $start) / 1000000)) >> "$log_file_name"
+
+# Fail loudly on empty output: a missing db_app.py or one without QUERY_<n>
+# constants (e.g. failed Rewrite) otherwise flows silently into Verify
+# (every query "File not found") and a 0-query workload measurement.
+if [ -z "$(find "${output_path}" -maxdepth 2 -name '*.sql' -print -quit 2>/dev/null)" ]; then
+    echo "ERROR: decompile produced no query files in ${output_path} (input db_app.py missing or without QUERY_<n> constants)." >&2
+    exit 1
+fi

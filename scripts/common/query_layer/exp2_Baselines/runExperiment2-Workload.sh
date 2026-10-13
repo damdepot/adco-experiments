@@ -27,6 +27,13 @@ query_log_fname="${exp_path}/out/query_layer/log-baseline/${dbms}/${dataset}-${l
 workload_path="${exp_path}/${result_output_path}/Select/${dbms}/${dataset}-${llm_model}-select"
 database_path="${exp_path}/data/duckdb"
 
+# Fail loudly on an empty Select dir (e.g. failed Verify); otherwise this
+# writes empty 0-query benchmark files.
+if [ -z "$(find "${workload_path}" -maxdepth 2 -name '*.sql' -print -quit 2>/dev/null)" ]; then
+    echo "ERROR: no query files to run in workload path ${workload_path}." >&2
+    exit 1
+fi
+
 for itr in $(seq 1 "${iteration:-1}"); do
     sync
     echo 3 | tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true
