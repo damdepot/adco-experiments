@@ -159,6 +159,25 @@ then
 fi
 
 cd "${exp_path}/baselines/Py-DBridge"
+# Py-DBridge's SCIRPy gateway requires Java 8 (bookworm apt ships no
+# openjdk-8; the image bundles Temurin 8 at /opt/java8). scirpy_bridge
+# prefers JAVA_HOME, so pin it here; an explicit PYDBRIDGE_JAVA_HOME wins.
+if [ -n "${PYDBRIDGE_JAVA_HOME:-}" ]; then
+    export JAVA_HOME="${PYDBRIDGE_JAVA_HOME}"
+elif [ -x /opt/java8/bin/java ]; then
+    export JAVA_HOME=/opt/java8
+fi
+_pdb_java_bin="${JAVA_HOME:+$JAVA_HOME/bin/java}"
+if [ -n "${_pdb_java_bin:-}" ] && [ -x "${_pdb_java_bin}" ]; then
+    _pdb_ver="$("${_pdb_java_bin}" -version 2>&1 | head -1)"
+else
+    _pdb_ver="$(java -version 2>&1 | head -1 || true)"
+fi
+case "${_pdb_ver}" in
+    *1.8.0*) ;;
+    *) echo "WARNING: Py-DBridge SCIRPy gateway wants Java 8 (got: ${_pdb_ver}); transform may fail and fall back to untransformed file." >&2 ;;
+esac
+unset _pdb_java_bin _pdb_ver
 if [ -f venv/bin/activate ]; then
     # shellcheck disable=SC1091
     source venv/bin/activate || echo "WARNING: venv activation failed; continuing with system python." >&2

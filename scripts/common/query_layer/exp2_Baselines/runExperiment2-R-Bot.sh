@@ -44,6 +44,24 @@ if [ $dataset == "publicbibenchmark" ]; then
 fi 
 
 cd "${exp_path}/baselines/R-Bot"
+# R-Bot's Calcite/JPype bridge requires Java 17. Pin JAVA_HOME so JPype
+# never picks up a Java 8 default; an explicit RBOT_JAVA_HOME wins.
+if [ -n "${RBOT_JAVA_HOME:-}" ]; then
+    export JAVA_HOME="${RBOT_JAVA_HOME}"
+elif [ -x /usr/lib/jvm/default-java/bin/java ]; then
+    export JAVA_HOME=/usr/lib/jvm/default-java
+fi
+_rbot_java_bin="${JAVA_HOME:+$JAVA_HOME/bin/java}"
+if [ -n "${_rbot_java_bin:-}" ] && [ -x "${_rbot_java_bin}" ]; then
+    _rbot_ver="$("${_rbot_java_bin}" -version 2>&1 | head -1)"
+else
+    _rbot_ver="$(java -version 2>&1 | head -1 || true)"
+fi
+case "${_rbot_ver}" in
+    *17.*) ;;
+    *) echo "WARNING: R-Bot Calcite/JPype bridge wants Java 17 (got: ${_rbot_ver})." >&2 ;;
+esac
+unset _rbot_java_bin _rbot_ver
 source venv/bin/activate
 cd my_rewriter
 
