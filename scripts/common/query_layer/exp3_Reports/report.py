@@ -67,52 +67,53 @@ def print_summary(total_time, speedups, query_counts, medians, all_queries, syst
     print(f"Fair totals over {len(common)} common successful queries (of {len(all_queries)}).")
     print()
 
-    header = f"{'Query ID':<12}"
-    for s in present:
-        header += f"|{system_display_names.get(s, s.capitalize())[:13]:^13}"
-    print(header)
+    # Build every cell first so each column is as wide as its widest entry;
+    # a fixed width squeezes long speedup cells (e.g. "135067.4 (-1577%)").
+    headers = ["Query ID"] + [system_display_names.get(s, s.capitalize()) for s in present]
 
-    for q in all_queries:
-        row = f"{q[:12]:<12}"
+    def cell(q, s):
+        t = medians.get(s, {}).get(q, 0.0)
         base = ref_meds.get(q, 0.0)
-        for s in present:
-            t = medians.get(s, {}).get(q, 0.0)
-            if s == ref:
-                row += f"|{t:>13.1f}" if t > 0 else f"|{'-':^13}"
-            elif t > 0 and base > 0:
-                pct = (base - t) / base * 100
-                row += f"|{f'{t:.1f} ({pct:+.0f}%)':>13}"
-            elif t > 0:
-                row += f"|{t:>13.1f}"
-            else:
-                row += f"|{'-':^13}"
-        print(row)
+        if s == ref:
+            return f"{t:.1f}" if t > 0 else "-"
+        if t > 0 and base > 0:
+            return f"{t:.1f} ({(base - t) / base * 100:+.0f}%)"
+        return f"{t:.1f}" if t > 0 else "-"
 
-    row = f"{'TOTAL (ms)':<12}"
+    rows = [[q] + [cell(q, s) for s in present] for q in all_queries]
+
+    total_cells = []
     for s in present:
         t = fair_total.get(s, 0.0)
-        if s == ref:
-            row += f"|{t:>13.1f}"
+        if s == ref or ref_tot <= 0:
+            total_cells.append(f"{t:.1f}")
         else:
-            pct = (ref_tot - t) / ref_tot * 100 if ref_tot > 0 else None
-            cell = f"{t:.1f} ({pct:+.0f}%)" if pct is not None else f"{t:.1f}"
-            row += f"|{cell:>13}"
-    print(row)
+            total_cells.append(f"{t:.1f} ({(ref_tot - t) / ref_tot * 100:+.0f}%)")
+    rows.append(["TOTAL (ms)"] + total_cells)
 
-    row = f"{'Geo Mean Spd':<12}"
+    geo_cells = []
     for s in present:
         if s == ref:
-            row += f"|{'-':^13}"
+            geo_cells.append("-")
         else:
             g = geometric_mean(fair_speedups.get(s, []))
-            cell = f"{g:.2f}x" if g > 0 else "N/A"
-            row += f"|{cell:>13}"
-    print(row)
+            geo_cells.append(f"{g:.2f}x" if g > 0 else "N/A")
+    rows.append(["Geo Mean Spd"] + geo_cells)
 
-    row = f"{'Queries':<12}"
-    for s in present:
-        row += f"|{query_counts.get(s, 0):^13}"
-    print(row)
+    rows.append(["Queries"] + [str(query_counts.get(s, 0)) for s in present])
+
+    widths = [max(len(row[i]) for row in [headers] + rows) for i in range(len(headers))]
+    aligns = ["l"] + ["r"] * len(present)
+
+    def format_row(cells):
+        return "|".join(
+            f"{c:>{w}}" if a == "r" else f"{c:<{w}}"
+            for c, w, a in zip(cells, widths, aligns)
+        )
+
+    print(format_row(headers))
+    for row in rows:
+        print(format_row(row))
 
     print()
     print(f"Note: lower is better; percentages are relative to {ref_name}.")
