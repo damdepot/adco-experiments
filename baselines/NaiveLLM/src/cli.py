@@ -37,7 +37,9 @@ def main() -> None:
     )
 
     rewrite_files, context_files = select_files(output_dir, args.db)
-    if not rewrite_files or not rewrite_files[0].startswith("drivers/"):
+    if not rewrite_files or not (
+        rewrite_files[0] == "db_app.py" or rewrite_files[0].startswith("drivers/")
+    ):
         print(
             f"ERROR: no driver file found for db={args.db} in {output_dir}",
             file=sys.stderr,

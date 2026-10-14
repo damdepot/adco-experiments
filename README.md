@@ -33,6 +33,8 @@ run on two layers:
 | `run/stats/run_resequel.sh` | Run ReSequel rewrite + workload |
 | `run/stats/run_r-bot.sh` | Run R-Bot rewrite + workload |
 | `run/stats/run_learnedrewrite.sh` | Run LearnedRewrite + workload |
+| `run/stats/run_naive-llm.sh` | Run stats Naive-LLM (single-shot LLM query rewrite) + workload |
+| `run/tpch/run_naive-llm.sh` | Run TPCH Naive-LLM (single-shot LLM query rewrite) + workload |
 | `run/stats/run_reports.sh` | Generate stats comparison reports into `reports/` |
 | `.env-example` | Template for API keys, Postgres/MySQL credentials, and Vertex AI settings; copy to `.env` |
 | `workload/databases/` | Per-DBMS SQL workloads: schemas, indexes, queries, import scripts |
@@ -135,6 +137,7 @@ Stats:
 ./run/stats/run_resequel.sh       # ReSequel rewrite + workload
 ./run/stats/run_r-bot.sh          # R-Bot rewrite + workload
 ./run/stats/run_learnedrewrite.sh # LearnedRewrite + workload
+./run/stats/run_naive-llm.sh      # Naive-LLM (single-shot rewrite) + workload
 ./run/stats/run_reports.sh        # comparison reports into reports/
 ```
 

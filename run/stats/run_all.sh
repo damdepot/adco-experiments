@@ -12,7 +12,7 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 bench_timer "stats/run_all" "results/stats" "run_all"
 
 WORKLOAD="stats"
-BASELINES=(baseline aco adco learnedrewrite r-bot resequel)
+BASELINES=(baseline aco adco learnedrewrite r-bot resequel naive-llm)
 
 RUN_TS="$(date '+%Y-%m-%d-%H-%M-%S')"
 LOG_DIR="${ROOT}/out/logs/${WORKLOAD}"

@@ -127,14 +127,15 @@ def main():
     parser.add_argument('--summary-only', action='store_true', help='Print only a compact totals comparison; do not print the full table or write report files')
     args = parser.parse_args()
 
-    systems = ['baseline', 'aco', 'adco', 'learnedrewrite', 'r-bot', 'resequel']
+    systems = ['baseline', 'aco', 'adco', 'learnedrewrite', 'r-bot', 'resequel', 'naive-llm']
     system_display_names = {
         'baseline': 'Baseline',
         'aco': 'ACo',
         'adco': 'ADCo',
         'learnedrewrite': 'LearnedRewrite',
         'r-bot': 'R-Bot',
-        'resequel': 'ReSequel'
+        'resequel': 'ReSequel',
+        'naive-llm': 'Naive-LLM'
     }
     
     # data[system][query_id] = [execution_times...]

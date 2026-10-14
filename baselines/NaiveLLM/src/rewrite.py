@@ -46,6 +46,11 @@ def safe_target(output_dir: Path, rel_path: str, allowed: set) -> "Path | None":
 
 
 def select_files(output_dir: Path, db: str) -> tuple:
+    # Query-layer workload compiled into a single driver file.
+    if (output_dir / "db_app.py").exists():
+        context = ["schema.sql"] if (output_dir / "schema.sql").exists() else []
+        return ["db_app.py"], context
+
     if db.lower() in ("postgres", "postgresql"):
         driver = "drivers/postgresdriver.py"
     else:

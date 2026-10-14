@@ -1,0 +1,56 @@
+#!/bin/bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "${ROOT}/scripts/_lib/bench_lib.sh"
+
+# Fixed resource + workload contract (matches benchmarks harness).
+export CPU_CORES="${CPU_CORES:-2}"
+export MEMORY_GB="${MEMORY_GB:-4}"
+export REPS="${REPS:-3}"
+export DURATION="${DURATION:-60}"
+export WAREHOUSES="${WAREHOUSES:-6}"
+export CLIENTS="${CLIENTS:-6}"
+
+# Single-writer: never reset the DB under a concurrent run.
+bench_lock "${ROOT}"
+bench_timer "stats/run_naive-llm" "results/stats/naive-llm" "naive-llm"
+cd "${ROOT}"
+
+# clean original results
+rm -rf results/stats/naive-llm
+mkdir -p results/stats/naive-llm/benchmarks
+
+rm -rf out/query_layer/NaiveLLM-results
+mkdir -p out/query_layer/NaiveLLM-results
+
+export iteration=2
+export result_dir="results/stats/naive-llm"
+export result_benchmark_path="results/stats/naive-llm/benchmarks"
+export result_output_path="out/query_layer/NaiveLLM-results"
+
+CMDNaive=./scripts/common/query_layer/exp2_Baselines/runExperiment2-NaiveLLM.sh
+CMDRunWorkload=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Workload.sh
+
+model="gemini-3.5-flash-lite"
+
+
+### Naive-LLM (single-shot rewrite)
+### *******************************
+naive_pipeline() {
+    echo '-------------------<< Compiling Stats dataset (Naive-LLM) >>-------------------'
+    $CMDNaive Compile stats PostgreSQL 1 ${model}
+    echo '-------------------<< Generating Naive-LLM rewrite queries for Stats dataset >>-------------------'
+    $CMDNaive Rewrite stats PostgreSQL 1 ${model}
+    echo '-------------------<< Decompiling rewrite queries for Stats dataset (Naive-LLM) >>-------------------'
+    $CMDNaive Decompile stats PostgreSQL 1 ${model}
+    echo '-------------------<< Verifying rewrite queries for Stats dataset (Naive-LLM) >>-------------------'
+    $CMDNaive Verify stats PostgreSQL 1 ${model}
+}
+
+if naive_pipeline; then
+    echo '-------------------<< Running workload for Stats dataset (Naive-LLM) >>-------------------'
+    $CMDRunWorkload stats PostgreSQL ${model} naive-llm
+else
+    echo 'WARNING: Naive-LLM rewrite pipeline failed; skipping its workload measurement.' >&2
+fi
