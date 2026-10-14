@@ -21,6 +21,7 @@ MODEL="${MODEL:-gemini-3.5-flash-lite}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "smallbank/run_adco" "results/smallbank/adco" "adco"
 
 # Clean adco results ONCE at top
 rm -rf results/smallbank/adco

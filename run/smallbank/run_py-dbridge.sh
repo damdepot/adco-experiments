@@ -18,6 +18,7 @@ export TRANSACTIONS="${TRANSACTIONS:-60000}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "smallbank/run_py-dbridge" "results/smallbank/py-dbridge" "py-dbridge"
 
 # clean original results
 rm -rf results/smallbank/py-dbridge

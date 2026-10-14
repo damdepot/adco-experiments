@@ -8,6 +8,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
+source "${ROOT}/scripts/_lib/bench_lib.sh"
+bench_timer "smallbank/run_all" "results/smallbank" "run_all"
 
 WORKLOAD="smallbank"
 BASELINES=(baseline aco py-dbridge dco adco agenttune ottertune gptuner naive-llm)

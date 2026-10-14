@@ -4,6 +4,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
+source "${ROOT}/scripts/_lib/bench_lib.sh"
+bench_timer "stats/run_r-bot" "results/stats/r-bot" "r-bot"
 
 rm -rf results/stats/r-bot
 mkdir -p results/stats/r-bot/benchmarks

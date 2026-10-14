@@ -20,6 +20,7 @@ export DBMS="${DBMS:-postgres}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "smallbank/run_baseline" "results/smallbank/baseline" "baseline"
 
 # clean baseline results ONCE
 rm -rf results/smallbank/baseline

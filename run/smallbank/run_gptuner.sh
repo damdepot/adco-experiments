@@ -50,6 +50,7 @@ mkdir -p "${SMALLBANK_TOOL_BASE}"
 mkdir -p "${EXP_PATH}/out/db_layer/GPTuner-results"
 
 bench_lock "${EXP_PATH}"
+bench_timer "smallbank/run_gptuner" "results/smallbank/gptuner" "gptuner"
 
 CMGPTuner="${EXP_PATH}/scripts/common/db_layer/exp1_Baselines/runExperiment1-GPTuner.sh"
 

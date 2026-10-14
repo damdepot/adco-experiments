@@ -50,6 +50,7 @@ mkdir -p "${DCO_SMALLBANK_BASE}"
 mkdir -p "${EXP_PATH}/out/db_layer/DCo-results"
 
 bench_lock "${EXP_PATH}"
+bench_timer "smallbank/run_dco" "results/smallbank/dco" "dco"
 
 CMDADCo="${EXP_PATH}/scripts/common/db_layer/exp0_ADCo/runExperiment0.sh"
 

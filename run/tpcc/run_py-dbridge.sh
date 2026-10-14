@@ -16,6 +16,7 @@ export CLIENTS="${CLIENTS:-8}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "tpcc/run_py-dbridge" "results/tpcc/py-dbridge" "py-dbridge"
 
 # clean original results
 rm -rf results/tpcc/py-dbridge

@@ -18,6 +18,7 @@ export TRANSACTIONS="${TRANSACTIONS:-60000}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "smallbank/run_naive-llm" "results/smallbank/naive-llm" "naive-llm"
 
 # clean original results
 rm -rf results/smallbank/naive-llm

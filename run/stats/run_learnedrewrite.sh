@@ -4,6 +4,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
+source "${ROOT}/scripts/_lib/bench_lib.sh"
+bench_timer "stats/run_learnedrewrite" "results/stats/learnedrewrite" "learnedrewrite"
 
 rm -rf results/stats/learnedrewrite
 mkdir -p results/stats/learnedrewrite/benchmarks

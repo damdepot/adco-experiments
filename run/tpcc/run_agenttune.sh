@@ -47,6 +47,7 @@ mkdir -p "${TPCC_TOOL_BASE}"
 mkdir -p "${EXP_PATH}/out/db_layer/AgentTune-results"
 
 bench_lock "${EXP_PATH}"
+bench_timer "tpcc/run_agenttune" "results/tpcc/agenttune" "agenttune"
 
 CMDAgentTune="${EXP_PATH}/scripts/common/db_layer/exp1_Baselines/runExperiment1-AgentTune.sh"
 

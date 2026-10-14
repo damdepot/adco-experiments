@@ -25,6 +25,7 @@ mkdir -p results/tpcc/baseline/benchmarks
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "tpcc/run_baseline" "results/tpcc/baseline" "baseline"
 
 # Copy canonical rep CSVs to single-file aliases for report.py compat.
 # $1=subdir $2=tag $3=benchmark

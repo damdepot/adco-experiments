@@ -50,6 +50,7 @@ SMALLBANK_TOOL_BASE="${EXP_PATH}/results/smallbank/ottertune/benchmarks"
 mkdir -p "${SMALLBANK_TOOL_BASE}"
 
 bench_lock "${EXP_PATH}"
+bench_timer "smallbank/run_ottertune" "results/smallbank/ottertune" "ottertune"
 
 CMOtterTune="${EXP_PATH}/scripts/common/db_layer/exp1_Baselines/runExperiment1-OtterTune.sh"
 

@@ -48,6 +48,7 @@ TPCC_TOOL_BASE="${EXP_PATH}/results/tpcc/ottertune/benchmarks"
 mkdir -p "${TPCC_TOOL_BASE}"
 
 bench_lock "${EXP_PATH}"
+bench_timer "tpcc/run_ottertune" "results/tpcc/ottertune" "ottertune"
 
 CMOtterTune="${EXP_PATH}/scripts/common/db_layer/exp1_Baselines/runExperiment1-OtterTune.sh"
 

@@ -16,6 +16,7 @@ export CLIENTS="${CLIENTS:-8}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "tpcc/run_naive-llm" "results/tpcc/naive-llm" "naive-llm"
 
 # clean original results
 rm -rf results/tpcc/naive-llm

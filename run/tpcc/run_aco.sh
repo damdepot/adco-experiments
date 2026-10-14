@@ -16,6 +16,7 @@ export CLIENTS="${CLIENTS:-8}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "tpcc/run_aco" "results/tpcc/aco" "aco"
 
 # Clean results and output directories (aco ONLY)
 rm -rf results/tpcc/aco

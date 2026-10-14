@@ -4,6 +4,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
+source "${ROOT}/scripts/_lib/bench_lib.sh"
+bench_timer "stats/run_resequel" "results/stats/resequel" "resequel"
 
 # clean original results
 rm -rf results/stats/resequel

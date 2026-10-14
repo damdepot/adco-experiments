@@ -14,6 +14,7 @@ export CLIENTS="${CLIENTS:-6}"
 
 # Single-writer: never reset the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "stats/run_aco" "results/stats/aco" "aco"
 cd "${ROOT}"
 
 # clean original results

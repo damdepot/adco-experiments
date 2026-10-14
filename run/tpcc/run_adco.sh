@@ -28,6 +28,7 @@ mkdir -p out/app_layer/ADCo-results
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "tpcc/run_adco" "results/tpcc/adco" "adco"
 
 # Define variables and command paths (app ADCo phase)
 CMDADCoApp=./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh

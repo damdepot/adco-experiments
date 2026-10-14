@@ -18,6 +18,7 @@ export TRANSACTIONS="${TRANSACTIONS:-60000}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
+bench_timer "smallbank/run_aco" "results/smallbank/aco" "aco"
 
 # Clean results and output directories (aco only)
 rm -rf results/smallbank/aco

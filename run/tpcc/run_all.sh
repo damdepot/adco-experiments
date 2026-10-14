@@ -8,6 +8,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
+source "${ROOT}/scripts/_lib/bench_lib.sh"
+bench_timer "tpcc/run_all" "results/tpcc" "run_all"
 
 WORKLOAD="tpcc"
 BASELINES=(baseline aco py-dbridge dco adco agenttune ottertune gptuner naive-llm)

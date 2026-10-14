@@ -207,6 +207,72 @@ bench_lock() {
     fi
 }
 
+# bench_timer <label> <results-dir> <name>: record this script's run metadata
+# for incident post-mortems. Call once near the top (after bench_lock when
+# present). On EXIT (success or fail) writes <results-dir>/<name>.json with
+# wall-clock time, exit status, resource contract and model. Chains with any
+# pre-existing EXIT trap (e.g. bench_lock's) instead of replacing it.
+bench_timer() {
+    _BENCH_TIMER_LABEL="$1"
+    _BENCH_TIMER_DIR="${BENCH_ROOT}/$2"
+    _BENCH_TIMER_NAME="$3"
+    _BENCH_TIMER_STARTED="$(date '+%Y-%m-%d %H:%M:%S')"
+    _BENCH_TIMER_START="${SECONDS}"
+    local prev
+    prev="$(trap -p EXIT || true)"
+    if [ -n "${prev}" ]; then
+        prev="${prev#trap -- \'}"
+        prev="${prev%\' EXIT}"
+        # shellcheck disable=SC2064
+        trap "_bench_timer_record; ${prev}" EXIT
+    else
+        trap "_bench_timer_record" EXIT
+    fi
+}
+
+# Print "$1" as a JSON string, or null when empty.
+_bench_json_str() {
+    if [ -n "${1:-}" ]; then
+        printf '"%s"' "$1"
+    else
+        printf 'null'
+    fi
+}
+
+_bench_timer_record() {
+    local code="$?"
+    local status="success"
+    [ "${code}" -ne 0 ] && status="fail"
+    local elapsed=$((SECONDS - ${_BENCH_TIMER_START:-${SECONDS}}))
+    local finished
+    finished="$(date '+%Y-%m-%d %H:%M:%S')"
+    local commit
+    commit="$(git -C "${BENCH_ROOT}" rev-parse --short HEAD 2>/dev/null || true)"
+    local dir="${_BENCH_TIMER_DIR:-${BENCH_ROOT}/out/logs}"
+    local name="${_BENCH_TIMER_NAME:-run}"
+    mkdir -p "${dir}"
+    {
+        printf '{\n'
+        printf '  "script": "%s",\n' "${_BENCH_TIMER_LABEL:-unknown}"
+        printf '  "status": "%s",\n' "${status}"
+        printf '  "started": "%s",\n' "${_BENCH_TIMER_STARTED:-unknown}"
+        printf '  "finished": "%s",\n' "${finished}"
+        printf '  "elapsed_secs": %d,\n' "${elapsed}"
+        printf '  "exit_code": %d,\n' "${code}"
+        printf '  "cpu_cores": %s,\n' "$(_bench_json_str "${CPU_CORES:-}")"
+        printf '  "memory_gb": %s,\n' "$(_bench_json_str "${MEMORY_GB:-}")"
+        printf '  "llm": %s,\n' "$(_bench_json_str "${MODEL:-${model:-}}")"
+        printf '  "dbms": %s,\n' "$(_bench_json_str "${DBMS:-}")"
+        printf '  "reps": %s,\n' "$(_bench_json_str "${REPS:-}")"
+        printf '  "duration": %s,\n' "$(_bench_json_str "${DURATION:-}")"
+        printf '  "warmup": %s,\n' "$(_bench_json_str "${WARMUP:-}")"
+        printf '  "warehouses": %s,\n' "$(_bench_json_str "${WAREHOUSES:-}")"
+        printf '  "clients": %s,\n' "$(_bench_json_str "${CLIENTS:-}")"
+        printf '  "git_commit": %s\n' "$(_bench_json_str "${commit}")"
+        printf '}\n'
+    } >"${dir}/${name}.json"
+}
+
 psql() {
     docker exec -i -u postgres "${BENCH_DB_CONTAINER}" psql -v ON_ERROR_STOP=1 -q "$@"
 }

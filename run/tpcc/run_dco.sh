@@ -23,6 +23,7 @@ mkdir -p "${DCO_TPCC_BASE}"
 mkdir -p "${EXP_PATH}/out/db_layer/DCo-results"
 
 bench_lock "${EXP_PATH}"
+bench_timer "tpcc/run_dco" "results/tpcc/dco" "dco"
 
 CMDADCo="${EXP_PATH}/scripts/common/db_layer/exp0_ADCo/runExperiment0.sh"
 
