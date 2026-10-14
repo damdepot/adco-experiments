@@ -242,3 +242,4 @@ reports/
 out/
 workload/apps/*
 .venv_hash
+tools/tpch-kit

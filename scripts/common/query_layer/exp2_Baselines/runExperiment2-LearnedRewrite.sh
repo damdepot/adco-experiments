@@ -2,6 +2,7 @@
 
 dataset=$1
 dbms=$2
+scale=${3:-1}
 baseline_name='LearnedRewrite'
 
 exp_path="$(pwd)"
@@ -13,7 +14,12 @@ rm -rf ${output_path}
 mkdir -p ${output_path}
 
 workload_path="${exp_path}/workload/databases/${dbms}/${dataset}"
-schema_path="${exp_path}/catalog/${dataset}/schema.json"
+# Mirror runExperiment1.sh: tpch/tpcds catalogs carry a -s<scale> suffix.
+catalog_dir="${exp_path}/catalog/${dataset}"
+if [ "${dataset}" = "tpch" ] || [ "${dataset}" = "tpcds" ]; then
+    catalog_dir="${exp_path}/catalog/${dataset}-s${scale}"
+fi
+schema_path="${catalog_dir}/schema.json"
 log_file_name="${exp_path}/${RESULTS_DATASET_DIR:-results/${dataset}}/learnedrewrite/runExperiment2-${dataset}-${dbms}-${baseline_name}.dat"
 mkdir -p "$(dirname "$log_file_name")"
 
@@ -21,7 +27,7 @@ mkdir -p "$(dirname "$log_file_name")"
 # message instead of a Java FileNotFoundException when it is missing.
 if [ ! -f "${schema_path}" ]; then
     echo "ERROR: schema catalog not found: ${schema_path}." >&2
-    echo "Build it first, e.g.: ./scripts/common/query_layer/exp1_ReSequel/runExperiment1.sh BuildCatalog ${dataset} ${dbms} 1" >&2
+    echo "Build it first, e.g.: ./scripts/common/query_layer/exp1_ReSequel/runExperiment1.sh BuildCatalog ${dataset} ${dbms} ${scale}" >&2
     exit 1
 fi
 

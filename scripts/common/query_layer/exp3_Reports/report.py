@@ -37,6 +37,11 @@ def geometric_mean(values):
         product *= v
     return product ** (1.0 / len(values))
 
+def common_success_queries(medians, present, all_queries):
+    # Fair comparison set: queries successful in ALL present arms.
+    return [q for q in all_queries
+            if all(medians.get(s, {}).get(q, 0.0) > 0 for s in present)]
+
 def print_summary(total_time, speedups, query_counts, medians, all_queries, systems, system_display_names, results_base, ref='baseline'):
     # Compact post-banner comparison mirroring scripts/_lib/run_comparison.sh.
     # Like run_comparison, show only arms that have result data.
@@ -45,10 +50,21 @@ def print_summary(total_time, speedups, query_counts, medians, all_queries, syst
         print(f"No result data found in {results_base} (nothing to compare).")
         return
     ref_name = system_display_names.get(ref, ref.capitalize())
-    ref_tot = total_time.get(ref, 0.0)
     ref_meds = medians.get(ref, {})
     print(f"Query exec time (ms) vs {ref_name} (lower better)")
     print(f"Source: {results_base}")
+    # Fair totals: only queries successful in ALL present arms, so an arm
+    # with failed queries does not look faster by skipping them.
+    common = common_success_queries(medians, present, all_queries)
+    fair_total = {s: sum(medians[s][q] for q in common) for s in present}
+    ref_tot = fair_total.get(ref, 0.0)
+    fair_speedups = {}
+    for s in present:
+        if s == ref:
+            continue
+        fair_speedups[s] = [ref_meds[q] / medians[s][q] for q in common
+                            if ref_meds.get(q, 0.0) > 0 and medians.get(s, {}).get(q, 0.0) > 0]
+    print(f"Fair totals over {len(common)} common successful queries (of {len(all_queries)}).")
     print()
 
     header = f"{'Query ID':<12}"
@@ -74,7 +90,7 @@ def print_summary(total_time, speedups, query_counts, medians, all_queries, syst
 
     row = f"{'TOTAL (ms)':<12}"
     for s in present:
-        t = total_time.get(s, 0.0)
+        t = fair_total.get(s, 0.0)
         if s == ref:
             row += f"|{t:>13.1f}"
         else:
@@ -88,7 +104,7 @@ def print_summary(total_time, speedups, query_counts, medians, all_queries, syst
         if s == ref:
             row += f"|{'-':^13}"
         else:
-            g = geometric_mean(speedups.get(s, []))
+            g = geometric_mean(fair_speedups.get(s, []))
             cell = f"{g:.2f}x" if g > 0 else "N/A"
             row += f"|{cell:>13}"
     print(row)
@@ -249,13 +265,25 @@ def main():
         lines.append(line)
         
     lines.append("-" * len(header))
-    
+
+    # Fair totals over queries successful in ALL present arms.
+    present_full = [s for s in systems if total_time.get(s, 0.0) > 0]
+    common_full = common_success_queries(medians, present_full, all_queries)
+    fair_total_full = {s: sum(medians[s][q] for q in common_full) if s in present_full else 0.0 for s in systems}
+    fair_speedups_full = {}
+    for sys in systems:
+        if sys == 'baseline':
+            continue
+        fair_speedups_full[sys] = [medians['baseline'][q] / medians[sys][q] for q in common_full
+                                   if medians.get('baseline', {}).get(q, 0.0) > 0 and medians.get(sys, {}).get(q, 0.0) > 0]
+    lines.append(f"(Fair totals over {len(common_full)} common successful queries of {len(all_queries)}.)")
+
     line = f"{'Total':<15}"
-    base_tot = total_time['baseline']
+    base_tot = fair_total_full['baseline']
     line += f"{base_tot:<15.2f}"
     
     for sys in systems[1:]:
-        sys_tot = total_time[sys]
+        sys_tot = fair_total_full[sys]
         if sys_tot > 0 and base_tot > 0:
             tot_speedup = base_tot / sys_tot
         else:
@@ -272,7 +300,7 @@ def main():
     line = f"{'Geo Mean Spd':<15}"
     line += f"{'-':<15}"
     for sys in systems[1:]:
-        geo_mean = geometric_mean(speedups[sys])
+        geo_mean = geometric_mean(fair_speedups_full[sys])
         s_str = f"{geo_mean:.2f}x" if geo_mean > 0 else "N/A"
         cell = f"{'-':<12} | {s_str:<8}"
         line += f"{cell:<24}"
@@ -314,10 +342,11 @@ def main():
                 md_row += f" {t_str} | {s_str} |"
             md_lines.append(md_row)
             
-        base_tot = total_time['baseline']
+        md_lines.append(f"\nFair totals over {len(common_full)} common successful queries of {len(all_queries)}.\n")
+        base_tot = fair_total_full['baseline']
         md_row_tot = f"| **Total** | **{base_tot:.2f}** |"
         for sys in systems[1:]:
-            sys_tot = total_time[sys]
+            sys_tot = fair_total_full[sys]
             if sys_tot > 0 and base_tot > 0:
                 tot_speedup = base_tot / sys_tot
             else:
@@ -329,7 +358,7 @@ def main():
         
         md_row_geo = "| **Geo Mean Spd** | **-** |"
         for sys in systems[1:]:
-            geo_mean = geometric_mean(speedups[sys])
+            geo_mean = geometric_mean(fair_speedups_full[sys])
             s_str = f"{geo_mean:.2f}x" if geo_mean > 0 else "N/A"
             md_row_geo += f" **-** | **{s_str}** |"
         md_lines.append(md_row_geo)
