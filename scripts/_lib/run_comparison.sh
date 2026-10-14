@@ -6,7 +6,7 @@
 # <label>/benchmarks/*.csv, or multi-rep <label>_r1.csv, _r2, ... (plus
 # legacy flat/stamped). Labels are
 # auto-discovered from <label>.csv / <label>_rN.csv files in RESULTS_DIR
-# (baseline first when present, otherwise alphabetical), falling back to
+# (canonical column order, unrecognised labels last), falling back to
 # run-stamped <label>_<RUN_ID>[_rN].csv (latest run wins). runExperiment*
 # logs/aliases stay ignored. For every
 # label the txn/s of column 4 is averaged across reps, per transaction
@@ -101,10 +101,16 @@ for path in all_csvs():
 if not candidates:
     sys.stderr.write(f"ERROR: no result CSVs found in {results_dir}.\n")
     sys.exit(1)
-labels = sorted(candidates)
-if "baseline" in labels:
-    labels.remove("baseline")
-    labels.insert(0, "baseline")
+# Canonical column order (matches run_reports.sh --systems); unrecognised
+# labels follow, alphabetically.
+CANONICAL = [
+    "baseline", "py-dbridge", "naive-llm", "ottertune", "gptuner",
+    "agenttune", "aco", "dco", "adco",
+]
+labels = sorted(
+    candidates,
+    key=lambda l: (CANONICAL.index(l) if l in CANONICAL else len(CANONICAL), l),
+)
 
 data = {}
 order = []
