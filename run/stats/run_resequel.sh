@@ -24,11 +24,6 @@ CMDRunWorkload=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Worklo
 
 model="gemini-3.5-flash-lite"
 
-## Build Catalog
-#***************
-echo '-------------------<< Building Catalog for Stats-Lite dataset >>-------------------'
-$CMDReSequel BuildCatalog stats PostgreSQL 1
-
 ## Templatization
 #****************
 echo '-------------------<< Templatizing Stats-Lite dataset >>-------------------'

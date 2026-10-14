@@ -38,7 +38,7 @@ run on two layers:
 | `workload/databases/` | Per-DBMS SQL workloads: schemas, indexes, queries, import scripts |
 | `workload/src/` | Python harness that replays DB-layer workloads and logs results (`DBConfig.yaml` holds its DB credentials) |
 | `workload/apps/` | Cloned OLTP workload apps (Smallbank, TPC-C) with their own drivers and `db.config` |
-| `scripts/common/query_layer/` | Dataset-neutral query-layer experiment drivers called by `run/stats`, `run/tpcc/query` and `run/smallbank/query` entry points (`exp0_ADCo`, `exp1_ReSequel`, `exp2_Baselines`, `exp3_Reports`) |
+| `scripts/common/query_layer/` | Dataset-neutral query-layer experiment drivers called by the `run/stats` and `run/tpch` entry points (`exp0_ADCo`, `exp1_ReSequel`, `exp2_Baselines`, `exp3_Reports`) |
 | `scripts/common/app_layer/` | Benchmark-neutral app-layer drivers (ADCo, Py-DBridge, reports) shared by `run/tpcc` and `run/smallbank` |
 | `scripts/tpcc/` + `scripts/smallbank/` | Workload-specific app/DB-layer drivers called by `run/tpcc` and `run/smallbank` entry points |
 | `scripts/common/db_layer/` | Benchmark-neutral DB-layer drivers (ADCo/DCo, AgentTune/GPTuner/OtterTune, reports) shared by `run/tpcc` and `run/smallbank` |
