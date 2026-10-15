@@ -45,29 +45,42 @@ DB_NETWORK=$(docker inspect "${CONTAINER_NAME}" --format '{{range $k, $v := .Net
 
 if [ -f /.dockerenv ] || grep -qa 'docker\|containerd' /proc/1/cgroup 2>/dev/null; then
     CURRENT_CONTAINER="$(hostname)"
-    VOLUMES_ARG="--volumes-from ${CURRENT_CONTAINER}"
+    VOLUMES_ARGS=(--volumes-from "${CURRENT_CONTAINER}")
     RESULTS_OUT="/app/results/${benchmark}/ottertune/record/${benchmark}"
+    TUNER_PYTHONPATH="/app/baselines/ottertune/server"
+    TUNER_ENTRYPOINT_ARGS=(--entrypoint python)
+    TUNER_SCRIPT_ARGS=(/app/baselines/ottertune/ottertune_tuner.py)
 else
-    VOLUMES_ARG="-v ${exp_path}/baselines/ottertune:/ottertune:ro -v ${record_dir}:/results"
+    VOLUMES_ARGS=(-v "${exp_path}/baselines/ottertune:/ottertune:ro" -v "${record_dir}:/results")
     RESULTS_OUT="/results"
+    TUNER_PYTHONPATH="/ottertune/server"
+    TUNER_ENTRYPOINT_ARGS=()
+    TUNER_SCRIPT_ARGS=()
 fi
 
 # Construct micro-workload command executed by ottertune-tuner during tuning iterations
 TARGET_EXP_CONTAINER="${ADCOEXP_CONTAINER:-adcoexp}"
+WORKLOAD_WARMUP_ARGS=()
 if [ "${benchmark}" == "smallbank" ]; then
-    WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/smallbank && (source venv/bin/activate 2>/dev/null || true) && python main.py run --driver postgres --accounts 100000 --transactions 2000 --host ${CONTAINER_NAME}'"
+    WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/smallbank && (source venv/bin/activate 2>/dev/null || true) && python main.py run --driver postgres --accounts ${ACCOUNTS:-5000000} --transactions ${TRANSACTIONS:-60000} --host ${CONTAINER_NAME}'"
+    WORKLOAD_WARMUP_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/smallbank && (source venv/bin/activate 2>/dev/null || true) && python main.py run --driver postgres --accounts ${ACCOUNTS:-5000000} --transactions ${OTTERTUNE_WARMUP_TRANSACTIONS:-10000} --host ${CONTAINER_NAME}'"
+    WORKLOAD_WARMUP_ARGS=(--workload-warmup-cmd "${WORKLOAD_WARMUP_CMD}")
 elif [ "${benchmark}" == "tpcc" ]; then
-    WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/tpcc && (source venv/bin/activate 2>/dev/null || true) && python tpcc.py postgres --config=/app/workload/apps/tpcc/db.config --warehouses 2 --clients 4 --duration 10 --no-load'"
+    WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/tpcc && (source venv/bin/activate 2>/dev/null || true) && python tpcc.py postgres --config=/app/workload/apps/tpcc/db.config --warehouses ${WAREHOUSES:-32} --clients ${CLIENTS:-8} --duration ${OTTERTUNE_DURATION:-60} --no-load'"
+    WORKLOAD_WARMUP_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/tpcc && (source venv/bin/activate 2>/dev/null || true) && python tpcc.py postgres --config=/app/workload/apps/tpcc/db.config --warehouses ${WAREHOUSES:-32} --clients ${CLIENTS:-8} --duration ${OTTERTUNE_WARMUP_SECS:-30} --no-load'"
+    WORKLOAD_WARMUP_ARGS=(--workload-warmup-cmd "${WORKLOAD_WARMUP_CMD}")
 else
     WORKLOAD_CMD=""
 fi
 
 docker run --rm \
     --network "${DB_NETWORK}" \
-    ${VOLUMES_ARG} \
+    "${VOLUMES_ARGS[@]}" \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -e PYTHONPATH=/ottertune/server \
+    -e "PYTHONPATH=${TUNER_PYTHONPATH}" \
+    "${TUNER_ENTRYPOINT_ARGS[@]}" \
     ottertune-tuner:latest \
+        "${TUNER_SCRIPT_ARGS[@]}" \
         --db-host "${CONTAINER_NAME}" \
         --db-port "5432" \
         --db-name "${DB_NAME}" \
@@ -75,7 +88,11 @@ docker run --rm \
         --db-password "${DB_PASSWORD}" \
         --workload-name "${benchmark}" \
         --workload-cmd "${WORKLOAD_CMD}" \
+        "${WORKLOAD_WARMUP_ARGS[@]}" \
         --restart-cmd "docker restart ${CONTAINER_NAME}" \
+        --memory-gb "${MEMORY_GB:-4}" \
+        --cpu-cores "${CPU_CORES:-2}" \
+        --knob-catalog "" \
         --output-dir "${RESULTS_OUT}" \
         --iterations "${iterations}" \
         --warmup "${warmup}"

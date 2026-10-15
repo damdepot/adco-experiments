@@ -9,8 +9,8 @@
 # Baseline compat: the existing
 #   scripts/common/db_layer/exp1_Baselines/runExperiment1-OtterTune.sh <dbms> <benchmark> <iterations> <warmup>
 # entrypoint is kept callable standalone AND is invoked as the tool fn here
-# (defaults OTTERTUNE_ITERATIONS=30 OTTERTUNE_WARMUP=5, matching the previous
-# runner's `postgres <benchmark> 30 5` positionals; env-overridable).
+# (defaults OTTERTUNE_ITERATIONS=40 OTTERTUNE_WARMUP=10; warmup is the OtterTune
+# LHS exploration count, while OTTERTUNE_WARMUP_SECS controls workload warmup).
 # Post-tool bench_restore scrubs tool screening writes; Restart/WaitFor gives
 # cold buffers before measure. The optimized arm runs the baseline app path
 # (knob-only delta).
@@ -38,8 +38,8 @@ export WAREHOUSES="${WAREHOUSES:-32}"
 export CLIENTS="${CLIENTS:-8}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
 export DBMS="${DBMS:-postgres}"
-OTTERTUNE_ITERATIONS="${OTTERTUNE_ITERATIONS:-30}"
-OTTERTUNE_WARMUP="${OTTERTUNE_WARMUP:-5}"
+OTTERTUNE_ITERATIONS="${OTTERTUNE_ITERATIONS:-40}"
+OTTERTUNE_WARMUP="${OTTERTUNE_WARMUP:-10}"
 
 # shellcheck disable=SC1090
 source "${LIB}"
@@ -90,5 +90,4 @@ bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${WAREHOUSES}"
 echo "----------------->> OtterTune tpcc <<-----------------"
 bench_arm_from_seed "ottertune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_ottertune_tpcc_tool
 legacy_sync "${TPCC_RESULTS}" "ottertune" "tpcc"
-
 
