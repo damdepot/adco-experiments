@@ -47,11 +47,11 @@ if [ -f /.dockerenv ] || grep -qa 'docker\|containerd' /proc/1/cgroup 2>/dev/nul
     CURRENT_CONTAINER="$(hostname)"
     VOLUMES_ARGS=(--volumes-from "${CURRENT_CONTAINER}")
     RESULTS_OUT="/app/results/${benchmark}/ottertune/record/${benchmark}"
-    TUNER_PYTHONPATH="/app/baselines/ottertune/server"
+    TUNER_PYTHONPATH="/app/baselines/OtterTune/server"
     TUNER_ENTRYPOINT_ARGS=(--entrypoint python)
-    TUNER_SCRIPT_ARGS=(/app/baselines/ottertune/ottertune_tuner.py)
+    TUNER_SCRIPT_ARGS=(/app/baselines/OtterTune/ottertune_tuner.py)
 else
-    VOLUMES_ARGS=(-v "${exp_path}/baselines/ottertune:/ottertune:ro" -v "${record_dir}:/results")
+    VOLUMES_ARGS=(-v "${exp_path}/baselines/OtterTune:/ottertune:ro" -v "${record_dir}:/results")
     RESULTS_OUT="/results"
     TUNER_PYTHONPATH="/ottertune/server"
     TUNER_ENTRYPOINT_ARGS=()
