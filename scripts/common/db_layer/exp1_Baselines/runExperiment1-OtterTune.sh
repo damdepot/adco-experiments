@@ -67,7 +67,7 @@ if [ "${benchmark}" == "smallbank" ]; then
     WORKLOAD_WARMUP_ARGS=(--workload-warmup-cmd "${WORKLOAD_WARMUP_CMD}")
 elif [ "${benchmark}" == "tpcc" ]; then
     WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/tpcc && (source venv/bin/activate 2>/dev/null || true) && python tpcc.py postgres --config=/app/workload/apps/tpcc/db.config --warehouses ${WAREHOUSES:-32} --clients ${CLIENTS:-8} --duration ${OTTERTUNE_DURATION:-60} --no-load'"
-    WORKLOAD_WARMUP_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/tpcc && (source venv/bin/activate 2>/dev/null || true) && python tpcc.py postgres --config=/app/workload/apps/tpcc/db.config --warehouses ${WAREHOUSES:-32} --clients ${CLIENTS:-8} --duration ${OTTERTUNE_WARMUP_SECS:-30} --no-load'"
+    WORKLOAD_WARMUP_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/tpcc && (source venv/bin/activate 2>/dev/null || true) && python tpcc.py postgres --config=/app/workload/apps/tpcc/db.config --warehouses ${WAREHOUSES:-32} --clients ${CLIENTS:-8} --duration ${OTTERTUNE_WARMUP_SECS:-10} --no-load'"
     WORKLOAD_WARMUP_ARGS=(--workload-warmup-cmd "${WORKLOAD_WARMUP_CMD}")
 else
     WORKLOAD_CMD=""
