@@ -16,6 +16,7 @@ export CLIENTS="${CLIENTS:-6}"
 bench_lock "${ROOT}"
 bench_timer "tpch/run_adco" "results/tpch/adco" "adco"
 cd "${ROOT}"
+bench_snapshot_seed tpch tpch_seed ./run/setup/tpch-prepare-postgres-remote.sh
 
 # clean original results
 rm -rf results/tpch/adco
@@ -35,7 +36,6 @@ CMDDocker=./scripts/common/db_layer/exp1_Baselines/runExperiment1-Production-Doc
 
 model="gemini-3.5-flash-lite"
 db_container="adcoexp-db"
-db_service="pgdb"
 
 
 ### ADCo (Unified Rewrite + Tune)
@@ -44,7 +44,9 @@ adco_pipeline() {
     echo '-------------------<< Compiling TPCH dataset (ADCo) >>-------------------'
     $CMDADCo Compile tpch PostgreSQL 1 ${model} adco
     echo '-------------------<< Generating ADCo unified queries for TPCH dataset >>-------------------'
-    $CMDADCo Rewrite tpch PostgreSQL 1 ${model} adco
+    python3 "${ROOT}/tools/check_knobs.py" || return 1
+    $CMDADCo Rewrite tpch PostgreSQL 1 ${model} adco || return 1
+    python3 "${ROOT}/tools/check_knobs.py" || return 1
     $CMDDocker Restart ${db_container}
     echo '-------------------<< Decompiling rewrite queries for TPCH dataset (ADCo) >>-------------------'
     $CMDADCo Decompile tpch PostgreSQL 1 ${model} adco
@@ -52,11 +54,12 @@ adco_pipeline() {
     $CMDADCo Verify tpch PostgreSQL 1 ${model} adco
 }
 
+bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
 if adco_pipeline; then
     echo '-------------------<< Running workload for TPCH dataset (ADCo) >>-------------------'
     $CMDRunWorkload tpch PostgreSQL ${model} adco
 else
     echo 'WARNING: ADCo pipeline failed; skipping its workload measurement.' >&2
 fi
-$CMDDocker Down ${db_container}
-$CMDDocker Up ${db_container} ${db_service}
+$CMDDocker Restart ${db_container}
+$CMDDocker WaitFor ${db_container}

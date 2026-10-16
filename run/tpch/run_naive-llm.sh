@@ -16,6 +16,7 @@ export CLIENTS="${CLIENTS:-6}"
 bench_lock "${ROOT}"
 bench_timer "tpch/run_naive-llm" "results/tpch/naive-llm" "naive-llm"
 cd "${ROOT}"
+bench_snapshot_seed tpch tpch_seed ./run/setup/tpch-prepare-postgres-remote.sh
 
 # clean original results
 rm -rf results/tpch/naive-llm
@@ -50,6 +51,8 @@ naive_pipeline() {
 
 if naive_pipeline; then
     echo '-------------------<< Running workload for TPCH dataset (Naive-LLM) >>-------------------'
+    bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
+    python3 "${ROOT}/tools/check_knobs.py"
     $CMDRunWorkload tpch PostgreSQL ${model} naive-llm
 else
     echo 'WARNING: Naive-LLM rewrite pipeline failed; skipping its workload measurement.' >&2

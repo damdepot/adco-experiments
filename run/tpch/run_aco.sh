@@ -16,6 +16,7 @@ export CLIENTS="${CLIENTS:-6}"
 bench_lock "${ROOT}"
 bench_timer "tpch/run_aco" "results/tpch/aco" "aco"
 cd "${ROOT}"
+bench_snapshot_seed tpch tpch_seed ./run/setup/tpch-prepare-postgres-remote.sh
 
 # clean original results
 rm -rf results/tpch/aco
@@ -50,6 +51,8 @@ aco_pipeline() {
 
 if aco_pipeline; then
     echo '-------------------<< Running workload for TPCH dataset (ACo) >>-------------------'
+    bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
+    python3 "${ROOT}/tools/check_knobs.py"
     $CMDRunWorkload tpch PostgreSQL ${model} aco
 else
     echo 'WARNING: ACo rewrite pipeline failed; skipping its workload measurement.' >&2

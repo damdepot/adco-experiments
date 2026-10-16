@@ -16,6 +16,7 @@ export CLIENTS="${CLIENTS:-6}"
 bench_lock "${ROOT}"
 bench_timer "stats/run_naive-llm" "results/stats/naive-llm" "naive-llm"
 cd "${ROOT}"
+bench_snapshot_seed stats stats_seed ./run/setup/stats-prepare-postgres-remote.sh
 
 # clean original results
 rm -rf results/stats/naive-llm
@@ -50,6 +51,8 @@ naive_pipeline() {
 
 if naive_pipeline; then
     echo '-------------------<< Running workload for Stats dataset (Naive-LLM) >>-------------------'
+    bench_fresh_db stats stats_seed users "${STATS_USERS_ROWS:-40325}"
+    python3 "${ROOT}/tools/check_knobs.py"
     $CMDRunWorkload stats PostgreSQL ${model} naive-llm
 else
     echo 'WARNING: Naive-LLM rewrite pipeline failed; skipping its workload measurement.' >&2

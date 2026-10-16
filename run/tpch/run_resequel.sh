@@ -5,7 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
+bench_lock "${ROOT}"
 bench_timer "tpch/run_resequel" "results/tpch/resequel" "resequel"
+bench_snapshot_seed tpch tpch_seed ./run/setup/tpch-prepare-postgres-remote.sh
 
 # clean original results
 rm -rf results/tpch/resequel
@@ -47,4 +49,6 @@ $CMDReSequel Verify tpch PostgreSQL 1 ${model} PostgreSQL
 ## Run Workload
 #********************
 echo '-------------------<< Running workload for TPCH dataset >>-------------------'
+bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
+python3 "${ROOT}/tools/check_knobs.py"
 $CMDRunWorkload tpch PostgreSQL ${model}

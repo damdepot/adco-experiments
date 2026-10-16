@@ -156,6 +156,40 @@ bench_ensure_seed() {
     bench_seed_once "${db}" "${seed}"
 }
 
+# Snapshot a query-layer database whose loader is a setup script rather than
+# BENCH_CMDRUNTPCC. bench_snapshot_seed <db> <seed> <reload_script>.
+# Reuse the seed by default; RESEED=1 recreates the container and reloads data.
+bench_snapshot_seed() {
+    local db="$1"
+    local seed="$2"
+    local reload_script="${3:-}"
+    local exists
+
+    if [ "${RESEED:-0}" = "1" ]; then
+        if [ -z "${reload_script}" ]; then
+            echo "ERROR: reload script required when RESEED=1." >&2
+            return 2
+        fi
+        bench_reset
+        bash "${reload_script}"
+        bench_snapshot "${db}" "${seed}"
+    else
+        exists="$(psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname='${seed}'")"
+        if [ "${exists}" = "1" ]; then
+            echo "Reusing existing seed database '${seed}'."
+        else
+            exists="$(psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname='${db}'")"
+            if [ "${exists}" != "1" ]; then
+                echo "ERROR: source database '${db}' not found; run its prepare-postgres script or use RESEED=1." >&2
+                return 1
+            fi
+            bench_snapshot "${db}" "${seed}"
+        fi
+    fi
+
+    bench_assert_seed "${seed}"
+}
+
 # Measure one arm from an already-snapshotted seed (see bench_seed_once).
 # bench_arm_from_seed <tag> <dir> <db> <seed> [tool_fn]
 # Same symmetry as bench_arm (identical data + cold buffers per arm) with
@@ -356,6 +390,30 @@ bench_assert_rows() {
     if ! [ "${actual:-0}" -eq "${expected}" ] 2>/dev/null; then
         echo "ERROR: row count mismatch in '${db}.${table}': expected ${expected}, got ${actual}; RESEED=1 to reload." >&2
         exit 1
+    fi
+}
+
+# Restore query-layer data and enforce the same seed/knob/row guardrails used
+# by the app-layer arms. bench_fresh_db <db> <seed> [table] [expected_rows].
+bench_fresh_db() {
+    local db="$1"
+    local seed="$2"
+    local table="${3:-}"
+    local expected="${4:-}"
+
+    if [ -n "${table}" ] || [ -n "${expected}" ]; then
+        if [ -z "${table}" ] || [ -z "${expected}" ]; then
+            echo "ERROR: both table and expected row count are required for bench_fresh_db." >&2
+            return 2
+        fi
+    fi
+
+    bench_assert_seed "${seed}"
+    bench_restore "${db}" "${seed}"
+    restore_defaults
+    bench_assert_fresh_knobs
+    if [ -n "${table}" ]; then
+        bench_assert_rows "${db}" "${table}" "${expected}"
     fi
 }
 

@@ -5,7 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
+bench_lock "${ROOT}"
 bench_timer "tpch/run_learnedrewrite" "results/tpch/learnedrewrite" "learnedrewrite"
+bench_snapshot_seed tpch tpch_seed ./run/setup/tpch-prepare-postgres-remote.sh
 
 rm -rf results/tpch/learnedrewrite
 mkdir -p results/tpch/learnedrewrite/benchmarks
@@ -29,4 +31,6 @@ echo "-------------------<< Verifying LearnedRewrite rewrites for TPCH dataset >
 $CMDRunLRVerify tpch PostgreSQL
 
 echo "-------------------<< Running Workload for TPCH dataset >>-------------------"
+bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
+python3 "${ROOT}/tools/check_knobs.py"
 $CMDRunWorkload tpch PostgreSQL LearnedRewrite

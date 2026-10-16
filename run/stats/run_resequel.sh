@@ -5,7 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
+bench_lock "${ROOT}"
 bench_timer "stats/run_resequel" "results/stats/resequel" "resequel"
+bench_snapshot_seed stats stats_seed ./run/setup/stats-prepare-postgres-remote.sh
 
 # clean original results
 rm -rf results/stats/resequel
@@ -47,4 +49,6 @@ $CMDReSequel Verify stats PostgreSQL 1 ${model} PostgreSQL
 ## Run Workload
 #********************
 echo '-------------------<< Running workload for Stats-Lite dataset >>-------------------'
+bench_fresh_db stats stats_seed users "${STATS_USERS_ROWS:-40325}"
+python3 "${ROOT}/tools/check_knobs.py"
 $CMDRunWorkload stats PostgreSQL ${model}

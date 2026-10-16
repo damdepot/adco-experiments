@@ -16,6 +16,7 @@ export CLIENTS="${CLIENTS:-6}"
 bench_lock "${ROOT}"
 bench_timer "stats/run_baseline" "results/stats/baseline" "baseline"
 cd "${ROOT}"
+bench_snapshot_seed stats stats_seed ./run/setup/stats-prepare-postgres-remote.sh
 
 # clean baseline results
 rm -rf results/stats/baseline
@@ -27,4 +28,6 @@ CMDBaseline=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Baseline.
 ## Run the baseline experiments
 #***************
 echo '-------------------<< Running the baseline experiments for Stats-Lite dataset >>-------------------'
+bench_fresh_db stats stats_seed users "${STATS_USERS_ROWS:-40325}"
+python3 "${ROOT}/tools/check_knobs.py"
 $CMDBaseline stats PostgreSQL 1

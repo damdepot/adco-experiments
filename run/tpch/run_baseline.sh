@@ -16,6 +16,7 @@ export CLIENTS="${CLIENTS:-6}"
 bench_lock "${ROOT}"
 bench_timer "tpch/run_baseline" "results/tpch/baseline" "baseline"
 cd "${ROOT}"
+bench_snapshot_seed tpch tpch_seed ./run/setup/tpch-prepare-postgres-remote.sh
 
 # clean baseline results
 rm -rf results/tpch/baseline
@@ -27,4 +28,6 @@ CMDBaseline=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Baseline.
 ## Run the baseline experiments
 #***************
 echo '-------------------<< Running the baseline experiments for TPCH dataset >>-------------------'
+bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
+python3 "${ROOT}/tools/check_knobs.py"
 $CMDBaseline tpch PostgreSQL 1

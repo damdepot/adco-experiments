@@ -5,7 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
+bench_lock "${ROOT}"
 bench_timer "stats/run_learnedrewrite" "results/stats/learnedrewrite" "learnedrewrite"
+bench_snapshot_seed stats stats_seed ./run/setup/stats-prepare-postgres-remote.sh
 
 rm -rf results/stats/learnedrewrite
 mkdir -p results/stats/learnedrewrite/benchmarks
@@ -29,4 +31,6 @@ echo "-------------------<< Verifying LearnedRewrite rewrites for Stats-Lite dat
 $CMDRunLRVerify stats PostgreSQL
 
 echo "-------------------<< Running Workload for Stats-Lite dataset >>-------------------"
+bench_fresh_db stats stats_seed users "${STATS_USERS_ROWS:-40325}"
+python3 "${ROOT}/tools/check_knobs.py"
 $CMDRunWorkload stats PostgreSQL LearnedRewrite
