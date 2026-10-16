@@ -1,4 +1,5 @@
 import argparse
+import os
 import py_compile
 import shutil
 import sys
@@ -55,7 +56,11 @@ def main() -> None:
         from google import genai
         from google.genai import types
 
-        client = genai.Client()
+        client = genai.Client(
+            vertexai=True,
+            project=os.environ["GOOGLE_CLOUD_PROJECT"],
+            location=os.environ.get("GOOGLE_CLOUD_LOCATION", "global"),
+        )
         resp = client.models.generate_content(
             model=args.model,
             contents=prompt,
