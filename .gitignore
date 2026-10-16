@@ -231,6 +231,7 @@ baselines/NaiveLLM/venv/
 baselines/NaiveLLM/.venv/
 baselines/NaiveLLM/**/__pycache__/
 data/
+!run/data/
 catalog/
 results/
 *.dat
@@ -239,6 +240,7 @@ ReSequel-results/
 LearnedRewrite-results/
 ADCo-results/
 reports/
+backups/
 out/
 workload/apps/*
 .venv_hash
