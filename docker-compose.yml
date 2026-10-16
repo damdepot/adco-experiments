@@ -61,14 +61,42 @@ services:
     restart: unless-stopped
     environment:
       TZ: Asia/Bangkok
+      GOOGLE_APPLICATION_CREDENTIALS: /var/run/secrets/google/application_default_credentials.json
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_API_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY must be set}
+      OPENAI_API_BASE: http://litellm:4000/v1
+      OPENAI_API_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY must be set}
     volumes:
       - .:/app # root-level download and experiment scripts
       - /var/run/docker.sock:/var/run/docker.sock 
+      - ${HOME}/.config/gcloud/application_default_credentials.json:/var/run/secrets/google/application_default_credentials.json:ro
     depends_on:
       pgdb:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+      litellm:
+        condition: service_healthy
+
+  litellm:
+    image: ghcr.io/berriai/litellm:1.99.1
+    container_name: adcoexp-litellm
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /var/run/secrets/google/application_default_credentials.json
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:?GOOGLE_CLOUD_PROJECT must be set}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY must be set}
+    volumes:
+      - ./docker/litellm-config.yaml:/app/config.yaml:ro
+      - ${HOME}/.config/gcloud/application_default_credentials.json:/var/run/secrets/google/application_default_credentials.json:ro
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
 networks:
   default:

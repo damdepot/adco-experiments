@@ -56,7 +56,7 @@ run on two layers:
 | `out/app_layer/` | Rewritten code for the app layer (`ADCo-results/`, `Py-DBridge-results/`, `NaiveLLM-results/`) |
 | `reports/` | Generated comparison reports (`run/tpcc/run_reports.sh`, `run/smallbank/run_reports.sh`, `run/stats/run_reports.sh`) |
 | `docker/` | Container entrypoint used by the experiment image |
-| `docker-compose.yml` | `db` (PostgreSQL 17) service plus the experiment container |
+| `docker-compose.yml` | PostgreSQL 17, internal LiteLLM proxy, and experiment services |
 
 ## Setup (DB layer)
 
@@ -78,7 +78,7 @@ run on two layers:
 
 ## Configuring baselines
 
-Copy `.env-example` to `.env` and fill in your API keys and database credentials:
+Copy `.env-example` to `.env` and fill in the non-Google provider keys and database credentials:
 
 ```bash
 cp .env-example .env
@@ -87,7 +87,6 @@ cp .env-example .env
 ```dotenv
 OPENAI_API_KEY=sk-your-openai-key
 GROQ_API_KEY=gsk_your-groq-key
-GOOGLE_API_KEY=your-google-api-key
 
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
@@ -102,14 +101,37 @@ MYSQL_PORT=3306
 GOOGLE_GENAI_USE_VERTEXAI=1
 GOOGLE_CLOUD_PROJECT=your-gcp-project
 GOOGLE_CLOUD_LOCATION=global
+
+# Internal LiteLLM proxy key; use the same value for local clients
+LITELLM_MASTER_KEY=sk-local-litellm-key
+LITELLM_BASE_URL=http://litellm:4000
+LITELLM_OPENAI_BASE_URL=http://litellm:4000/v1
 ```
+
+Generate the local LiteLLM proxy key yourself; it is not a Google API key or
+ADC credential:
+
+```bash
+openssl rand -hex 32
+```
+
+Put the generated value in `.env` as `LITELLM_MASTER_KEY` before starting
+Compose.
+
+Docker Compose mounts your Google Cloud ADC file into both the LiteLLM and
+experiment containers. Ensure `~/.config/gcloud/application_default_credentials.json`
+exists, then start the services with `docker compose up`.
 
 Then regenerate the baselines' config files:
 
 ```bash
-./run/setup/stats-update-configs.sh   # ReSequel/R-Bot YAML + ADCo .env
-./run/setup/app-update-configs.sh  # smallbank / tpcc db.config
+docker compose exec adcoexp ./run/setup/stats-update-configs.sh  # ReSequel/R-Bot YAML + ADCo .env
+docker compose exec adcoexp ./run/setup/app-update-configs.sh    # smallbank / tpcc db.config
 ```
+
+Use the matching `tpch-update-configs.sh` or `db-update-configs.sh` command
+for those experiment groups. The generated LLM endpoints use the internal
+`litellm` Compose service name, so run these commands inside `adcoexp`.
 
 ## Running experiments
 

@@ -41,7 +41,10 @@ done < .env
 # Escape single quotes for YAML single-quoted scalars.
 esc() { sed "s/'/''/g" <<< "${1:-}"; }
 
-for var in OPENAI_API_KEY GROQ_API_KEY GOOGLE_API_KEY; do
+LITELLM_API_KEY="${LITELLM_API_KEY:-${LITELLM_MASTER_KEY:-}}"
+LITELLM_BASE_URL="${LITELLM_BASE_URL:-http://litellm:4000}"
+
+for var in OPENAI_API_KEY GROQ_API_KEY LITELLM_API_KEY; do
     if [ -z "${!var:-}" ]; then
         echo "Warning: $var is empty in .env; key left blank."
     fi
@@ -65,7 +68,8 @@ write_apikeys() {
   key_1: '$(esc "$GROQ_API_KEY")'
 
 - llm_platform: Google
-  key_1: '$(esc "$GOOGLE_API_KEY")'
+  key_1: '$(esc "$LITELLM_API_KEY")'
+  base_url: '$(esc "$LITELLM_BASE_URL")'
 EOF
 }
 
@@ -107,7 +111,6 @@ write_adco_env() {
 GOOGLE_GENAI_USE_VERTEXAI=$GOOGLE_GENAI_USE_VERTEXAI
 GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT
 GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION
-GOOGLE_API_KEY=$GOOGLE_API_KEY
 EOF
 }
 

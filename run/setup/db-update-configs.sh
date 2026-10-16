@@ -70,7 +70,6 @@ write_adco_env() {
 GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-}
 GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-}
 GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-}
-GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
 EOF
 echo "updated $1"
 }
@@ -86,7 +85,8 @@ update_agenttune_config() {
             return 0
         fi
     fi
-    GOOGLE_API_KEY="${GOOGLE_API_KEY:-}" \
+    LITELLM_API_KEY="${LITELLM_API_KEY:-${LITELLM_MASTER_KEY:-}}" \
+    LITELLM_BASE_URL="${LITELLM_OPENAI_BASE_URL:-${OPENAI_API_BASE:-http://litellm:4000/v1}}" \
     PG_USER="${POSTGRES_USER:-postgres}" \
     PG_PASSWORD="${POSTGRES_PASSWORD:-postgres}" \
     PG_HOST="${POSTGRES_HOST:-127.0.0.1}" \
@@ -99,8 +99,8 @@ c.optionxform = str
 c.read(cfg)
 
 knob = c['knob selector']
-knob['api_key'] = os.environ['GOOGLE_API_KEY']
-knob['base_url'] = 'https://generativelanguage.googleapis.com/v1beta/openai/'
+knob['api_key'] = os.environ['LITELLM_API_KEY']
+knob['base_url'] = os.environ['LITELLM_BASE_URL']
 knob['model'] = 'gemini-3.5-flash-lite'
 knob['database_kernel'] = 'PostgreSQL 17'
 knob['database_scale'] = '2GB'
@@ -145,8 +145,8 @@ knob_info_path=${dir}/knowledge_collection/postgres/knob_info/system_view.json
 recover_script=${dir}/scripts/recover_postgres.sh
 
 [LLM]
-api_base=https://generativelanguage.googleapis.com/v1beta/openai/
-api_key=${GOOGLE_API_KEY:-}
+api_base=${LITELLM_OPENAI_BASE_URL:-${OPENAI_API_BASE:-http://litellm:4000/v1}}
+api_key=${LITELLM_API_KEY:-${LITELLM_MASTER_KEY:-}}
 model=gemini-3.5-flash-lite
 
 [HARDWARE]
