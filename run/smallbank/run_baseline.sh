@@ -5,18 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
 
-# Fixed resource + workload contract (matches benchmarks harness).
-export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-4}"
-export REPS="${REPS:-2}"
-export DURATION="${DURATION:-180}"
-export WARMUP="${WARMUP:-30}"
-export WAREHOUSES="${WAREHOUSES:-32}"
-export CLIENTS="${CLIENTS:-8}"
 export ACCOUNTS="${ACCOUNTS:-5000000}"
 export TRANSACTIONS="${TRANSACTIONS:-60000}"
-export SETTLE_SECS="${SETTLE_SECS:-5}"
-export DBMS="${DBMS:-postgres}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"

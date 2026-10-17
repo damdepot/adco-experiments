@@ -7,7 +7,7 @@
 #   SCREEN_TOTAL_ROWS=0 SCREEN_MAX_ROWS=5000000 SCREENING_BENCHMARK=sysbench
 #   MEASURE_REPS=10 MEASURE_SECONDS=10 MEASURE_WARMUP_SECONDS=2
 #   EARLY_STOP_MIN_REPS=4 MAX_ATTEMPTS=30 MAX_SET_KNOBS=20
-#   CPU_CORES=2 MEMORY_GB=8 (--cpu-cores/--memory)
+#   CPU_CORES=4 MEMORY_GB=8 (--cpu-cores/--memory)
 #   --apply-mode=live is passed when the local CLI supports it; otherwise the
 #   local live equivalent --production-db is used (this fork's knob_tuner has
 #   no --apply-mode flag yet). Extra SCREEN_*/MEASURE_*/MAX_* CLI flags are
@@ -29,7 +29,7 @@ bench_lib="${exp_path}/scripts/_lib/bench_lib.sh"
 dir_name="${benchmark}"
 db_type="${dbms}"
 db_name="${benchmark}"
-cpu_cores="${CPU_CORES:-2}"
+cpu_cores="${CPU_CORES:-4}"
 memory_gb="${MEMORY_GB:-8}"
 
 if [ -f "${bench_lib}" ]; then

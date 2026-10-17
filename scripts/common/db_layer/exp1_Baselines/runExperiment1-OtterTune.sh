@@ -90,8 +90,8 @@ docker run --rm \
         --workload-cmd "${WORKLOAD_CMD}" \
         "${WORKLOAD_WARMUP_ARGS[@]}" \
         --restart-cmd "docker restart ${CONTAINER_NAME}" \
-        --memory-gb "${MEMORY_GB:-4}" \
-        --cpu-cores "${CPU_CORES:-2}" \
+        --memory-gb "${MEMORY_GB:-8}" \
+        --cpu-cores "${CPU_CORES:-4}" \
         --knob-catalog "" \
         --output-dir "${RESULTS_OUT}" \
         --iterations "${iterations}" \

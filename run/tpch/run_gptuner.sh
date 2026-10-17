@@ -4,14 +4,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
 
-# Fixed resource + workload contract (matches benchmarks harness).
-export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-4}"
-export REPS="${REPS:-3}"
-export DURATION="${DURATION:-60}"
-export WAREHOUSES="${WAREHOUSES:-6}"
-export CLIENTS="${CLIENTS:-6}"
-export DBMS="${DBMS:-postgres}"
 export TARGET_MEMORY_GB="${TARGET_MEMORY_GB:-${MEMORY_GB}}"
 export TARGET_CPU_CORES="${TARGET_CPU_CORES:-${CPU_CORES}}"
 

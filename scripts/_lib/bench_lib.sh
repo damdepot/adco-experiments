@@ -12,17 +12,35 @@ BENCH_CMDRUNTPCC="${BENCH_CMDRUNTPCC:-${BENCH_SCRIPTS_DIR}/tpcc.sh}"
 BENCH_DB_CONTAINER="${BENCH_DB_CONTAINER:-adcoexp-db}"
 BENCH_DB_SERVICE="${BENCH_DB_SERVICE:-pgdb}"
 
-# Fixed resource + workload contract. Exported so docker compose (CPU_CORES /
-# MEMORY_GB) and tpcc.sh (REPS / DURATION / WARMUP / WAREHOUSES / CLIENTS) read
-# the exact values the runners measure with.
-export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-4}"
-export REPS="${REPS:-2}"
+# The one place the resource + workload contract is declared: every runner
+# sources this file, so docker compose (CPU_CORES / MEMORY_GB) and tpcc.sh
+# (REPS / DURATION / WARMUP / WAREHOUSES / CLIENTS) always read these values.
+# Precedence: shell environment > <root>/.env (docker compose reads that same
+# file, so both sides of the run agree) > the defaults below. One-off values go
+# in .env as plain KEY=value; remove the line to get the default back.
+_bench_env_kept=()
+for _bench_env_var in CPU_CORES MEMORY_GB REPS DURATION WARMUP WAREHOUSES CLIENTS SETTLE_SECS DBMS; do
+    if [ -n "${!_bench_env_var+set}" ]; then
+        _bench_env_kept+=("${_bench_env_var}=${!_bench_env_var}")
+    fi
+done
+if [ -f "${BENCH_ROOT}/.env" ]; then
+    # shellcheck disable=SC1091
+    source "${BENCH_ROOT}/.env"
+fi
+for _bench_env_kv in ${_bench_env_kept[@]+"${_bench_env_kept[@]}"}; do
+    export "${_bench_env_kv}"
+done
+unset _bench_env_kept _bench_env_var _bench_env_kv
+export CPU_CORES="${CPU_CORES:-4}"
+export MEMORY_GB="${MEMORY_GB:-8}"
+export REPS="${REPS:-3}"
 export DURATION="${DURATION:-180}"
-export WARMUP="${WARMUP:-30}"
+export WARMUP="${WARMUP:-15}"
 export WAREHOUSES="${WAREHOUSES:-32}"
 export CLIENTS="${CLIENTS:-8}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
+export DBMS="${DBMS:-postgres}"
 
 # Fresh default config + empty DB; CPU_CORES/MEMORY_GB already exported so the
 # compose limits and docker.sh's limit verification use the contract values.

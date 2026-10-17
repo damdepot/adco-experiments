@@ -23,7 +23,7 @@ bench_lib="${exp_path}/scripts/_lib/bench_lib.sh"
 dir_name="${benchmark}"
 db_type="${dbms}"
 db_name="${benchmark}"
-cpu_cores="${CPU_CORES:-2}"
+cpu_cores="${CPU_CORES:-4}"
 memory_gb="${MEMORY_GB:-8}"
 
 if [ -f "${bench_lib}" ]; then

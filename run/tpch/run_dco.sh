@@ -4,13 +4,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
 
-# Fixed resource + workload contract (matches benchmarks harness).
-export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-4}"
-export REPS="${REPS:-3}"
-export DURATION="${DURATION:-60}"
-export WAREHOUSES="${WAREHOUSES:-6}"
-export CLIENTS="${CLIENTS:-6}"
 
 # Single-writer: never reset the DB under a concurrent run.
 bench_lock "${ROOT}"
@@ -43,7 +36,7 @@ db_container="adcoexp-db"
 dco_pipeline() {
     echo '-------------------<< Tuning knobs for TPCH dataset (DCo) >>-------------------'
     python3 "${ROOT}/tools/check_knobs.py" || return 1
-    CPU_CORES=2 MEMORY_GB=4 $CMDTune DCo ${model} postgres tpch || return 1
+    CPU_CORES="${CPU_CORES}" MEMORY_GB="${MEMORY_GB}" $CMDTune DCo ${model} postgres tpch || return 1
     python3 "${ROOT}/tools/check_knobs.py" || return 1
 }
 

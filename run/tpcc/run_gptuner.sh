@@ -27,21 +27,12 @@ set -euo pipefail
 EXP_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LIB="${EXP_PATH}/scripts/_lib/bench_lib.sh"
 
-export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-4}"
-export REPS="${REPS:-2}"
-export DURATION="${DURATION:-180}"
-export WARMUP="${WARMUP:-30}"
-export WAREHOUSES="${WAREHOUSES:-32}"
-export CLIENTS="${CLIENTS:-8}"
-export SETTLE_SECS="${SETTLE_SECS:-5}"
-export DBMS="${DBMS:-postgres}"
-export TARGET_MEMORY_GB="${TARGET_MEMORY_GB:-${MEMORY_GB}}"
-export TARGET_CPU_CORES="${TARGET_CPU_CORES:-${CPU_CORES}}"
 MODEL="${MODEL:-gemini-3.5-flash-lite}"
 
 # shellcheck disable=SC1090
 source "${LIB}"
+export TARGET_MEMORY_GB="${TARGET_MEMORY_GB:-${MEMORY_GB}}"
+export TARGET_CPU_CORES="${TARGET_CPU_CORES:-${CPU_CORES}}"
 
 TPCC_TOOL_BASE="${EXP_PATH}/results/tpcc/gptuner/benchmarks"
 mkdir -p "${TPCC_TOOL_BASE}"

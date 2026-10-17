@@ -150,8 +150,8 @@ api_key=${LITELLM_API_KEY:-${LITELLM_MASTER_KEY:-}}
 model=gemini-3.5-flash-lite
 
 [HARDWARE]
-cpu_cores=${TARGET_CPU_CORES:-2}
-memory_gb=${TARGET_MEMORY_GB:-8.0}
+cpu_cores=${TARGET_CPU_CORES:-${CPU_CORES:-4}}
+memory_gb=${TARGET_MEMORY_GB:-${MEMORY_GB:-8.0}}
 storage_gb=${TARGET_STORAGE_GB:-10.0}
 disk_type=SSD
 EOF

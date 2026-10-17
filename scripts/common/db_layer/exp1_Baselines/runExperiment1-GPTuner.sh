@@ -5,7 +5,7 @@ dbms=$1
 benchmark=$2
 
 memory_gb="${3:-${TARGET_MEMORY_GB:-8.0}}"
-cpu_cores="${4:-${TARGET_CPU_CORES:-2}}"
+cpu_cores="${4:-${TARGET_CPU_CORES:-${CPU_CORES:-4}}}"
 
 exp_path="$(cd "$(dirname "$0")/../../../.." && pwd)"
 gptuner_path="${exp_path}/baselines/GPTuner"

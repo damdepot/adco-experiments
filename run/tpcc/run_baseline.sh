@@ -6,15 +6,6 @@ EXP_PATH="${ROOT}"
 cd "${ROOT}"
 LIB="${EXP_PATH}/scripts/_lib/bench_lib.sh"
 
-export CPU_CORES="${CPU_CORES:-2}"
-export MEMORY_GB="${MEMORY_GB:-4}"
-export REPS="${REPS:-2}"
-export DURATION="${DURATION:-180}"
-export WARMUP="${WARMUP:-30}"
-export WAREHOUSES="${WAREHOUSES:-32}"
-export CLIENTS="${CLIENTS:-8}"
-export SETTLE_SECS="${SETTLE_SECS:-5}"
-export DBMS="${DBMS:-postgres}"
 
 # shellcheck disable=SC1090
 source "${LIB}"
