@@ -12,7 +12,7 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 bench_timer "tpch/run_all" "results/tpch" "run_all"
 
 WORKLOAD="tpch"
-BASELINES=(baseline aco adco learnedrewrite r-bot resequel naive-llm)
+BASELINES=(baseline aco adco learnedrewrite r-bot resequel naive-llm dco agenttune gptuner)
 
 RUN_TS="$(date '+%Y-%m-%d-%H-%M-%S')"
 LOG_DIR="${ROOT}/out/logs/${WORKLOAD}"
@@ -50,7 +50,7 @@ PY
 arm_done() {
     local dir="${ROOT}/results/${WORKLOAD}/$1"
     [ -d "${dir}" ] || return 1
-    [ -n "$(find "${dir}" -type f -name '*.csv' 2>/dev/null | head -n 1)" ]
+    [ -n "$(find "${dir}" -type f \( -name '*.csv' -o -name '*.dat' \) 2>/dev/null | head -n 1)" ]
 }
 
 for name in "${BASELINES[@]}"; do
