@@ -19,7 +19,7 @@ BENCH_DB_SERVICE="${BENCH_DB_SERVICE:-pgdb}"
 # file, so both sides of the run agree) > the defaults below. One-off values go
 # in .env as plain KEY=value; remove the line to get the default back.
 _bench_env_kept=()
-for _bench_env_var in CPU_CORES MEMORY_GB REPS DURATION WARMUP WAREHOUSES CLIENTS SETTLE_SECS DBMS; do
+for _bench_env_var in CPU_CORES MEMORY_GB REPS DURATION WARMUP WAREHOUSES CLIENTS SETTLE_SECS DBMS ACCOUNTS TRANSACTIONS; do
     if [ -n "${!_bench_env_var+set}" ]; then
         _bench_env_kept+=("${_bench_env_var}=${!_bench_env_var}")
     fi
@@ -41,6 +41,9 @@ export WAREHOUSES="${WAREHOUSES:-32}"
 export CLIENTS="${CLIENTS:-8}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
 export DBMS="${DBMS:-postgres}"
+# Smallbank only (row count is asserted against the seeded DB before measuring).
+export ACCOUNTS="${ACCOUNTS:-5000000}"
+export TRANSACTIONS="${TRANSACTIONS:-60000}"
 
 # Fresh default config + empty DB; CPU_CORES/MEMORY_GB already exported so the
 # compose limits and docker.sh's limit verification use the contract values.

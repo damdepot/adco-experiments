@@ -5,8 +5,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
 
-export ACCOUNTS="${ACCOUNTS:-5000000}"
-export TRANSACTIONS="${TRANSACTIONS:-60000}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
@@ -42,7 +40,7 @@ bench_assert_rows "smallbank" "accounts" "${ACCOUNTS}"
 echo '-------------------<< Generating ACo rewrite for Smallbank >>-------------------'
 if $CMDADCo ACo ${model} postgres smallbank; then
     echo '-------------------<< Running ACo Smallbank workload >>-------------------'
-    PHASE=execute $CMDRunSmallbank ${model} postgres "${ACCOUNTS:-5000000}" "${TRANSACTIONS:-60000}" smallbank aco
+    PHASE=execute $CMDRunSmallbank ${model} postgres "${ACCOUNTS}" "${TRANSACTIONS}" smallbank aco
 else
     echo 'WARNING: ACo Smallbank rewrite failed; skipping its measurement.' >&2
 fi

@@ -29,8 +29,6 @@ set -euo pipefail
 EXP_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LIB="${EXP_PATH}/scripts/_lib/bench_lib.sh"
 
-export ACCOUNTS="${ACCOUNTS:-5000000}"
-export TRANSACTIONS="${TRANSACTIONS:-60000}"
 MODEL="${MODEL:-gemini-3.5-flash-lite}"
 
 # shellcheck disable=SC1090

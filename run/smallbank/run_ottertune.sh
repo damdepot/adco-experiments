@@ -28,8 +28,6 @@ set -euo pipefail
 EXP_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LIB="${EXP_PATH}/scripts/_lib/bench_lib.sh"
 
-export ACCOUNTS="${ACCOUNTS:-5000000}"
-export TRANSACTIONS="${TRANSACTIONS:-60000}"
 OTTERTUNE_ITERATIONS="${OTTERTUNE_ITERATIONS:-40}"
 OTTERTUNE_WARMUP="${OTTERTUNE_WARMUP:-10}"
 

@@ -5,8 +5,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
 
-export ACCOUNTS="${ACCOUNTS:-5000000}"
-export TRANSACTIONS="${TRANSACTIONS:-60000}"
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
