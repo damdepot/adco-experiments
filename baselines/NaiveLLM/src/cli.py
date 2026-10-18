@@ -74,6 +74,7 @@ def main() -> None:
         sys.exit(1)
 
     parsed = parse_response(text)
+    (output_dir.parent / "llm_response.txt").write_text(text, encoding="utf-8")
 
     changed = 0
     restored = 0
@@ -94,6 +95,9 @@ def main() -> None:
             restored += 1
 
     print(f"files changed: {changed}, restored: {restored}")
+    if changed == 0:
+        print("ERROR: rewrite produced no usable files", file=sys.stderr)
+        sys.exit(1)
     sys.exit(0)
 
 

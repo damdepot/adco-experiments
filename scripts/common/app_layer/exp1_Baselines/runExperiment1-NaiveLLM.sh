@@ -2,7 +2,7 @@
 # Naive-LLM rewrite driver.
 # Usage: runExperiment1-NaiveLLM.sh <source_path> <dbms> <benchmark> [model]
 
-set -uo pipefail
+set -euo pipefail
 
 source_path=$1
 dbms=$2
