@@ -55,6 +55,12 @@ if [[ "${2:-}" == *.csv* ]]; then
         log_fname="${results_dir}/${rep_file}"
         echo "----------------->> SMALLBANK rep ${rep}/${reps} (${rep_file}) <<-----------------"
         cd "${workdir}"
+        if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+            echo "----------------->> Smallbank warmup (rep ${rep}/${reps}) <<-----------------"
+            python main.py run --driver "${dbms}" \
+                --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
+                --transactions "${WARMUP_TRANSACTIONS}"
+        fi
         python main.py run --driver "${dbms}" --accounts "${accounts}" \
             --transactions "${transactions}" --output-path "${log_fname}"
         cd "${workload_path}"
@@ -82,6 +88,12 @@ case "${phase}" in
     execute)
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then out="${log_fname}"; else out="${log_fname}_r${rep}"; fi
+            if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+                echo "----------------->> Smallbank warmup (rep ${rep}/${reps}) <<-----------------"
+                python main.py run --driver "${dbms}" \
+                    --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
+                    --transactions "${WARMUP_TRANSACTIONS}"
+            fi
             python main.py run --driver "${dbms}" --accounts "${accounts}" \
                 --transactions "${transactions}" --output-path "${out}"
         done
