@@ -83,18 +83,17 @@ def _read(output_dir: Path, relpath: str) -> str:
 
 def build_prompt(output_dir: Path, rewrite_files: list, context_files: list) -> str:
     lines = [
-        "You are a coding assistant. Optimize the following database workload codebase "
-        "for performance without changing its observable behavior or public interface.",
+        "You are a coding assistant optimizing a database application.",
+        "",
+        "Task: improve the performance of the application below without changing its",
+        "observable behavior or its public interface. Performance here means the speed",
+        "and throughput of this application's own execution against its database.",
         "",
         "Rules:",
         "- Only modify the files listed under FILES TO OPTIMIZE.",
-        "- A database call is a network round trip: prefer fewer, larger queries over",
-        "- many small ones, without changing semantics.",
-        "- Cosmetic refactors that leave the database queries unchanged do not count",
-        "- as improvements; omit such files.",
-        "- Rewritten SQL must preserve the exact column types of the original queries;",
-        "- when batching multi-column keys, cast parameters to the schema types so",
-        "- the database compares like with like.",
+        "- Use the current idiomatic features of the programming language. Where you",
+        "  find outdated or deprecated constructs, convert them to their modern",
+        "  equivalents.",
         "- Return the FULL contents of every file you change, each preceded by a line exactly like:",
         "### FILE: <relative path>",
         "- Do not wrap file contents in markdown code fences.",
