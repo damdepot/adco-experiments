@@ -12,7 +12,7 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 bench_timer "tpcc/run_all" "results/tpcc" "run_all"
 
 WORKLOAD="tpcc"
-BASELINES=(baseline aco py-dbridge dco adco agenttune ottertune gptuner naive-llm)
+BASELINES=(baseline py-dbridge naive-llm aco ottertune gptuner agenttune dco adco)
 
 RUN_TS="$(date '+%Y-%m-%d-%H-%M-%S')"
 LOG_DIR="${ROOT}/out/logs/${WORKLOAD}"

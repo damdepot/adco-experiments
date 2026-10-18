@@ -12,7 +12,7 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 bench_timer "smallbank/run_all" "results/smallbank" "run_all"
 
 WORKLOAD="smallbank"
-BASELINES=(baseline aco py-dbridge dco adco agenttune ottertune gptuner naive-llm)
+BASELINES=(baseline py-dbridge naive-llm aco ottertune gptuner agenttune dco adco)
 
 RUN_TS="$(date '+%Y-%m-%d-%H-%M-%S')"
 LOG_DIR="${ROOT}/out/logs/${WORKLOAD}"
