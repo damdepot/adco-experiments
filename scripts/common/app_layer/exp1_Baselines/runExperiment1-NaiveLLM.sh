@@ -37,3 +37,17 @@ else
 fi
 
 python -m src.cli --source-dir "${src_dir}" --output-dir "${output_path}" --db "${dbms}" --model "${llm_model}"
+
+# Smoke: short throwaway run in the rewritten app catches runtime breakage
+# (bad SQL, bad imports) before the paid measurement reps. Fails the arm
+# loudly via set -e instead of measuring a broken rewrite.
+(
+    cd "${exp_path}/workload/apps/${benchmark}" && source venv/bin/activate
+    cd "${output_path}"
+    timeout 120 python tpcc.py "${dbms}" \
+        --config="${exp_path}/workload/apps/${benchmark}/db.config" \
+        --clients=1 \
+        --warehouses="${WAREHOUSES:-32}" \
+        --duration=10 \
+        --no-load
+)
