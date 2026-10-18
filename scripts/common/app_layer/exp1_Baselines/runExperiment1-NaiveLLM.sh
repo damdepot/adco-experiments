@@ -38,22 +38,29 @@ fi
 
 python -m src.cli --source-dir "${src_dir}" --output-dir "${output_path}" --db "${dbms}" --model "${llm_model}"
 
-# Smoke: short throwaway run in the rewritten app catches runtime breakage
-# (bad SQL, bad imports) before the paid measurement reps. tpcc.py exits 0
-# even when transactions fail (the executor logs and continues), so the log —
-# not the exit code — is the signal. Any failure fails the arm loudly.
+# Smoke: run the rewritten app before the paid measurement reps, under the same
+# client concurrency and long enough to cover a wide range of generated
+# parameters. tpcc.py exits 0 even when transactions fail (the executor logs and
+# continues), so the log — not the exit code — is the signal. Deadlocks are
+# normal TPC-C behaviour (the spec rolls the transaction back) and are tolerated;
+# any other transaction failure fails the arm loudly.
 smoke_log="$(dirname "${output_path}")/smoke.log"
 (
     cd "${exp_path}/workload/apps/${benchmark}" && source venv/bin/activate
     cd "${output_path}"
-    timeout 120 python tpcc.py "${dbms}" \
+    timeout "$(( ${SMOKE_SECS:-60} + 120 ))" python tpcc.py "${dbms}" \
         --config="${exp_path}/workload/apps/${benchmark}/db.config" \
-        --clients=1 \
+        --clients="${SMOKE_CLIENTS:-${CLIENTS:-8}}" \
         --warehouses="${WAREHOUSES:-32}" \
-        --duration=10 \
+        --duration="${SMOKE_SECS:-60}" \
         --no-load >"${smoke_log}" 2>&1
 )
-if grep -q "Failed to execute Transaction\|Traceback" "${smoke_log}"; then
-    echo "ERROR: rewrite smoke test failed (see ${smoke_log})" >&2
+if grep -q "Traceback" "${smoke_log}"; then
+    echo "ERROR: rewrite smoke test crashed (see ${smoke_log})" >&2
+    exit 1
+fi
+smoke_failures="$(grep "Failed to execute Transaction" "${smoke_log}" | grep -vc "deadlock detected" || true)"
+if [ "${smoke_failures:-0}" -ne 0 ]; then
+    echo "ERROR: rewrite smoke test failed: ${smoke_failures} transaction error(s) (see ${smoke_log})" >&2
     exit 1
 fi

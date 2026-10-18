@@ -32,9 +32,11 @@ db_service="pgdb"
 
 model="${MODEL:-gemini-3.5-flash-lite}"
 
-# Restart (NOT restore: Naive-LLM is rewrite-only, data identical), then cold
-# buffers + settled data before measure; execute uses existing data.
+# Restore the snapshot before measuring: the rewrite's smoke run writes to the
+# database, so the measured reps must start from the same pristine state as
+# every other arm. Then cold buffers + settled data; execute uses existing data.
 measure_prep() {
+    bench_restore "tpcc" "${SEED_DB_TPCC}"
     "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
     "${CMDDocker}" WaitFor "${db_container}"
     bench_settle
