@@ -68,6 +68,7 @@ else
                         --duration="${warmup}" \
                         --no-load
         fi
+        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
         python tpcc.py "${dbms}" \
                     --config="${workload_path}/db.config" \
                     --clients="${clients}" \

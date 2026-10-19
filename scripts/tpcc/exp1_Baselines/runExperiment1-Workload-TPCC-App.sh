@@ -28,6 +28,8 @@ if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+# shellcheck disable=SC1091
+source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/tpcc"
 base_log_fname="${exp_path}/results/tpcc/baseline/benchmarks/runExperiment1-tpcc-${dbms}"
 
@@ -57,6 +59,7 @@ else
             echo "----------------->> TPCC warmup ${warmup}s (rep ${rep}/${reps}) <<-----------------"
             $CMD --duration="${warmup}" --no-load
         fi
+        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
         $CMD --output-path="${log_fname}" --no-load
     done
 fi

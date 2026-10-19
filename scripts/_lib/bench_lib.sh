@@ -147,6 +147,17 @@ bench_restore() {
     bench_settle
 }
 
+# Warmup dirties the DB (autovacuum thresholds crossed mid-warmup land the
+# worker inside the measured window). Settle it before measuring: fresh stats
+# + visibility maps, zeroed redo, quiesced workers. Same DB every rep, so fair.
+# shortcut: full VACUUM (not per-table); upgrade to per-table if this gets slow.
+bench_warmup_settle() {
+    local db="${1:-${BENCH_REP_DB:-tpcc}}"
+    psql -d "${db}" -c "VACUUM (ANALYZE);"
+    "${BENCH_CMDDOCKER}" Checkpoint "${BENCH_DB_CONTAINER}"
+    bench_settle
+}
+
 # Per-rep measurement hygiene (A+B): start every measured rep from the pristine
 # snapshot with cold buffers and a fresh checkpoint clock, so no timed
 # checkpoint — and its full_page_writes storm — lands inside the measured window.

@@ -88,6 +88,7 @@ if [[ "${2:-}" == *.csv* ]]; then
             # shellcheck disable=SC2086
             $base_cmd --duration="${warmup}" --no-load || true
         fi
+        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
         # shellcheck disable=SC2086
         $base_cmd --output-path="${log_fname}" --no-load
     done
