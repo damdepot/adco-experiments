@@ -9,7 +9,7 @@
 # (canonical column order, unrecognised labels last), falling back to
 # run-stamped <label>_<RUN_ID>[_rN].csv (latest run wins). runExperiment*
 # logs/aliases stay ignored. For every
-# label the txn/s of column 4 is averaged across reps, per transaction
+# label the txn/s of column 4 is the median across reps, per transaction
 # type, and printed alongside the percentage change relative to the first
 # present label. Higher is better.
 #
@@ -114,6 +114,16 @@ labels = sorted(
 
 data = {}
 order = []
+
+
+def _median(xs):
+    s = sorted(xs)
+    n = len(s)
+    if n % 2 == 1:
+        return s[n // 2]
+    return (s[n // 2 - 1] + s[n // 2]) / 2.0
+
+
 for label in labels:
     files = rep_files(label)
     if not files:
@@ -122,8 +132,7 @@ for label in labels:
         )
         data[label] = None
         continue
-    sums = {}
-    counts = {}
+    vals = {}
     for path in files:
         with open(path, newline="") as fh:
             reader = csv.reader(fh)
@@ -138,11 +147,10 @@ for label in labels:
                     rate = float(row[3])
                 except ValueError:
                     continue
-                sums[txn] = sums.get(txn, 0.0) + rate
-                counts[txn] = counts.get(txn, 0) + 1
+                vals.setdefault(txn, []).append(rate)
                 if txn not in order:
                     order.append(txn)
-    data[label] = {t: sums[t] / counts[t] for t in sums} if sums else None
+    data[label] = {t: _median(vals[t]) for t in vals} if vals else None
     if data[label] is None:
         sys.stderr.write(
             f"WARNING: no parseable rows in {label} (skipping '{label}')\n"
