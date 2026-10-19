@@ -59,6 +59,7 @@ else
                 --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
                 --transactions "${WARMUP_TRANSACTIONS}"
         fi
+        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
         python main.py run \
                         --driver "${dbms}" \
                         --accounts "${accounts}" \

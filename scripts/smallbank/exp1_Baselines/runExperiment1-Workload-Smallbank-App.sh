@@ -20,6 +20,8 @@ if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
     exit 2
 fi
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+# shellcheck disable=SC1091
+source "${exp_path}/scripts/_lib/bench_lib.sh"
 base_log_fname="${exp_path}/results/smallbank/baseline/benchmarks/runExperiment1-smallbank-${dbms}"
 
 cd "${exp_path}/workload/apps/smallbank"
@@ -45,6 +47,7 @@ else
                 --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
                 --transactions "${WARMUP_TRANSACTIONS}"
         fi
+        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
         python main.py run \
                         --driver "${dbms}" \
                         --accounts "${accounts}" \
