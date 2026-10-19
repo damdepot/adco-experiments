@@ -29,22 +29,22 @@ model="gemini-3.5-flash-lite"
 ## Templatization
 #****************
 echo '-------------------<< Templatizing TPCH dataset >>-------------------'
-$CMDReSequel Templatization tpch PostgreSQL 1
+$CMDReSequel Templatization tpch PostgreSQL "${TPCH_SCALE:-1}"
 
 ###  Rewrite
 ### **********
 echo '-------------------<< Generating rewrite queries for TPCH dataset >>-------------------'
-$CMDReSequel Generate tpch PostgreSQL 1 ${model}
+$CMDReSequel Generate tpch PostgreSQL "${TPCH_SCALE:-1}" ${model}
 
 ###  Reconstruct
 ### ***********
 echo '-------------------<< Reconstructing rewrite queries for TPCH dataset >>-------------------'
-$CMDReSequel Reconstruct tpch PostgreSQL 1 ${model}
+$CMDReSequel Reconstruct tpch PostgreSQL "${TPCH_SCALE:-1}" ${model}
 
 ###  Verify
 ### *******
 echo '-------------------<< Verifying rewrite queries for TPCH dataset >>-------------------'
-$CMDReSequel Verify tpch PostgreSQL 1 ${model} PostgreSQL
+$CMDReSequel Verify tpch PostgreSQL "${TPCH_SCALE:-1}" ${model} PostgreSQL
 
 ## Run Workload
 #********************

@@ -12,7 +12,7 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 bench_timer "tpch/run_all" "results/tpch" "run_all"
 
 WORKLOAD="tpch"
-BASELINES=(baseline aco adco learnedrewrite r-bot resequel naive-llm dco agenttune gptuner)
+BASELINES=(baseline naive-llm aco learnedrewrite r-bot resequel gptuner agenttune dco adco)
 
 RUN_TS="$(date '+%Y-%m-%d-%H-%M-%S')"
 LOG_DIR="${ROOT}/out/logs/${WORKLOAD}"

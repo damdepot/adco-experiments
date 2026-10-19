@@ -40,6 +40,9 @@ if ! [[ "${warmup}" =~ ^[0-9]+$ ]]; then
 fi
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+# Per-rep measurement hygiene (shared): reset DB state before each measured rep.
+# shellcheck disable=SC1091
+source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/${benchmark}"
 benchmarks_dir="${exp_path}/results/${benchmark}/${res_name}/benchmarks"
 base_log_fname="${exp_path}/results/${benchmark}/${res_name}/benchmarks/runExperiment1-${benchmark}-${dbms}-${llm_model}"
@@ -58,6 +61,7 @@ if [ "${phase}" = "load" ]; then
                 --no-execute
 else
     for (( rep = 1; rep <= reps; rep++ )); do
+        if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
         if [ "${reps}" -eq 1 ]; then
             log_fname="${base_log_fname}"
             primary_fname="${benchmarks_dir}/${res_name}.csv"

@@ -25,7 +25,7 @@ CMDRunLRVerify=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Worklo
 CMDRunWorkload=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Workload.sh
 
 echo "-------------------<< Running TPCH LearnedRewrite rewrites >>-------------------"
-$CMDLearnedRewrite tpch PostgreSQL 1
+$CMDLearnedRewrite tpch PostgreSQL "${TPCH_SCALE:-1}"
 
 echo "-------------------<< Verifying LearnedRewrite rewrites for TPCH dataset >>-------------------"
 $CMDRunLRVerify tpch PostgreSQL

@@ -24,6 +24,7 @@ CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
 model="${MODEL:-gemini-3.5-flash-lite}"
 
 SEED_DB_SMALLBANK="smallbank_seed"
+export BENCH_REP_DB="smallbank" BENCH_REP_SEED="${SEED_DB_SMALLBANK}"
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"

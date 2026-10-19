@@ -41,6 +41,7 @@ TPCC_RESULTS="${DCO_TPCC_BASE}"
 mkdir -p "${TPCC_RESULTS}"
 export RESULTS_DIR="${TPCC_RESULTS}"
 SEED_DB_TPCC="tpcc_seed"
+export BENCH_REP_DB="tpcc" BENCH_REP_SEED="${SEED_DB_TPCC}"
 
 run_dco_tpcc_tool() {
     if ! "$CMDADCo" DCo "${MODEL}" "${DBMS}" tpcc; then

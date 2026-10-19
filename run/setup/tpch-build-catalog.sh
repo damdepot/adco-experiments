@@ -15,7 +15,7 @@ cd "${ROOT}"
 
 DATASET="${1:-tpch}"
 DBMS="${2:-PostgreSQL}"
-SCALE="${3:-1}"
+SCALE="${3:-${TPCH_SCALE:-1}}"
 
 # ReSequel venv must exist; BuildCatalog runs inside it.
 if [ ! -x "${ROOT}/baselines/ReSequel/src/main/python/venv/bin/python" ]; then

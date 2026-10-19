@@ -24,6 +24,9 @@ fi
 load_threads="${LOAD_THREADS:-4}"
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+# Per-rep measurement hygiene (shared): reset DB state before each measured rep.
+# shellcheck disable=SC1091
+source "${exp_path}/scripts/_lib/bench_lib.sh"
 benchmarks_dir="${exp_path}/results/smallbank/naive-llm/benchmarks"
 base_log_fname="${exp_path}/results/smallbank/naive-llm/benchmarks/runExperiment1-smallbank-${dbms}"
 rewrite_dir="${exp_path}/out/app_layer/NaiveLLM-results/Rewrite/${dbms}/smallbank-NaiveLLM"
@@ -41,6 +44,7 @@ if [ "${phase}" = "load" ]; then
                     --reset
 else
     for (( rep = 1; rep <= reps; rep++ )); do
+        if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
         if [ "${reps}" -eq 1 ]; then
             log_fname="${base_log_fname}"
             primary_fname="${benchmarks_dir}/naive-llm.csv"

@@ -7,6 +7,9 @@
 set -euo pipefail
 
 exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+# Per-rep measurement hygiene (shared): reset DB state before each measured rep.
+# shellcheck disable=SC1091
+source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/tpcc"
 
 WAREHOUSES="${WAREHOUSES:-32}"
@@ -51,6 +54,7 @@ if [[ "${2:-}" == *.csv* ]]; then
     echo "------->>${output_path}<<-------"
     cd "${output_path}"
     for (( rep = 1; rep <= reps; rep++ )); do
+        if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
         if [ "${reps}" -eq 1 ]; then
             rep_file="${file_name}"
         elif [[ "${file_name}" == *.* ]]; then

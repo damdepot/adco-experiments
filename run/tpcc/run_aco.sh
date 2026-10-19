@@ -23,6 +23,7 @@ CMDRunTPCC=./scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh
 model="${MODEL:-gemini-3.5-flash-lite}"
 
 SEED_DB_TPCC="tpcc_seed"
+export BENCH_REP_DB="tpcc" BENCH_REP_SEED="${SEED_DB_TPCC}"
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"

@@ -35,6 +35,7 @@ measure_prep() {
 }
 
 SEED_DB_TPCC="tpcc_seed"
+export BENCH_REP_DB="tpcc" BENCH_REP_SEED="${SEED_DB_TPCC}"
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"

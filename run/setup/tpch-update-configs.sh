@@ -114,13 +114,29 @@ GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION
 EOF
 }
 
+# Vertex caps maxOutputTokens at 65536; downloaded baselines ship 3200000.
+patch_gemini_output_limit() {
+    [ -f "$1" ] || return 0
+    python3 - "$1" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p).read()
+s2 = re.sub(r'(?m)^(\s*max_output_tokens:\s*)\d+\s*$', r'\g<1>65536', s)
+if s2 != s:
+    open(p, 'w').write(s2)
+    print('patched', p)
+PY
+}
+
 echo '-------------------<< Updating ReSequel db.config and API keys >>-------------------'
 write_apikeys baselines/ReSequel/src/main/python/APIKeys.yaml
 write_dbconfig baselines/ReSequel/src/main/python/DBConfig.yaml
+patch_gemini_output_limit baselines/ReSequel/src/main/python/LLMConfig.yaml
 
 echo '-------------------<< Updating R-Bot db.config and API keys >>-------------------'
 write_apikeys baselines/R-Bot/my_rewriter/APIKeys.yaml
 write_dbconfig baselines/R-Bot/my_rewriter/DBConfig.yaml
+patch_gemini_output_limit baselines/R-Bot/my_rewriter/LLMConfig.yaml
 
 echo '-------------------<< Updating ADCo .env >>-------------------'
 write_adco_env baselines/ADCo/.env

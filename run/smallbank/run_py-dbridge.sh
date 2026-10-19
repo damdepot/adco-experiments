@@ -24,6 +24,7 @@ CMDRunSmallbank=./scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Small
 CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
 
 SEED_DB_SMALLBANK="smallbank_seed"
+export BENCH_REP_DB="smallbank" BENCH_REP_SEED="${SEED_DB_SMALLBANK}"
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"

@@ -7,7 +7,27 @@ data_path="${root_path}/data"
 tpch_path="${data_path}/tpch"
 kit_path="${root_path}/tools/tpch-kit"
 
-scale="${1:-1}"
+env_file="${root_path}/.env"
+if [ ! -f "$env_file" ]; then
+    echo "Error: .env not found in ${root_path}. See README.md." >&2
+    exit 1
+fi
+while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%$'\r'}"
+    case "$line" in ''|\#*) continue ;; esac
+    case "$line" in *=*) ;; *) continue ;; esac
+    key="${line%%=*}"
+    case "$key" in ''|*[!A-Za-z0-9_]* ) continue ;; esac
+    value="${line#*=}"
+    case "$value" in
+        \"*\") value="${value#\"}"; value="${value%\"}" ;;
+        \'*\') value="${value#\'}"; value="${value%\'}" ;;
+    esac
+    printf -v "$key" '%s' "$value"
+    export "$key"
+done < "$env_file"
+
+scale="${1:-${TPCH_SCALE:-1}}"
 
 mkdir -p "${data_path}"
 rm -rf "${tpch_path}"

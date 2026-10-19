@@ -19,7 +19,7 @@ BENCH_DB_SERVICE="${BENCH_DB_SERVICE:-pgdb}"
 # file, so both sides of the run agree) > the defaults below. One-off values go
 # in .env as plain KEY=value; remove the line to get the default back.
 _bench_env_kept=()
-for _bench_env_var in CPU_CORES MEMORY_GB REPS DURATION WARMUP WAREHOUSES CLIENTS SETTLE_SECS DBMS ACCOUNTS TRANSACTIONS WARMUP_ACCOUNTS WARMUP_TRANSACTIONS; do
+for _bench_env_var in CPU_CORES MEMORY_GB REPS DURATION WARMUP WAREHOUSES CLIENTS SETTLE_SECS DBMS ACCOUNTS TRANSACTIONS WARMUP_ACCOUNTS WARMUP_TRANSACTIONS TPCH_SCALE; do
     if [ -n "${!_bench_env_var+set}" ]; then
         _bench_env_kept+=("${_bench_env_var}=${!_bench_env_var}")
     fi
@@ -46,6 +46,7 @@ export ACCOUNTS="${ACCOUNTS:-5000000}"
 export TRANSACTIONS="${TRANSACTIONS:-60000}"
 export WARMUP_ACCOUNTS="${WARMUP_ACCOUNTS:-5000000}"
 export WARMUP_TRANSACTIONS="${WARMUP_TRANSACTIONS:-6000}"
+export TPCH_SCALE="${TPCH_SCALE:-1}"
 
 # Fresh default config + empty DB; CPU_CORES/MEMORY_GB already exported so the
 # compose limits and docker.sh's limit verification use the contract values.
@@ -146,6 +147,24 @@ bench_restore() {
     bench_settle
 }
 
+# Per-rep measurement hygiene (A+B): start every measured rep from the pristine
+# snapshot with cold buffers and a fresh checkpoint clock, so no timed
+# checkpoint — and its full_page_writes storm — lands inside the measured window.
+# Knobs are untouched: they live in postgresql.auto.conf, which survives
+# DROP/CREATE and restart. restore_defaults is deliberately NOT called here.
+bench_rep_prep() {
+    local db="${BENCH_REP_DB:-}" seed="${BENCH_REP_SEED:-}"
+    if [ -z "${db}" ]; then
+        return 0
+    fi
+    if [ -n "${seed}" ]; then
+        bench_restore "${db}" "${seed}"
+    fi
+    "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
+    "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
+    bench_settle
+}
+
 # Load the dataset exactly once for a whole run, then snapshot it for fast
 # per-arm restores. Replaces N slow loader passes with one.
 # bench_seed_once <db> <seed>
@@ -235,6 +254,7 @@ bench_arm_from_seed() {
     fi
     "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
     "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
+    export BENCH_REP_DB="${db}" BENCH_REP_SEED="${seed}"
     bench_measure "${optimized_dir}" "${tag}.csv"
 }
 

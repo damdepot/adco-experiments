@@ -66,6 +66,7 @@ SMALLBANK_RESULTS="${DCO_SMALLBANK_BASE}"
 mkdir -p "${SMALLBANK_RESULTS}"
 export RESULTS_DIR="${SMALLBANK_RESULTS}"
 SEED_DB_SMALLBANK="smallbank_seed"
+export BENCH_REP_DB="smallbank" BENCH_REP_SEED="${SEED_DB_SMALLBANK}"
 
 run_dco_smallbank_tool() {
     if ! "$CMDADCo" DCo "${MODEL}" "${DBMS}" smallbank; then
