@@ -72,6 +72,13 @@ if [[ "${2:-}" == *.csv* ]]; then
 
     echo "------->>${output_path}<<-------"
     cd "${output_path}"
+    # Single warmup to avoid coldstart; measured reps follow.
+    if [ "${warmup}" -gt 0 ]; then
+        echo "----------------->> TPCC warmup ${warmup}s (once before ${reps} reps) <<-----------------"
+        # shellcheck disable=SC2086
+        $base_cmd --duration="${warmup}" --no-load || true
+    fi
+    if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
     for (( rep = 1; rep <= reps; rep++ )); do
         if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
         if [ "${reps}" -eq 1 ]; then
@@ -83,12 +90,6 @@ if [[ "${2:-}" == *.csv* ]]; then
         fi
         log_fname="${results_dir}/${rep_file}"
         echo "----------------->> TPCC rep ${rep}/${reps} (${rep_file}) <<-----------------"
-        if [ "${warmup}" -gt 0 ]; then
-            echo "----------------->> TPCC warmup ${warmup}s (rep ${rep}/${reps}) <<-----------------"
-            # shellcheck disable=SC2086
-            $base_cmd --duration="${warmup}" --no-load || true
-        fi
-        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
         # shellcheck disable=SC2086
         $base_cmd --output-path="${log_fname}" --no-load
     done
@@ -124,6 +125,12 @@ case "${phase}" in
         $base_cmd --reset --no-execute
         ;;
     execute)
+        # Single warmup to avoid coldstart; measured reps follow.
+        if [ "${warmup}" -gt 0 ]; then
+            echo "----------------->> TPCC warmup ${warmup}s (once before ${reps} reps) <<-----------------"
+            # shellcheck disable=SC2086
+            $base_cmd --duration="${warmup}" --no-load || true
+        fi
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then
                 out="${log_fname}"
@@ -131,10 +138,6 @@ case "${phase}" in
                 out="${log_fname}_r${rep}"
             fi
             echo "----------------->> TPCC legacy execute rep ${rep}/${reps} <<-----------------"
-            if [ "${warmup}" -gt 0 ]; then
-                # shellcheck disable=SC2086
-                $base_cmd --duration="${warmup}" --no-load || true
-            fi
             # shellcheck disable=SC2086
             $base_cmd --output-path="${out}" --no-load
         done

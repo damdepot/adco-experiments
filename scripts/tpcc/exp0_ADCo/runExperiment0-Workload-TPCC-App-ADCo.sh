@@ -31,7 +31,7 @@ if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
     echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
     exit 2
 fi
-# Seconds of throwaway workload before each measured rep; 0 disables
+# Seconds of throwaway workload before measured reps; 0 disables
 # (canonical bench protocol).
 warmup="${WARMUP:-30}"
 if ! [[ "${warmup}" =~ ^[0-9]+$ ]]; then
@@ -60,6 +60,17 @@ if [ "${phase}" = "load" ]; then
                 --reset \
                 --no-execute
 else
+    # Single warmup to avoid coldstart; measured reps follow.
+    if [ "${warmup}" -gt 0 ]; then
+        echo "----------------->> TPCC warmup ${warmup}s (once before ${reps} reps) <<-----------------"
+        python tpcc.py "${dbms}" \
+                    --config="${workload_path}/db.config" \
+                    --clients="${clients}" \
+                    --warehouses="${warehouses}" \
+                    --duration="${warmup}" \
+                    --no-load
+    fi
+    if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
     for (( rep = 1; rep <= reps; rep++ )); do
         if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
         if [ "${reps}" -eq 1 ]; then
@@ -70,16 +81,6 @@ else
             primary_fname="${benchmarks_dir}/${res_name}_r${rep}.csv"
         fi
         echo "----------------->> TPCC/${res_name} rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
-        if [ "${warmup}" -gt 0 ]; then
-            echo "----------------->> TPCC warmup ${warmup}s (rep ${rep}/${reps}) <<-----------------"
-            python tpcc.py "${dbms}" \
-                        --config="${workload_path}/db.config" \
-                        --clients="${clients}" \
-                        --warehouses="${warehouses}" \
-                        --duration="${warmup}" \
-                        --no-load
-        fi
-        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
         python tpcc.py "${dbms}" \
                     --config="${workload_path}/db.config" \
                     --clients="${clients}" \

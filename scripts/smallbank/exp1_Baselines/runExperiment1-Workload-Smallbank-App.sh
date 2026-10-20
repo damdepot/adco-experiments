@@ -34,6 +34,14 @@ if [ "${phase}" = "load" ]; then
                     --accounts "${accounts}" \
                     --reset
 else
+    # Single warmup to avoid coldstart; measured reps follow.
+    if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+        echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
+        python main.py run --driver "${dbms}" \
+            --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
+            --transactions "${WARMUP_TRANSACTIONS}"
+    fi
+    if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
     for (( rep = 1; rep <= reps; rep++ )); do
         if [ "${reps}" -eq 1 ]; then
             log_fname="${base_log_fname}"
@@ -41,13 +49,6 @@ else
             log_fname="${base_log_fname}_r${rep}"
         fi
         echo "----------------->> Smallbank rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
-        if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
-            echo "----------------->> Smallbank warmup (rep ${rep}/${reps}) <<-----------------"
-            python main.py run --driver "${dbms}" \
-                --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
-                --transactions "${WARMUP_TRANSACTIONS}"
-        fi
-        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
         python main.py run \
                         --driver "${dbms}" \
                         --accounts "${accounts}" \

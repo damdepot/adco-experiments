@@ -5,7 +5,7 @@ dbms="${1:-postgres}"
 warehouses="${2:-${WAREHOUSES:-32}}"
 clients="${3:-${CLIENTS:-8}}"
 duration="${DURATION:-180}"
-# Seconds of throwaway workload before each measured rep; 0 disables.
+# Seconds of throwaway workload before measured reps; 0 disables.
 warmup="${WARMUP:-30}"
 if ! [[ "${warmup}" =~ ^[0-9]+$ ]]; then
     echo "Usage: warmup must be a non-negative integer (got '${warmup}')" >&2
@@ -48,6 +48,12 @@ if [ "${phase}" = "load" ]; then
                 --no-execute"
     $CMD
 else
+    # Single warmup to avoid coldstart; measured reps follow.
+    if [ "${warmup}" -gt 0 ]; then
+        echo "----------------->> TPCC warmup ${warmup}s (once before ${reps} reps) <<-----------------"
+        $CMD --duration="${warmup}" --no-load
+    fi
+    if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
     for (( rep = 1; rep <= reps; rep++ )); do
         if [ "${reps}" -eq 1 ]; then
             log_fname="${base_log_fname}"
@@ -55,11 +61,6 @@ else
             log_fname="${base_log_fname}_r${rep}"
         fi
         echo "----------------->> TPCC rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
-        if [ "${warmup}" -gt 0 ]; then
-            echo "----------------->> TPCC warmup ${warmup}s (rep ${rep}/${reps}) <<-----------------"
-            $CMD --duration="${warmup}" --no-load
-        fi
-        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
         $CMD --output-path="${log_fname}" --no-load
     done
 fi

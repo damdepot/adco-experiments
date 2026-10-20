@@ -67,6 +67,16 @@ if [[ "${2:-}" == *.csv* ]]; then
     fi
     echo "------->>${workdir}<<-------"
 
+    # Single warmup to avoid coldstart; measured reps follow.
+    cd "${workdir}"
+    if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+        echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
+        python main.py run --driver "${dbms}" \
+            --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
+            --transactions "${WARMUP_TRANSACTIONS}"
+    fi
+    cd "${workload_path}"
+    if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
     for (( rep = 1; rep <= reps; rep++ )); do
         if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
         if [ "${reps}" -eq 1 ]; then
@@ -79,13 +89,6 @@ if [[ "${2:-}" == *.csv* ]]; then
         log_fname="${results_dir}/${rep_file}"
         echo "----------------->> SMALLBANK rep ${rep}/${reps} (${rep_file}) <<-----------------"
         cd "${workdir}"
-        if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
-            echo "----------------->> Smallbank warmup (rep ${rep}/${reps}) <<-----------------"
-            python main.py run --driver "${dbms}" \
-                --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
-                --transactions "${WARMUP_TRANSACTIONS}"
-        fi
-        if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
         python main.py run \
             --driver "${dbms}" \
             --accounts "${accounts}" \
@@ -120,6 +123,13 @@ case "${phase}" in
             --reset
         ;;
     execute)
+        # Single warmup to avoid coldstart; measured reps follow.
+        if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+            echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
+            python main.py run --driver "${dbms}" \
+                --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
+                --transactions "${WARMUP_TRANSACTIONS}"
+        fi
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then
                 rep_file="runExperiment1-smallbank-${dbms}"
@@ -127,12 +137,6 @@ case "${phase}" in
                 rep_file="runExperiment1-smallbank-${dbms}_r${rep}"
             fi
             echo "----------------->> SMALLBANK legacy rep ${rep}/${reps} (${rep_file}) <<-----------------"
-            if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
-                echo "----------------->> Smallbank warmup (rep ${rep}/${reps}) <<-----------------"
-                python main.py run --driver "${dbms}" \
-                    --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
-                    --transactions "${WARMUP_TRANSACTIONS}"
-            fi
             python main.py run \
                 --driver "${dbms}" \
                 --accounts "${accounts}" \
