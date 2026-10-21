@@ -33,8 +33,50 @@ db_container="adcoexp-db"
 
 ### DCo (Knob-tune-only)
 ### ******************
+# workload/apps/* is gitignored, so a fresh checkout/container has no
+# workload/apps/tpch and the ADCo CLI exits 2 ("target is not a directory").
+# Recreate the scan-only shim when missing.
+ensure_tpch_app_shim() {
+    shim_dir="${ROOT}/workload/apps/tpch"
+    if [ -d "${shim_dir}" ]; then
+        return 0
+    fi
+    mkdir -p "${shim_dir}"
+    cat > "${shim_dir}/main.py" <<'EOF'
+"""TPCH workload entry point for DCo/ADCo knob tuning.
+
+Scanned (isdir-gated) by intent analysis / knob tuner to recognise the tpch
+database workload. Never executed in --mode=tune-only.
+"""
+
+DATABASE = "tpch"
+BENCHMARK = "tpch"
+
+# TPC-H tables in the tpch database (anchor: lineitem row-count guard).
+TABLES = (
+    "customer",
+    "lineitem",
+    "nation",
+    "orders",
+    "part",
+    "partsupp",
+    "region",
+    "supplier",
+)
+
+
+def main():
+    print("tpch workload shim: database=%s tables=%d" % (DATABASE, len(TABLES)))
+
+
+if __name__ == "__main__":
+    main()
+EOF
+}
+
 dco_pipeline() {
     echo '-------------------<< Tuning knobs for TPCH dataset (DCo) >>-------------------'
+    ensure_tpch_app_shim || return 1
     python3 "${ROOT}/tools/check_knobs.py" || return 1
     CPU_CORES="${CPU_CORES}" MEMORY_GB="${MEMORY_GB}" $CMDTune DCo ${model} postgres tpch || return 1
     python3 "${ROOT}/tools/check_knobs.py" || return 1
