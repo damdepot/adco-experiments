@@ -8,6 +8,7 @@ benchmark=$4
 exp_path="$(cd "$(dirname "$0")/../../../.." && pwd)"
 output_path="${exp_path}/out/query_layer/ADCo-results/Rewrite/${dbms}/${benchmark}-${llm_model}"
 mkdir -p ${output_path}
+db_config_path="${exp_path}/baselines/ADCo/db.config"
 
 # src.adco wants lowercase engine names; callers use workload-style names.
 case "${dbms}" in
@@ -32,6 +33,7 @@ PYTHONPATH="${exp_path}/baselines/ADCo" "${adco_venv}" -m src.adco ${codebase_pa
     --model ${llm_model} \
     --db-type ${adco_dbms} \
     --db-name ${benchmark} \
+    --db-config "${db_config_path}" \
     --cpu-cores 2 \
     --memory 8 \
     --sandbox-dir ${output_path} \
