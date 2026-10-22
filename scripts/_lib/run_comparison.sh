@@ -166,13 +166,16 @@ if not present:
 ref = present[0]
 base = data[ref]
 
-print(f"OLTP txn/s vs {ref} (higher better)")
+def disp(label):
+    return 'default' if label == 'baseline' else label
+
+print(f"OLTP txn/s vs {disp(ref)} (higher better)")
 print(f"Source: {results_dir}")
 print()
 
 header = f"{'TRANSACTION':<12}"
 for label in present:
-    header += f"|{label[:13]:^13}"
+    header += f"|{disp(label)[:13]:^13}"
 print(header)
 
 for txn in order:
@@ -220,5 +223,5 @@ for label in present:
 print(gline)
 
 print()
-print(f"Note: higher is better; percentages are relative to {ref}.")
+print(f"Note: higher is better; percentages are relative to {disp(ref)}.")
 PY

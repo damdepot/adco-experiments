@@ -128,9 +128,9 @@ def main():
     parser.add_argument('--summary-only', action='store_true', help='Print only a compact totals comparison; do not print the full table or write report files')
     args = parser.parse_args()
 
-    systems = ['baseline', 'naive-llm', 'learnedrewrite', 'r-bot', 'resequel', 'aco', 'adco', 'dco', 'agenttune', 'gptuner']
+    systems = ['baseline', 'naive-llm', 'learnedrewrite', 'r-bot', 'resequel', 'gptuner', 'agenttune', 'aco', 'dco', 'adco']
     system_display_names = {
-        'baseline': 'Baseline',
+        'baseline': 'Default',
         'aco': 'ACo',
         'adco': 'ADCo',
         'dco': 'DCo',
@@ -242,7 +242,7 @@ def main():
     lines.append("")
     
     header = f"{'Query ID':<15}"
-    header += f"{'Baseline (ms)':<15}"
+    header += f"{'Default (ms)':<15}"
     for sys in systems[1:]:
         sys_name = system_display_names.get(sys, sys.capitalize())
         header += f"{sys_name[:10]} (ms) | Speedup"
@@ -323,7 +323,7 @@ def main():
         md_lines = []
         md_lines.append(f"# Performance Comparison: {args.dataset} on {args.dbms} (Median of Iterations)\n")
         
-        md_header = "| Query ID | Baseline (ms) |"
+        md_header = "| Query ID | Default (ms) |"
         md_separator = "| :--- | :--- |"
         for sys in systems[1:]:
             sys_name = system_display_names.get(sys, sys.capitalize())

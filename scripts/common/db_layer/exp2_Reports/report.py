@@ -140,7 +140,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
     lines.append("=" * len(title))
     lines.append("")
     
-    header = f"{'Transaction':<20} | {'Baseline (txn/s)':<18}"
+    header = f"{'Transaction':<20} | {'Default (txn/s)':<18}"
     for sys in systems[1:]:
         sys_name = system_display_names.get(sys, sys.capitalize())
         header += f" | {sys_name:<14} | Speedup (rate)"
@@ -189,7 +189,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         
         # Table 1: Throughput (Transaction Rate)
         md_lines.append("## Transaction Rate / Throughput (txn/s)\n")
-        md_header = "| Transaction | Baseline (txn/s) |"
+        md_header = "| Transaction | Default (txn/s) |"
         md_sep = "| :--- | :---: |"
         for sys in systems[1:]:
             sys_name = system_display_names.get(sys, sys.capitalize())
@@ -229,7 +229,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         
         # Table 2: Execution Time (ms)
         md_lines.append("## Execution Time (ms)\n")
-        md_header_time = "| Transaction | Baseline (ms) |"
+        md_header_time = "| Transaction | Default (ms) |"
         md_sep_time = "| :--- | :---: |"
         for sys in systems[1:]:
             sys_name = system_display_names.get(sys, sys.capitalize())
@@ -295,7 +295,7 @@ def main():
     
     systems = ['baseline', 'aco', 'dco', 'adco', 'agenttune', 'gptuner', 'ottertune']
     system_display_names = {
-        'baseline': 'Baseline',
+        'baseline': 'Default',
         'aco': 'ACo',
         'dco': 'DCo',
         'adco': 'ADCo',

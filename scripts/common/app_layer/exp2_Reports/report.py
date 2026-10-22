@@ -401,7 +401,7 @@ def main():
         systems = [s.strip() for s in args.systems.split(',') if s.strip()]
         title_prefix = "Performance Comparison"
     system_display_names = {
-        'baseline': 'Baseline',
+        'baseline': 'Default',
         'adco': 'ADCo',
         'aco': 'ACo',
         'py-dbridge': 'Py-DBridge',
