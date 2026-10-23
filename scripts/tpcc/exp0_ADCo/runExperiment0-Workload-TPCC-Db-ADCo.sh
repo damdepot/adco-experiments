@@ -5,7 +5,7 @@
 # Canonical (bench_lib): <dir> <file> [reps], PHASE=load|execute (default execute).
 # Legacy: <model> <dbms> <warehouses> <clients> <benchmark> <dir_name>
 # Scale defaults to benchmarks scale, env-overridable:
-#   WAREHOUSES=32 CLIENTS=8 DURATION=180 WARMUP=30 REPS=2
+#   TPCC_WAREHOUSES=32 TPCC_CLIENTS=8 TPCC_DURATION=180 TPCC_WARMUP=30 REPS=2
 #
 set -euo pipefail
 
@@ -15,10 +15,10 @@ exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/tpcc"
 
-WAREHOUSES="${WAREHOUSES:-32}"
-CLIENTS="${CLIENTS:-8}"
-DURATION="${DURATION:-180}"
-WARMUP="${WARMUP:-30}"
+TPCC_WAREHOUSES="${TPCC_WAREHOUSES:-32}"
+TPCC_CLIENTS="${TPCC_CLIENTS:-8}"
+TPCC_DURATION="${TPCC_DURATION:-180}"
+TPCC_WARMUP="${TPCC_WARMUP:-30}"
 REPS_DEFAULT="${REPS:-2}"
 
 if [[ "${2:-}" == *.csv* ]]; then
@@ -27,10 +27,10 @@ if [[ "${2:-}" == *.csv* ]]; then
     reps="${3:-${REPS_DEFAULT}}"
     phase="${PHASE:-execute}"
     dbms="postgres"
-    warehouses="${WAREHOUSES}"
-    clients="${CLIENTS}"
-    duration="${DURATION}"
-    warmup="${WARMUP}"
+    warehouses="${TPCC_WAREHOUSES}"
+    clients="${TPCC_CLIENTS}"
+    duration="${TPCC_DURATION}"
+    warmup="${TPCC_WARMUP}"
 
     case "${phase}" in
         load|execute) ;;
@@ -92,13 +92,13 @@ fi
 # ── Legacy positional CLI (preserved) ─────────────────────────────────────
 llm_model="${1:-${MODEL:-gemini-3.5-flash-lite}}"
 dbms="${2:-postgres}"
-warehouses="${3:-${WAREHOUSES}}"
-clients="${4:-${CLIENTS}}"
+warehouses="${3:-${TPCC_WAREHOUSES}}"
+clients="${4:-${TPCC_CLIENTS}}"
 benchmark="${5:-tpcc}"
 dir_name="${6:-${ADCO_TOOL:-adco}}"
 phase="${PHASE:-test}"
-duration="${DURATION}"
-warmup="${WARMUP}"
+duration="${TPCC_DURATION}"
+warmup="${TPCC_WARMUP}"
 
 results_dir="${result_benchmark_path:-${exp_path}/results/tpcc/${dir_name}/benchmarks}"
 mkdir -p "${results_dir}"

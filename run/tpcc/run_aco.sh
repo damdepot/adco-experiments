@@ -35,11 +35,11 @@ echo '-------------------<< ACo >>-------------------'
 bench_restore "tpcc" "${SEED_DB_TPCC}"
 restore_defaults
 bench_assert_fresh_knobs
-bench_assert_rows "tpcc" "warehouse" "${WAREHOUSES}"
+bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 echo '-------------------<< Generating ACo rewrite for TPCC >>-------------------'
 if $CMDADCo ACo ${model} postgres tpcc; then
     echo '-------------------<< Running ACo TPCC workload >>-------------------'
-    PHASE=execute $CMDRunTPCC ${model} postgres "${WAREHOUSES}" "${CLIENTS}" tpcc aco
+    PHASE=execute $CMDRunTPCC ${model} postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc aco
 else
     echo 'WARNING: ACo TPCC rewrite failed; skipping its measurement.' >&2
 fi

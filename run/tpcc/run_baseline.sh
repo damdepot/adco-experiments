@@ -51,7 +51,7 @@ bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 bench_assert_seed "${SEED_DB_TPCC}"
 restore_defaults
 bench_assert_fresh_knobs
-bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${WAREHOUSES}"
+bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${TPCC_WAREHOUSES}"
 
 echo "----------------->> Baseline tpcc <<-----------------"
 bench_arm_from_seed "baseline" "baseline" "tpcc" "${SEED_DB_TPCC}"

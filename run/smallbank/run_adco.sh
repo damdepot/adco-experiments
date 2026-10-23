@@ -49,14 +49,14 @@ bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
 # Fresh data + default knobs verified before tool (abort on failure).
 restore_defaults
 bench_assert_fresh_knobs
-bench_assert_rows "smallbank" "accounts" "${ACCOUNTS}"
+bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
 
 echo '-------------------<< ADCo (unified single run: ACo rewrite + DCo tune) >>-------------------'
 echo '-------------------<< Generating ADCo (ACo + DCo) for Smallbank >>-------------------'
 if $CMDADCoApp ADCo ${model} postgres smallbank; then
     echo '-------------------<< Running ADCo Smallbank workload >>-------------------'
     measure_prep
-    PHASE=execute $CMDRunSmallbankApp ${model} postgres "${ACCOUNTS}" "${TRANSACTIONS}" smallbank adco
+    PHASE=execute $CMDRunSmallbankApp ${model} postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank adco
 else
     echo 'WARNING: ADCo Smallbank generation failed; skipping its measurement.' >&2
 fi

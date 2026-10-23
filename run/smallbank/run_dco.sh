@@ -9,7 +9,7 @@
 #
 # Resource/workload contract: scripts/_lib/bench_lib.sh (single place).
 # Smallbank-only knobs, still env-overridable:
-#   ACCOUNTS=5000000 TRANSACTIONS=60000
+#   SMALLBANK_ACCOUNTS=5000000 SMALLBANK_TRANSACTIONS=60000
 #
 # No post-tool restore: the DB is measured as the tuner left it, followed
 # by Restart/WaitFor cold buffers before measure. Knob settings live in
@@ -84,7 +84,7 @@ bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
 # Fresh data + default knobs verified before tool (abort on failure).
 restore_defaults
 bench_assert_fresh_knobs
-bench_assert_rows "smallbank" "accounts" "${ACCOUNTS}"
+bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
 run_dco_smallbank_tool
 "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
 "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"

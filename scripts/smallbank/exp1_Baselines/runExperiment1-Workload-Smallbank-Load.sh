@@ -2,7 +2,7 @@
 set -euo pipefail
 
 dbms="${1:-postgres}"
-accounts="${2:-${ACCOUNTS:-5000000}}"
+accounts="${2:-${SMALLBANK_ACCOUNTS:-5000000}}"
 
 exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 

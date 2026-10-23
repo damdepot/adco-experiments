@@ -53,7 +53,7 @@ bench_assert_seed "${SEED_DB_TPCC}"
 bench_restore "tpcc" "${SEED_DB_TPCC}"
 restore_defaults
 bench_assert_fresh_knobs
-bench_assert_rows "tpcc" "warehouse" "${WAREHOUSES}"
+bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 
 
 ###  Rewrite + Workload: TPCC
@@ -64,7 +64,7 @@ source_file="drivers/postgresdriver.py"
 if $CMDNaive workload/apps/tpcc postgres tpcc ${model}; then
     echo '-------------------<< Running the TPCC workload >>-------------------'
     measure_prep
-    PHASE=execute $CMDRunTPCC postgres "${WAREHOUSES}" "${CLIENTS}" tpcc
+    PHASE=execute $CMDRunTPCC postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc
 else
     echo 'WARNING: Naive-LLM TPCC rewrite failed; skipping its measurement.' >&2
 fi

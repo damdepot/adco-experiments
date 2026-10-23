@@ -8,7 +8,7 @@
 #     PHASE=load|execute selects the phase (default: execute).
 #     <dir> is 'baseline' or an out/<dir> rewritten app (sandbox switch).
 #     Scale defaults to benchmarks scale, env-overridable:
-#       WAREHOUSES=32 CLIENTS=8 DURATION=180 WARMUP=30 REPS=2
+#       TPCC_WAREHOUSES=32 TPCC_CLIENTS=8 TPCC_DURATION=180 TPCC_WARMUP=30 REPS=2
 #   Legacy (standalone):
 #     runExperiment1-Workload-TPCC.sh <dbms> <warehouses> <clients>
 #     PHASE unset => full reset+execute with reps loop + CHECKPOINT + warmup.
@@ -21,10 +21,10 @@ exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/tpcc"
 
-WAREHOUSES="${WAREHOUSES:-32}"
-CLIENTS="${CLIENTS:-8}"
-DURATION="${DURATION:-180}"
-WARMUP="${WARMUP:-30}"
+TPCC_WAREHOUSES="${TPCC_WAREHOUSES:-32}"
+TPCC_CLIENTS="${TPCC_CLIENTS:-8}"
+TPCC_DURATION="${TPCC_DURATION:-180}"
+TPCC_WARMUP="${TPCC_WARMUP:-30}"
 REPS_DEFAULT="${REPS:-2}"
 
 # ── Canonical mode: $2 looks like a CSV file ─────────────────────────────
@@ -34,10 +34,10 @@ if [[ "${2:-}" == *.csv* ]]; then
     reps="${3:-${REPS_DEFAULT}}"
     phase="${PHASE:-execute}"
     dbms="postgres"
-    warehouses="${WAREHOUSES}"
-    clients="${CLIENTS}"
-    duration="${DURATION}"
-    warmup="${WARMUP}"
+    warehouses="${TPCC_WAREHOUSES}"
+    clients="${TPCC_CLIENTS}"
+    duration="${TPCC_DURATION}"
+    warmup="${TPCC_WARMUP}"
 
     case "${phase}" in
         load|execute) ;;
@@ -98,11 +98,11 @@ fi
 
 # ── Legacy mode: <dbms> <warehouses> <clients> ────────────────────────────
 dbms="${1:-postgres}"
-warehouses="${2:-${WAREHOUSES}}"
-clients="${3:-${CLIENTS}}"
+warehouses="${2:-${TPCC_WAREHOUSES}}"
+clients="${3:-${TPCC_CLIENTS}}"
 phase="${PHASE:-test}"
-duration="${DURATION}"
-warmup="${WARMUP}"
+duration="${TPCC_DURATION}"
+warmup="${TPCC_WARMUP}"
 
 results_dir="${result_benchmark_path:-${exp_path}/results/tpcc/baseline/benchmarks}"
 mkdir -p "${results_dir}"

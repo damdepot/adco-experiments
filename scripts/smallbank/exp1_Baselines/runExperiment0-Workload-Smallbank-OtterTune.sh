@@ -12,8 +12,8 @@ exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/smallbank"
 
-ACCOUNTS="${ACCOUNTS:-5000000}"
-TRANSACTIONS="${TRANSACTIONS:-60000}"
+SMALLBANK_ACCOUNTS="${SMALLBANK_ACCOUNTS:-5000000}"
+SMALLBANK_TRANSACTIONS="${SMALLBANK_TRANSACTIONS:-60000}"
 LOAD_THREADS="${LOAD_THREADS:-4}"
 REPS_DEFAULT="${REPS:-2}"
 TOOL_RESULTS="${exp_path}/results/smallbank/ottertune/benchmarks"
@@ -24,8 +24,8 @@ if [[ "${2:-}" == *.csv* ]]; then
     reps="${3:-${REPS_DEFAULT}}"
     phase="${PHASE:-execute}"
     dbms="${DBMS:-postgres}"
-    accounts="${ACCOUNTS}"
-    transactions="${TRANSACTIONS}"
+    accounts="${SMALLBANK_ACCOUNTS}"
+    transactions="${SMALLBANK_TRANSACTIONS}"
     case "${phase}" in
         load|execute) ;;
         *) echo "Usage: PHASE must be 'load' or 'execute' (got '${phase}')" >&2; exit 2 ;;
@@ -49,11 +49,11 @@ if [[ "${2:-}" == *.csv* ]]; then
     echo "------->>${workdir}<<-------"
     # Single warmup to avoid coldstart; measured reps follow.
     cd "${workdir}"
-    if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+    if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
         echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
         python main.py run --driver "${dbms}" \
-            --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
-            --transactions "${WARMUP_TRANSACTIONS}"
+            --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
+            --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
     fi
     cd "${workload_path}"
     if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
@@ -77,8 +77,8 @@ if [[ "${2:-}" == *.csv* ]]; then
 fi
 
 dbms="${1:-${DBMS:-postgres}}"
-accounts="${2:-${ACCOUNTS}}"
-transactions="${3:-${TRANSACTIONS}}"
+accounts="${2:-${SMALLBANK_ACCOUNTS}}"
+transactions="${3:-${SMALLBANK_TRANSACTIONS}}"
 benchmark="${4:-smallbank}"
 phase="${PHASE:-test}"
 results_dir="${result_benchmark_path:-${TOOL_RESULTS}}"
@@ -95,11 +95,11 @@ case "${phase}" in
         ;;
     execute)
         # Single warmup to avoid coldstart; measured reps follow.
-        if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+        if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
             echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
             python main.py run --driver "${dbms}" \
-                --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
-                --transactions "${WARMUP_TRANSACTIONS}"
+                --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
+                --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
         fi
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then out="${log_fname}"; else out="${log_fname}_r${rep}"; fi

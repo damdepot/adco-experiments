@@ -2,10 +2,10 @@
 set -euo pipefail
 
 dbms="${1:-postgres}"
-warehouses="${2:-${WAREHOUSES:-32}}"
-clients="${3:-${CLIENTS:-8}}"
+warehouses="${2:-${TPCC_WAREHOUSES:-32}}"
+clients="${3:-${TPCC_CLIENTS:-8}}"
 benchmark="${4:-tpcc}"
-duration="${DURATION:-180}"
+duration="${TPCC_DURATION:-180}"
 
 # Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.
 phase="${PHASE:-execute}"
@@ -23,7 +23,7 @@ if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
 fi
 # Seconds of throwaway workload before measured reps; 0 disables
 # (canonical bench protocol).
-warmup="${WARMUP:-30}"
+warmup="${TPCC_WARMUP:-30}"
 if ! [[ "${warmup}" =~ ^[0-9]+$ ]]; then
     echo "Usage: warmup must be a non-negative integer (got '${warmup}')" >&2
     exit 2

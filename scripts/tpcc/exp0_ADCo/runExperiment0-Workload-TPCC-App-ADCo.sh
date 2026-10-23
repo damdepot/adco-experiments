@@ -3,11 +3,11 @@ set -euo pipefail
 
 llm_model="${1:-${MODEL:-gemini-3.5-flash-lite}}"
 dbms="${2:-postgres}"
-warehouses="${3:-${WAREHOUSES:-32}}"
-clients="${4:-${CLIENTS:-8}}"
+warehouses="${3:-${TPCC_WAREHOUSES:-32}}"
+clients="${4:-${TPCC_CLIENTS:-8}}"
 benchmark="${5:-tpcc}"
 dir_name="${6:-adco}"
-duration="${DURATION:-180}"
+duration="${TPCC_DURATION:-180}"
 
 if [ "$dir_name" == "aco" ] || [ "$dir_name" == "ACo" ]; then
     out_name="ACo-results"
@@ -33,7 +33,7 @@ if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
 fi
 # Seconds of throwaway workload before measured reps; 0 disables
 # (canonical bench protocol).
-warmup="${WARMUP:-30}"
+warmup="${TPCC_WARMUP:-30}"
 if ! [[ "${warmup}" =~ ^[0-9]+$ ]]; then
     echo "Usage: warmup must be a non-negative integer (got '${warmup}')" >&2
     exit 2

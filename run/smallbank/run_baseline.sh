@@ -51,7 +51,7 @@ bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 bench_assert_seed "${SEED_DB_SMALLBANK}"
 restore_defaults
 bench_assert_fresh_knobs
-bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${ACCOUNTS}"
+bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${SMALLBANK_ACCOUNTS}"
 
 echo "----------------->> Baseline smallbank <<-----------------"
 bench_arm_from_seed "baseline" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"

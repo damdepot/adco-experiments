@@ -58,7 +58,7 @@ echo "----------------->> DCo tpcc <<-----------------"
 bench_restore "tpcc" "${SEED_DB_TPCC}"
 restore_defaults
 bench_assert_fresh_knobs
-bench_assert_rows "tpcc" "warehouse" "${WAREHOUSES}"
+bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 run_dco_tpcc_tool
 "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
 "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"

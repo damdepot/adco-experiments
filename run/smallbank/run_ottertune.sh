@@ -75,7 +75,7 @@ run_ottertune_smallbank_tool() {
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
 bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 bench_assert_seed "${SEED_DB_SMALLBANK}"
-bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${ACCOUNTS}"
+bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${SMALLBANK_ACCOUNTS}"
 
 echo "----------------->> OtterTune smallbank <<-----------------"
 bench_arm_from_seed "ottertune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_ottertune_smallbank_tool

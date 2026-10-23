@@ -2,11 +2,11 @@
 set -euo pipefail
 
 dbms="${1:-postgres}"
-warehouses="${2:-${WAREHOUSES:-32}}"
-clients="${3:-${CLIENTS:-8}}"
-duration="${DURATION:-180}"
+warehouses="${2:-${TPCC_WAREHOUSES:-32}}"
+clients="${3:-${TPCC_CLIENTS:-8}}"
+duration="${TPCC_DURATION:-180}"
 # Seconds of throwaway workload before measured reps; 0 disables.
-warmup="${WARMUP:-30}"
+warmup="${TPCC_WARMUP:-30}"
 if ! [[ "${warmup}" =~ ^[0-9]+$ ]]; then
     echo "Usage: warmup must be a non-negative integer (got '${warmup}')" >&2
     exit 2

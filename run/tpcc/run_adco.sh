@@ -50,7 +50,7 @@ echo "----------------->> ADCo tpcc (unified single run) <<-----------------"
 bench_restore "tpcc" "${SEED_DB_TPCC}"
 restore_defaults
 bench_assert_fresh_knobs
-bench_assert_rows "tpcc" "warehouse" "${WAREHOUSES}"
+bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 
 ### ADCo (single unified run: ACo rewrite + DCo tune, rewritten-app arm measured)
 ### **********
@@ -59,7 +59,7 @@ echo '-------------------<< Generating ADCo (ACo + DCo) for TPCC >>-------------
 if $CMDADCoApp ADCo ${model} postgres tpcc; then
     echo '-------------------<< Running ADCo TPCC workload >>-------------------'
     measure_prep
-    PHASE=execute $CMDRunTPCC ${model} postgres "${WAREHOUSES}" "${CLIENTS}" tpcc adco
+    PHASE=execute $CMDRunTPCC ${model} postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc adco
 else
     echo 'WARNING: ADCo TPCC generation failed; skipping its measurement.' >&2
 fi

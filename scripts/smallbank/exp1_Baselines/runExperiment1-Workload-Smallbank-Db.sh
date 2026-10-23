@@ -9,7 +9,7 @@
 #     <dir> is 'baseline' or an out/<dir> rewritten app (sandbox switch).
 #     <file> is the CSV name; reps default to $REPS (benchmarks scale: 2).
 #     Scale defaults to benchmarks scale, env-overridable:
-#       ACCOUNTS=5000000 TRANSACTIONS=60000 LOAD_THREADS=4 REPS=2
+#       SMALLBANK_ACCOUNTS=5000000 SMALLBANK_TRANSACTIONS=60000 LOAD_THREADS=4 REPS=2
 #   Legacy (standalone):
 #     runExperiment1-Workload-Smallbank.sh <dbms> <accounts> <transactions>
 #     PHASE unset => legacy `test` (reset+load+run) with reps loop + CHECKPOINT.
@@ -23,8 +23,8 @@ exp_path="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/smallbank"
 
-ACCOUNTS="${ACCOUNTS:-5000000}"
-TRANSACTIONS="${TRANSACTIONS:-60000}"
+SMALLBANK_ACCOUNTS="${SMALLBANK_ACCOUNTS:-5000000}"
+SMALLBANK_TRANSACTIONS="${SMALLBANK_TRANSACTIONS:-60000}"
 LOAD_THREADS="${LOAD_THREADS:-4}"
 REPS_DEFAULT="${REPS:-2}"
 
@@ -35,8 +35,8 @@ if [[ "${2:-}" == *.csv* ]]; then
     reps="${3:-${REPS_DEFAULT}}"
     phase="${PHASE:-execute}"
     dbms="${DBMS:-postgres}"
-    accounts="${ACCOUNTS}"
-    transactions="${TRANSACTIONS}"
+    accounts="${SMALLBANK_ACCOUNTS}"
+    transactions="${SMALLBANK_TRANSACTIONS}"
 
     case "${phase}" in
         load|execute) ;;
@@ -69,11 +69,11 @@ if [[ "${2:-}" == *.csv* ]]; then
 
     # Single warmup to avoid coldstart; measured reps follow.
     cd "${workdir}"
-    if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+    if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
         echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
         python main.py run --driver "${dbms}" \
-            --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
-            --transactions "${WARMUP_TRANSACTIONS}"
+            --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
+            --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
     fi
     cd "${workload_path}"
     if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
@@ -101,8 +101,8 @@ fi
 
 # ── Legacy mode: <dbms> <accounts> <transactions> ─────────────────────────
 dbms="${1:-${DBMS:-postgres}}"
-accounts="${2:-${ACCOUNTS}}"
-transactions="${3:-${TRANSACTIONS}}"
+accounts="${2:-${SMALLBANK_ACCOUNTS}}"
+transactions="${3:-${SMALLBANK_TRANSACTIONS}}"
 phase="${PHASE:-test}"
 
 results_dir="${result_benchmark_path:-${exp_path}/results/smallbank/baseline/benchmarks}"
@@ -124,11 +124,11 @@ case "${phase}" in
         ;;
     execute)
         # Single warmup to avoid coldstart; measured reps follow.
-        if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+        if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
             echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
             python main.py run --driver "${dbms}" \
-                --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
-                --transactions "${WARMUP_TRANSACTIONS}"
+                --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
+                --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
         fi
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then

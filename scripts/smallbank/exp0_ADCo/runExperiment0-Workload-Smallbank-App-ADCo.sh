@@ -3,8 +3,8 @@ set -euo pipefail
 
 llm_model="${1:-${MODEL:-gemini-3.5-flash-lite}}"
 dbms="${2:-postgres}"
-accounts="${3:-${ACCOUNTS:-5000000}}"
-transactions="${4:-${TRANSACTIONS:-60000}}"
+accounts="${3:-${SMALLBANK_ACCOUNTS:-5000000}}"
+transactions="${4:-${SMALLBANK_TRANSACTIONS:-60000}}"
 benchmark="${5:-smallbank}"
 dir_name="${6:-adco}"
 
@@ -54,11 +54,11 @@ if [ "${phase}" = "load" ]; then
                     --reset
 else
     # Single warmup to avoid coldstart; measured reps follow.
-    if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+    if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
         echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
         python main.py run --driver "${dbms}" \
-            --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
-            --transactions "${WARMUP_TRANSACTIONS}"
+            --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
+            --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
     fi
     if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
     for (( rep = 1; rep <= reps; rep++ )); do

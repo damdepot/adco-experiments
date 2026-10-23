@@ -14,12 +14,12 @@ BENCH_DB_SERVICE="${BENCH_DB_SERVICE:-pgdb}"
 
 # The one place the resource + workload contract is declared: every runner
 # sources this file, so docker compose (CPU_CORES / MEMORY_GB) and tpcc.sh
-# (REPS / DURATION / WARMUP / WAREHOUSES / CLIENTS) always read these values.
+# (REPS / TPCC_DURATION / TPCC_WARMUP / TPCC_WAREHOUSES / TPCC_CLIENTS) always read these values.
 # Precedence: shell environment > <root>/.env (docker compose reads that same
 # file, so both sides of the run agree) > the defaults below. One-off values go
 # in .env as plain KEY=value; remove the line to get the default back.
 _bench_env_kept=()
-for _bench_env_var in CPU_CORES MEMORY_GB REPS DURATION WARMUP WAREHOUSES CLIENTS SETTLE_SECS DBMS ACCOUNTS TRANSACTIONS WARMUP_ACCOUNTS WARMUP_TRANSACTIONS TPCH_SCALE; do
+for _bench_env_var in CPU_CORES MEMORY_GB REPS TPCC_DURATION TPCC_WARMUP TPCC_WAREHOUSES TPCC_CLIENTS SETTLE_SECS DBMS SMALLBANK_ACCOUNTS SMALLBANK_TRANSACTIONS SMALLBANK_WARMUP_ACCOUNTS SMALLBANK_WARMUP_TRANSACTIONS TPCH_SCALE; do
     if [ -n "${!_bench_env_var+set}" ]; then
         _bench_env_kept+=("${_bench_env_var}=${!_bench_env_var}")
     fi
@@ -35,17 +35,17 @@ unset _bench_env_kept _bench_env_var _bench_env_kv
 export CPU_CORES="${CPU_CORES:-4}"
 export MEMORY_GB="${MEMORY_GB:-8}"
 export REPS="${REPS:-3}"
-export DURATION="${DURATION:-180}"
-export WARMUP="${WARMUP:-15}"
-export WAREHOUSES="${WAREHOUSES:-32}"
-export CLIENTS="${CLIENTS:-8}"
+export TPCC_DURATION="${TPCC_DURATION:-180}"
+export TPCC_WARMUP="${TPCC_WARMUP:-15}"
+export TPCC_WAREHOUSES="${TPCC_WAREHOUSES:-32}"
+export TPCC_CLIENTS="${TPCC_CLIENTS:-8}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
 export DBMS="${DBMS:-postgres}"
 # Smallbank only (row count is asserted against the seeded DB before measuring).
-export ACCOUNTS="${ACCOUNTS:-5000000}"
-export TRANSACTIONS="${TRANSACTIONS:-60000}"
-export WARMUP_ACCOUNTS="${WARMUP_ACCOUNTS:-5000000}"
-export WARMUP_TRANSACTIONS="${WARMUP_TRANSACTIONS:-6000}"
+export SMALLBANK_ACCOUNTS="${SMALLBANK_ACCOUNTS:-5000000}"
+export SMALLBANK_TRANSACTIONS="${SMALLBANK_TRANSACTIONS:-60000}"
+export SMALLBANK_WARMUP_ACCOUNTS="${SMALLBANK_WARMUP_ACCOUNTS:-5000000}"
+export SMALLBANK_WARMUP_TRANSACTIONS="${SMALLBANK_WARMUP_TRANSACTIONS:-6000}"
 export TPCH_SCALE="${TPCH_SCALE:-1}"
 
 # Fresh default config + empty DB; CPU_CORES/MEMORY_GB already exported so the
@@ -352,10 +352,10 @@ _bench_timer_record() {
         printf '  "llm": %s,\n' "$(_bench_json_str "${MODEL:-${model:-}}")"
         printf '  "dbms": %s,\n' "$(_bench_json_str "${DBMS:-}")"
         printf '  "reps": %s,\n' "$(_bench_json_str "${REPS:-}")"
-        printf '  "duration": %s,\n' "$(_bench_json_str "${DURATION:-}")"
-        printf '  "warmup": %s,\n' "$(_bench_json_str "${WARMUP:-}")"
-        printf '  "warehouses": %s,\n' "$(_bench_json_str "${WAREHOUSES:-}")"
-        printf '  "clients": %s,\n' "$(_bench_json_str "${CLIENTS:-}")"
+        printf '  "duration": %s,\n' "$(_bench_json_str "${TPCC_DURATION:-}")"
+        printf '  "warmup": %s,\n' "$(_bench_json_str "${TPCC_WARMUP:-}")"
+        printf '  "warehouses": %s,\n' "$(_bench_json_str "${TPCC_WAREHOUSES:-}")"
+        printf '  "clients": %s,\n' "$(_bench_json_str "${TPCC_CLIENTS:-}")"
         printf '  "git_commit": %s\n' "$(_bench_json_str "${commit}")"
         printf '}\n'
     } >"${dir}/${name}.json"

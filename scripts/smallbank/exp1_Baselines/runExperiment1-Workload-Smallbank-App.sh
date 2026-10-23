@@ -2,8 +2,8 @@
 set -euo pipefail
 
 dbms="${1:-postgres}"
-accounts="${2:-${ACCOUNTS:-5000000}}"
-transactions="${3:-${TRANSACTIONS:-60000}}"
+accounts="${2:-${SMALLBANK_ACCOUNTS:-5000000}}"
+transactions="${3:-${SMALLBANK_TRANSACTIONS:-60000}}"
 
 # Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.
 phase="${PHASE:-execute}"
@@ -35,11 +35,11 @@ if [ "${phase}" = "load" ]; then
                     --reset
 else
     # Single warmup to avoid coldstart; measured reps follow.
-    if [ "${WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
+    if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
         echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
         python main.py run --driver "${dbms}" \
-            --accounts "${WARMUP_ACCOUNTS:-${accounts}}" \
-            --transactions "${WARMUP_TRANSACTIONS}"
+            --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
+            --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
     fi
     if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
     for (( rep = 1; rep <= reps; rep++ )); do

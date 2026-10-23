@@ -60,8 +60,8 @@ case "${benchmark}" in
             cd "${output_path}"
             timeout "$(( ${SMOKE_SECS:-60} + 120 ))" python tpcc.py "${dbms}" \
                 --config="${exp_path}/workload/apps/${benchmark}/db.config" \
-                --clients="${SMOKE_CLIENTS:-${CLIENTS:-8}}" \
-                --warehouses="${WAREHOUSES:-32}" \
+                --clients="${SMOKE_CLIENTS:-${TPCC_CLIENTS:-8}}" \
+                --warehouses="${TPCC_WAREHOUSES:-32}" \
                 --duration="${SMOKE_SECS:-60}" \
                 --no-load >"${smoke_log}" 2>&1
         )
@@ -71,7 +71,7 @@ case "${benchmark}" in
             cd "${exp_path}/workload/apps/${benchmark}" && source venv/bin/activate
             cd "${output_path}"
             timeout "$(( ${SMOKE_SECS:-60} + 120 ))" python main.py run --driver "${dbms}" \
-                --accounts "${ACCOUNTS:-5000000}" \
+                --accounts "${SMALLBANK_ACCOUNTS:-5000000}" \
                 --transactions "${SMOKE_TRANSACTIONS:-1000}" >"${smoke_log}" 2>&1
         )
         ;;

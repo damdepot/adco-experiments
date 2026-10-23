@@ -37,11 +37,11 @@ bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
 # Fresh data + default knobs verified before rewrite execute (abort on failure).
 restore_defaults
 bench_assert_fresh_knobs
-bench_assert_rows "smallbank" "accounts" "${ACCOUNTS}"
+bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
 echo '-------------------<< Generating ACo rewrite for Smallbank >>-------------------'
 if $CMDADCo ACo ${model} postgres smallbank; then
     echo '-------------------<< Running ACo Smallbank workload >>-------------------'
-    PHASE=execute $CMDRunSmallbank ${model} postgres "${ACCOUNTS}" "${TRANSACTIONS}" smallbank aco
+    PHASE=execute $CMDRunSmallbank ${model} postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank aco
 else
     echo 'WARNING: ACo Smallbank rewrite failed; skipping its measurement.' >&2
 fi
