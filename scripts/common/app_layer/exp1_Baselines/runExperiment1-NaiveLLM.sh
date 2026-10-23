@@ -71,6 +71,7 @@ case "${benchmark}" in
             cd "${exp_path}/workload/apps/${benchmark}" && source venv/bin/activate
             cd "${output_path}"
             timeout "$(( ${SMOKE_SECS:-60} + 120 ))" python main.py run --driver "${dbms}" \
+                --clients "${SMALLBANK_CLIENTS:-1}" \
                 --accounts "${SMALLBANK_ACCOUNTS:-5000000}" \
                 --transactions "${SMOKE_TRANSACTIONS:-1000}" >"${smoke_log}" 2>&1
         )

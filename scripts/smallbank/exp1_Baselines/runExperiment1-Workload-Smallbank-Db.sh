@@ -72,6 +72,7 @@ if [[ "${2:-}" == *.csv* ]]; then
     if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
         echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
         python main.py run --driver "${dbms}" \
+            --clients "${SMALLBANK_CLIENTS:-1}" \
             --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
             --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
     fi
@@ -90,6 +91,7 @@ if [[ "${2:-}" == *.csv* ]]; then
         echo "----------------->> SMALLBANK rep ${rep}/${reps} (${rep_file}) <<-----------------"
         cd "${workdir}"
         python main.py run \
+            --clients "${SMALLBANK_CLIENTS:-1}" \
             --driver "${dbms}" \
             --accounts "${accounts}" \
             --transactions "${transactions}" \
@@ -127,6 +129,7 @@ case "${phase}" in
         if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
             echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
             python main.py run --driver "${dbms}" \
+                --clients "${SMALLBANK_CLIENTS:-1}" \
                 --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
                 --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
         fi
@@ -138,6 +141,7 @@ case "${phase}" in
             fi
             echo "----------------->> SMALLBANK legacy rep ${rep}/${reps} (${rep_file}) <<-----------------"
             python main.py run \
+                --clients "${SMALLBANK_CLIENTS:-1}" \
                 --driver "${dbms}" \
                 --accounts "${accounts}" \
                 --transactions "${transactions}" \
@@ -154,6 +158,7 @@ case "${phase}" in
             fi
             echo "----------------->> SMALLBANK legacy test rep ${rep}/${reps} <<-----------------"
             python main.py test \
+                --clients "${SMALLBANK_CLIENTS:-1}" \
                 --driver "${dbms}" \
                 --threads "${LOAD_THREADS}" \
                 --accounts "${accounts}" \

@@ -62,8 +62,8 @@ fi
 TARGET_EXP_CONTAINER="${ADCOEXP_CONTAINER:-adcoexp}"
 WORKLOAD_WARMUP_ARGS=()
 if [ "${benchmark}" == "smallbank" ]; then
-    WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/smallbank && (source venv/bin/activate 2>/dev/null || true) && python main.py run --driver postgres --accounts ${SMALLBANK_ACCOUNTS:-5000000} --transactions ${SMALLBANK_TRANSACTIONS:-60000} --host ${CONTAINER_NAME}'"
-    WORKLOAD_WARMUP_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/smallbank && (source venv/bin/activate 2>/dev/null || true) && python main.py run --driver postgres --accounts ${SMALLBANK_ACCOUNTS:-5000000} --transactions ${OTTERTUNE_WARMUP_TRANSACTIONS:-10000} --host ${CONTAINER_NAME}'"
+    WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/smallbank && (source venv/bin/activate 2>/dev/null || true) && python main.py run --driver postgres --accounts ${SMALLBANK_ACCOUNTS:-5000000} --transactions ${SMALLBANK_TRANSACTIONS:-60000} --clients ${SMALLBANK_CLIENTS:-1} --host ${CONTAINER_NAME}'"
+    WORKLOAD_WARMUP_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/smallbank && (source venv/bin/activate 2>/dev/null || true) && python main.py run --driver postgres --accounts ${SMALLBANK_ACCOUNTS:-5000000} --transactions ${OTTERTUNE_WARMUP_TRANSACTIONS:-10000} --clients ${SMALLBANK_CLIENTS:-1} --host ${CONTAINER_NAME}'"
     WORKLOAD_WARMUP_ARGS=(--workload-warmup-cmd "${WORKLOAD_WARMUP_CMD}")
 elif [ "${benchmark}" == "tpcc" ]; then
     WORKLOAD_CMD="docker exec ${TARGET_EXP_CONTAINER} bash -c 'cd /app/workload/apps/tpcc && (source venv/bin/activate 2>/dev/null || true) && python tpcc.py postgres --config=/app/workload/apps/tpcc/db.config --warehouses ${TPCC_WAREHOUSES:-32} --clients ${TPCC_CLIENTS:-8} --duration ${OTTERTUNE_DURATION:-60} --no-load'"

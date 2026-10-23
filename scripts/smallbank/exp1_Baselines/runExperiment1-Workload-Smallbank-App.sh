@@ -38,6 +38,7 @@ else
     if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
         echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
         python main.py run --driver "${dbms}" \
+            --clients "${SMALLBANK_CLIENTS:-1}" \
             --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
             --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
     fi
@@ -50,6 +51,7 @@ else
         fi
         echo "----------------->> Smallbank rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
         python main.py run \
+                        --clients "${SMALLBANK_CLIENTS:-1}" \
                         --driver "${dbms}" \
                         --accounts "${accounts}" \
                         --transactions "${transactions}" \

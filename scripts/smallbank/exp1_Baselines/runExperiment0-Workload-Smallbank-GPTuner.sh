@@ -52,6 +52,7 @@ if [[ "${2:-}" == *.csv* ]]; then
     if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
         echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
         python main.py run --driver "${dbms}" \
+            --clients "${SMALLBANK_CLIENTS:-1}" \
             --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
             --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
     fi
@@ -70,6 +71,7 @@ if [[ "${2:-}" == *.csv* ]]; then
         echo "----------------->> SMALLBANK rep ${rep}/${reps} (${rep_file}) <<-----------------"
         cd "${workdir}"
         python main.py run --driver "${dbms}" --accounts "${accounts}" \
+            --clients "${SMALLBANK_CLIENTS:-1}" \
             --transactions "${transactions}" --output-path "${log_fname}"
         cd "${workload_path}"
     done
@@ -99,12 +101,14 @@ case "${phase}" in
         if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
             echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
             python main.py run --driver "${dbms}" \
+                --clients "${SMALLBANK_CLIENTS:-1}" \
                 --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
                 --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
         fi
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then out="${log_fname}"; else out="${log_fname}_r${rep}"; fi
             python main.py run --driver "${dbms}" --accounts "${accounts}" \
+                --clients "${SMALLBANK_CLIENTS:-1}" \
                 --transactions "${transactions}" --output-path "${out}"
         done
         if [ "${reps}" -gt 1 ]; then cp "${log_fname}_r${reps}" "${log_fname}" 2>/dev/null || true; fi
@@ -113,6 +117,7 @@ case "${phase}" in
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then out="${log_fname}"; else out="${log_fname}_r${rep}"; fi
             python main.py test --driver "${dbms}" --threads "${LOAD_THREADS}" \
+                --clients "${SMALLBANK_CLIENTS:-1}" \
                 --accounts "${accounts}" --transactions "${transactions}" --output-path "${out}"
         done
         if [ "${reps}" -gt 1 ]; then cp "${log_fname}_r${reps}" "${log_fname}" 2>/dev/null || true; fi
