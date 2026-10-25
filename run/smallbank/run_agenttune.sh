@@ -66,6 +66,26 @@ export RESULTS_DIR="${SMALLBANK_RESULTS}"
 SEED_DB_SMALLBANK="smallbank_seed"
 
 run_agenttune_smallbank_tool() {
+    # baselines/AgentTune/config.ini is shared state: a TPCH run leaves
+    # DB_Name=tpch/benchmark=JOB behind, and setup leaves agenttune/SYSBENCH.
+    # Pin the smallbank values here at launch (cf. run/tpch/run_agenttune.sh).
+    # benchmark stays SYSBENCH: AgentTune tunes via its sysbench proxy
+    # workload (no smallbank branch exists in its benchmark switch); the
+    # tuned knobs are then measured with the real smallbank workload.
+    python3 - "${EXP_PATH}/baselines/AgentTune/config.ini" <<'PY'
+import configparser, sys
+cfg = sys.argv[1]
+c = configparser.ConfigParser()
+c.optionxform = str
+c.read(cfg)
+rec = c['configuration recommender']
+rec['DB_Name'] = 'smallbank'
+rec['benchmark'] = 'SYSBENCH'
+with open(cfg, 'w') as f:
+    c.write(f)
+print('AgentTune config.ini: DB_Name=%s benchmark=%s'
+      % (rec['DB_Name'], rec['benchmark']))
+PY
     if ! "$CMDAgentTune" "${DBMS}" smallbank; then
         echo "ERROR: AgentTune tuning failed; skipping post-AgentTune SmallBank measurement and CSV." >&2
         return 1
