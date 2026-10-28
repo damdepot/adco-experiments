@@ -61,8 +61,8 @@ PYTHONPATH="${exp_path}/baselines/ADCo" "${adco_venv}" -m src.adco ${output_path
     --model ${llm_model} \
     --db-type ${dbms} \
     --db-name ${benchmark} \
-    --cpu-cores 2 \
-    --memory 8 \
+    --cpu-cores "${CPU_CORES:-4}" \
+    --memory "${MEMORY_GB:-8}" \
     --db-config ${output_path}/db.config \
     --intent-output ${output_path}/out/adco/intent_result.json \
     --rewriter-output ${output_path}/out/adco/rewriter_result.json \

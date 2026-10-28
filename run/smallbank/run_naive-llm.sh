@@ -37,6 +37,11 @@ bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 bench_assert_seed "${SEED_DB_SMALLBANK}"
 
 
+bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
+restore_defaults
+bench_assert_fresh_knobs
+bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
+
 ###  Rewrite + Workload: Smallbank
 ### **********
 echo '-------------------<< Generating rewrite app >>-------------------'
@@ -49,6 +54,7 @@ if $CMDNaive workload/apps/smallbank postgres smallbank ${model}; then
     restore_defaults
     bench_assert_fresh_knobs
     bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
+    bench_settle
     PHASE=execute $CMDRunSmallbank postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank
 else
     echo 'WARNING: Naive-LLM Smallbank rewrite failed; skipping its measurement.' >&2

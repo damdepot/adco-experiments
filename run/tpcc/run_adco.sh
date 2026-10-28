@@ -33,6 +33,7 @@ db_service="pgdb"
 # Restore from seed snapshot (data identical; scrubs tuner screening writes),
 # then cold buffers + settled data before every measure; execute uses existing data.
 measure_prep() {
+    bench_restore "tpcc" "${SEED_DB_TPCC}"
     "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
     "${CMDDocker}" WaitFor "${db_container}"
     bench_settle

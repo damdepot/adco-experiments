@@ -55,6 +55,7 @@ else
     fi
     if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
     for (( rep = 1; rep <= reps; rep++ )); do
+        if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
         if [ "${reps}" -eq 1 ]; then
             log_fname="${base_log_fname}"
         else

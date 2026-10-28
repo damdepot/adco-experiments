@@ -11,9 +11,9 @@
 # Smallbank-only knobs, still env-overridable:
 #   SMALLBANK_ACCOUNTS=5000000 SMALLBANK_TRANSACTIONS=60000
 #
-# No post-tool restore: the DB is measured as the tuner left it, followed
-# by Restart/WaitFor cold buffers before measure. Knob settings live in
-# postgresql.auto.conf and survive the restart.
+# Post-tool restore: data mutations from tuning runs are scrubbed by restoring
+# from seed before measuring, followed by Restart/WaitFor/settle. Knob settings
+# live in postgresql.auto.conf and survive the restart.
 #
 # Optimized arms run the baseline app path (knob-only delta, as in
 # run2_dco_smallbank.sh); DCo's rewritten sandbox is retained under
@@ -86,8 +86,10 @@ restore_defaults
 bench_assert_fresh_knobs
 bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
 run_dco_smallbank_tool
+bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
 "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
 "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
+bench_settle
 bench_measure "baseline" "dco.csv"
 legacy_sync "${SMALLBANK_RESULTS}" "dco" "${DCO_SMALLBANK_BASE}" "smallbank"
 

@@ -19,7 +19,7 @@ BENCH_DB_SERVICE="${BENCH_DB_SERVICE:-pgdb}"
 # file, so both sides of the run agree) > the defaults below. One-off values go
 # in .env as plain KEY=value; remove the line to get the default back.
 _bench_env_kept=()
-for _bench_env_var in CPU_CORES MEMORY_GB REPS TPCC_DURATION TPCC_WARMUP TPCC_WAREHOUSES TPCC_CLIENTS SETTLE_SECS DBMS SMALLBANK_ACCOUNTS SMALLBANK_TRANSACTIONS SMALLBANK_WARMUP_ACCOUNTS SMALLBANK_WARMUP_TRANSACTIONS TPCH_SCALE; do
+for _bench_env_var in CPU_CORES MEMORY_GB REPS TPCC_DURATION TPCC_WARMUP TPCC_WAREHOUSES TPCC_CLIENTS SETTLE_SECS DBMS SMALLBANK_CLIENTS SMALLBANK_SEED SMALLBANK_ACCOUNTS SMALLBANK_TRANSACTIONS SMALLBANK_WARMUP_ACCOUNTS SMALLBANK_WARMUP_TRANSACTIONS TPCH_SCALE; do
     if [ -n "${!_bench_env_var+set}" ]; then
         _bench_env_kept+=("${_bench_env_var}=${!_bench_env_var}")
     fi
@@ -42,11 +42,16 @@ export TPCC_CLIENTS="${TPCC_CLIENTS:-8}"
 export SETTLE_SECS="${SETTLE_SECS:-5}"
 export DBMS="${DBMS:-postgres}"
 # Smallbank only (row count is asserted against the seeded DB before measuring).
+export SMALLBANK_CLIENTS="${SMALLBANK_CLIENTS:-8}"
+export SMALLBANK_SEED="${SMALLBANK_SEED:-42}"
 export SMALLBANK_ACCOUNTS="${SMALLBANK_ACCOUNTS:-5000000}"
 export SMALLBANK_TRANSACTIONS="${SMALLBANK_TRANSACTIONS:-60000}"
 export SMALLBANK_WARMUP_ACCOUNTS="${SMALLBANK_WARMUP_ACCOUNTS:-5000000}"
 export SMALLBANK_WARMUP_TRANSACTIONS="${SMALLBANK_WARMUP_TRANSACTIONS:-6000}"
 export TPCH_SCALE="${TPCH_SCALE:-1}"
+export BENCH_REP=0
+_BENCH_WARMUP_SETTLED=0
+_BENCH_WARMUP_DB=""
 
 # Fresh default config + empty DB; CPU_CORES/MEMORY_GB already exported so the
 # compose limits and docker.sh's limit verification use the contract values.
@@ -153,27 +158,32 @@ bench_restore() {
 # shortcut: full VACUUM (not per-table); upgrade to per-table if this gets slow.
 bench_warmup_settle() {
     local db="${1:-${BENCH_REP_DB:-tpcc}}"
+    export BENCH_REP=0
     psql -d "${db}" -c "VACUUM (ANALYZE);"
     "${BENCH_CMDDOCKER}" Checkpoint "${BENCH_DB_CONTAINER}"
     bench_settle
+    _BENCH_WARMUP_SETTLED=1
+    _BENCH_WARMUP_DB="${db}"
 }
 
-# Per-rep measurement hygiene (A+B): start every measured rep from the pristine
-# snapshot with cold buffers and a fresh checkpoint clock, so no timed
-# checkpoint — and its full_page_writes storm — lands inside the measured window.
-# Knobs are untouched: they live in postgresql.auto.conf, which survives
-# DROP/CREATE and restart. restore_defaults is deliberately NOT called here.
+# Per-rep measurement hygiene: keep shared_buffers warm from the one-time warmup,
+# advance BENCH_REP for deterministic per-rep RNG seeding, and between reps run
+# VACUUM (ANALYZE) + CHECKPOINT + settle without dropping the DB or restarting PG.
 bench_rep_prep() {
-    local db="${BENCH_REP_DB:-}" seed="${BENCH_REP_SEED:-}"
-    if [ -z "${db}" ]; then
+    local current_rep="${rep:-1}"
+    if [ "${_BENCH_WARMUP_SETTLED:-0}" = "1" ]; then
+        _BENCH_WARMUP_SETTLED=0
+        export BENCH_REP="${current_rep}"
         return 0
     fi
-    if [ -n "${seed}" ]; then
-        bench_restore "${db}" "${seed}"
+    local db="${1:-${BENCH_REP_DB:-${_BENCH_WARMUP_DB:-}}}"
+    if [ -z "${db}" ]; then
+        export BENCH_REP="${current_rep}"
+        return 0
     fi
-    "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
-    "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
-    bench_settle
+    bench_warmup_settle "${db}"
+    _BENCH_WARMUP_SETTLED=0
+    export BENCH_REP="${current_rep}"
 }
 
 # Load the dataset exactly once for a whole run, then snapshot it for fast
@@ -265,6 +275,7 @@ bench_arm_from_seed() {
     fi
     "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
     "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
+    bench_settle
     export BENCH_REP_DB="${db}" BENCH_REP_SEED="${seed}"
     bench_measure "${optimized_dir}" "${tag}.csv"
 }

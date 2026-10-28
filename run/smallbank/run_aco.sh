@@ -41,6 +41,10 @@ bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
 echo '-------------------<< Generating ACo rewrite for Smallbank >>-------------------'
 if $CMDADCo ACo ${model} postgres smallbank; then
     echo '-------------------<< Running ACo Smallbank workload >>-------------------'
+    bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
+    "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
+    "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
+    bench_settle
     PHASE=execute $CMDRunSmallbank ${model} postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank aco
 else
     echo 'WARNING: ACo Smallbank rewrite failed; skipping its measurement.' >&2

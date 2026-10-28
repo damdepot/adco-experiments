@@ -30,6 +30,7 @@ db_service="pgdb"
 # Restore-from-snapshot + cold buffers before every measure; workloads run
 # PHASE=execute against pristine seed data.
 measure_prep() {
+    bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
     "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
     "${CMDDocker}" WaitFor "${db_container}"
     bench_settle

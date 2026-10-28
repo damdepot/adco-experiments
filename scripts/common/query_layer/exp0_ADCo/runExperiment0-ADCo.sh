@@ -34,8 +34,8 @@ PYTHONPATH="${exp_path}/baselines/ADCo" "${adco_venv}" -m src.adco ${codebase_pa
     --db-type ${adco_dbms} \
     --db-name ${benchmark} \
     --db-config "${db_config_path}" \
-    --cpu-cores 2 \
-    --memory 8 \
+    --cpu-cores "${CPU_CORES:-4}" \
+    --memory "${MEMORY_GB:-8}" \
     --sandbox-dir ${output_path} \
     --log-file ${output_path}/knob_tuner.log \
     --output-path ${output_path}/result.json \
