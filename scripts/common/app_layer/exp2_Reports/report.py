@@ -6,6 +6,11 @@ import csv
 import re
 import datetime
 from collections import defaultdict
+try:
+    from tpcc_correctness import load_verify_statuses, verify_warning_lines
+except ImportError:  # report run from another cwd without the checker module
+    load_verify_statuses = None
+    verify_warning_lines = None
 
 def calculate_median(values):
     if not values:
@@ -177,7 +182,7 @@ def parse_workload_data(results_dir, workload, dbms, systems):
 
     return data, raw_records, sources
 
-def generate_workload_report(data, raw_records, workload, dbms, systems, system_display_names, output_dir, sources=None, title_prefix="Application Layer Performance Comparison", quiet=False):
+def generate_workload_report(data, raw_records, workload, dbms, systems, system_display_names, output_dir, sources=None, title_prefix="Application Layer Performance Comparison", quiet=False, verify_statuses=None):
     # Collect all transaction names preserving order if possible (placing TOTAL last)
     all_txns = []
     seen = set()
@@ -224,6 +229,11 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         lines.append(w)
     if warning_lines:
         lines.append("")
+    if verify_statuses and verify_warning_lines:
+        for w in verify_warning_lines(verify_statuses, system_display_names):
+            lines.append(w)
+        if any(s != "PASS" for s in verify_statuses.values()):
+            lines.append("")
     
     base_display = system_display_names.get(base_sys, base_sys.capitalize())
     header = f"{'Transaction':<20} | {f'{base_display} (txn/s)':<18}"
@@ -284,6 +294,12 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         for w in warning_lines:
             md_lines.append(f"\n> {w}")
         md_lines.append("")
+        if verify_statuses:
+            md_lines.append("## Correctness\n")
+            for sys in systems:
+                sys_name = system_display_names.get(sys, sys.capitalize())
+                md_lines.append(f"- {sys_name}: {verify_statuses.get(sys, 'UNVERIFIED')}")
+            md_lines.append("")
 
         # Table 1: Throughput (Transaction Rate)
         md_lines.append("## Transaction Rate / Throughput (txn/s)\n")
@@ -424,7 +440,10 @@ def main():
     for wl in workloads:
         data, raw_records, sources = parse_workload_data(args.results_dir, wl, args.dbms, systems)
         output_dir = args.output_dir or os.path.join('reports', wl, 'app_layer')
-        generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, output_dir, sources, title_prefix, quiet=args.quiet)
+        verify_statuses = None
+        if load_verify_statuses:
+            verify_statuses = load_verify_statuses(args.results_dir, wl, systems)
+        generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, output_dir, sources, title_prefix, quiet=args.quiet, verify_statuses=verify_statuses)
 
 if __name__ == '__main__':
     main()

@@ -482,6 +482,22 @@ bench_fresh_db() {
     fi
 }
 
+# Pristine-DB guardrails for a verification smoke run (no measurement).
+# bench_verify_arm <arm> <db> <seed> <warehouses>: restore the seed, reset
+# knobs, and assert the seed exists and matches the expected scale.
+bench_verify_arm() {
+    local arm="$1"
+    local db="$2"
+    local seed="$3"
+    local warehouses="$4"
+    bench_assert_seed "${seed}"
+    bench_restore "${db}" "${seed}"
+    restore_defaults
+    bench_assert_fresh_knobs
+    bench_assert_rows "${db}" "warehouse" "${warehouses}"
+    echo "-------------------<< Verify: arm '${arm}' on pristine '${db}' (${warehouses} warehouses) >>-------------------"
+}
+
 usage() {
     echo "Usage: $(basename "$0") <dir_name> <db_type> <db_name> <cpu_cores> <memory_gb>" >&2
 }
