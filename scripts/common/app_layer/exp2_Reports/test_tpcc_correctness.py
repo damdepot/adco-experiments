@@ -101,6 +101,12 @@ def test_invariants_violation_names_condition():
     assert r["status"] == "FAIL" and any("C2" in i for i in r["issues"])
 
 
+def test_invariants_c5_short_order_fails():
+    # Dropped order lines: O_OL_CNT overstates actual ORDER_LINE rows.
+    r = check_invariants({"C1": [], "C2": [], "C3": [], "C5": [[1, 5, 3012]]})
+    assert r["status"] == "FAIL" and any("C5" in i for i in r["issues"])
+
+
 def test_invariants_malformed_fails_closed():
     assert check_invariants({"C1": None})["status"] == "FAIL"
     assert check_invariants({})["status"] == "FAIL"

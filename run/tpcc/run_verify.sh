@@ -61,6 +61,7 @@ arm_spec() {
 C1_SQL="SELECT w.w_id FROM warehouse w JOIN (SELECT d_w_id, SUM(d_ytd) AS s FROM district GROUP BY 1) s ON s.d_w_id = w.w_id WHERE ABS(w.w_ytd - s.s) > 0.01;"
 C2_SQL="SELECT d_w_id, d_id FROM district d WHERE d_next_o_id - 1 <> (SELECT MAX(o_id) FROM orders WHERE o_w_id = d.d_w_id AND o_d_id = d.d_id);"
 C3_SQL="SELECT no_w_id, no_d_id FROM (SELECT no_w_id, no_d_id, MAX(no_o_id) - MIN(no_o_id) + 1 AS rng, COUNT(*) AS cnt FROM new_order GROUP BY 1, 2) s WHERE rng <> cnt;"
+C5_SQL="SELECT o.o_w_id, o.o_d_id, o.o_id FROM orders o JOIN district d ON d.d_w_id = o.o_w_id AND d.d_id = o.o_d_id WHERE o.o_id > d.d_next_o_id - 500 AND o.o_ol_cnt <> (SELECT COUNT(*) FROM order_line ol WHERE ol.ol_w_id = o.o_w_id AND ol.ol_d_id = o.o_d_id AND ol.ol_o_id = o.o_id);"
 
 verify_one_arm() {
     local arm="$1"
@@ -111,6 +112,7 @@ verify_one_arm() {
     psql -d "${DB}" -tA -F'|' -c "${C1_SQL}" >"${tmp}/C1.txt" 2>/dev/null || echo __QUERY_FAILED__ >"${tmp}/C1.txt"
     psql -d "${DB}" -tA -F'|' -c "${C2_SQL}" >"${tmp}/C2.txt" 2>/dev/null || echo __QUERY_FAILED__ >"${tmp}/C2.txt"
     psql -d "${DB}" -tA -F'|' -c "${C3_SQL}" >"${tmp}/C3.txt" 2>/dev/null || echo __QUERY_FAILED__ >"${tmp}/C3.txt"
+    psql -d "${DB}" -tA -F'|' -c "${C5_SQL}" >"${tmp}/C5.txt" 2>/dev/null || echo __QUERY_FAILED__ >"${tmp}/C5.txt"
     history_after="$(psql -d "${DB}" -tA -c "SELECT count(*) FROM history;" 2>/dev/null || echo "")"
     history_count=""
     if [[ "${history_before}" =~ ^[0-9]+$ ]] && [[ "${history_after}" =~ ^[0-9]+$ ]]; then
@@ -130,7 +132,7 @@ verify_one_arm() {
 import json, sys
 tmp, dest = sys.argv[1], sys.argv[2]
 conds = {}
-for c in ("C1", "C2", "C3"):
+for c in ("C1", "C2", "C3", "C5"):
     try:
         with open(f"{tmp}/{c}.txt") as f:
             body = f.read().strip()
