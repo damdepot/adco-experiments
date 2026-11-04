@@ -18,6 +18,11 @@ services:
       # postgres role). The harness talks to pgdb over the compose network.
       - "127.0.0.1:5432:5432"
     platform: linux/amd64
+    # Host-specific core pinning (DB_CPUSET/CLIENT_CPUSET in .env). Pinning the
+    # DB to CPU_CORES cores keeps the quota as the tuner contract but makes it
+    # non-binding, so CFS throttling stops (it was 21% of periods on the
+    # 8-vCPU server). Empty = no pinning.
+    cpuset: "${DB_CPUSET:-}"
     deploy:
       resources:
         limits:
@@ -77,6 +82,9 @@ services:
     image: adcoexp-image
     container_name: adcoexp
     restart: unless-stopped
+    # Keep the TPC-C client and harness off the DB's pinned cores (empty = no
+    # pinning; 4-7 needs an 8-vCPU host).
+    cpuset: "${CLIENT_CPUSET:-}"
     environment:
       TZ: Asia/Bangkok
       GOOGLE_APPLICATION_CREDENTIALS: /var/run/secrets/google/application_default_credentials.json
