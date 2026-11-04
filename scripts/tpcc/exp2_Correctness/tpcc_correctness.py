@@ -46,6 +46,9 @@ def _commit_sites(tree):
     return sites
 
 
+
+
+
 def check_static(source_text, baseline_text=None):
     """T0: syntax must parse; workload shape must not change; transaction
     boundaries may only gain commits (WARN) — losing one FAILs."""
@@ -89,12 +92,102 @@ def check_static(source_text, baseline_text=None):
         return {"status": WARN, "issues": issues}
     return {"status": PASS, "issues": []}
 
+
+
 PASS, FAIL, WARN = "PASS", "FAIL", "WARN"
 MATCH, DRIFT = "MATCH", "DRIFT"
 
 
+def _canon_datetime(v):
+    """Whole-second date form: TPC-C dates have 1-second resolution (Spec
+    1.3.1), so sub-second digits are driver formatting noise, not data.
+    Regex-based (not fromisoformat): PG JSON encoders emit fractional
+    precisions (e.g. 5 digits) that older Pythons refuse to parse."""
+    import datetime
+    import re
+    if isinstance(v, (datetime.datetime, datetime.date)):
+        if isinstance(v, datetime.datetime):
+            v = v.replace(microsecond=0)
+        return v.isoformat()
+    if isinstance(v, str):
+        m = re.match(r"^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})(?:\.\d+)?",
+                     v.strip())
+        if m:
+            return m.group(1)
+        return v
+    return v
+
+
+def normalize_value(v):
+    """Normalize driver return values for cross-arm comparison: floats
+    rounded (kills float-repr noise, keeps real differences), dates to ISO,
+    tuples to lists, Decimals/bytes to plain types."""
+    import datetime
+    import decimal
+    if isinstance(v, decimal.Decimal):
+        return round(float(v), 4)
+    if isinstance(v, float):
+        return round(v, 4)
+    if isinstance(v, (datetime.datetime, datetime.date)):
+        return _canon_datetime(v)
+    if isinstance(v, str):
+        return _canon_datetime(v)
+    if isinstance(v, (bytes, bytearray)):
+        return bytes(v).decode("utf-8", "replace")
+    if isinstance(v, (list, tuple)):
+        return [normalize_value(x) for x in v]
+    if isinstance(v, dict):
+        return {k: normalize_value(x) for k, x in v.items()}
+    return v
+
+
+def sort_probe_lines(method, result):
+    """Sort ORDER_STATUS order-lines canonically. Spec 2.6.3.3 Comment 1:
+    display order need not match entry order, so row order is insignificant
+    and must not read as divergence."""
+    import json
+    if (method == "doOrderStatus" and isinstance(result, list)
+            and len(result) == 3 and isinstance(result[2], list)):
+        result = [result[0], result[1],
+                  sorted(result[2],
+                         key=lambda r: json.dumps(r, sort_keys=True))]
+    return result
+
+
+def check_read_equivalence(baseline, arm):
+    """RP: identical deterministic reads through both code paths must return
+    identical results. Probes the baseline itself cannot run are skipped;
+    anything the rewrite gets differently (or errors on) is a FAIL."""
+    for label, doc in (("baseline", baseline), ("arm", arm)):
+        if not isinstance(doc, dict) or "probes" not in doc:
+            return {"status": FAIL, "issues": ["no %s probe results" % label]}
+    wanted = {p["name"]: p for p in arm["probes"]}
+    issues = []
+    for bp in baseline["probes"]:
+        name = bp["name"]
+        ap = wanted.get(name)
+        if ap is None:
+            issues.append("missing probe %s in rewrite results" % name)
+            continue
+        if "error" in bp:
+            continue
+        if "error" in ap:
+            issues.append("probe %s errored in rewrite: %s"
+                          % (name, ap["error"][:120]))
+            continue
+        # Normalized on both sides (idempotent): driver formatting noise
+        # (float reprs, datetime precisions) must not read as divergence.
+        if normalize_value(bp.get("result")) != normalize_value(ap.get("result")):
+            issues.append("probe %s diverged" % name)
+    if issues:
+        return {"status": FAIL, "issues": issues}
+    return {"status": PASS, "issues": []}
+
+
 def check_smoke(csv_text, log_text=""):
-    """T1: CSV has all 5 txns + TOTAL with executed>0; log has no Traceback."""
+    """T1: CSV has all 5 txns + TOTAL with executed>0; log has no Traceback;
+    failed-txn warnings must stay at/below 1% of executed (the 1% invalid-item
+    rollback path never warns, so anything above is a failure storm)."""
     if not csv_text or not csv_text.strip():
         return {"status": FAIL, "issues": ["empty CSV"]}
     try:
@@ -122,23 +215,35 @@ def check_smoke(csv_text, log_text=""):
     if log_text and "Traceback" in log_text:
         tail = [ln for ln in log_text.splitlines() if ln.strip()][-3:]
         issues.append("Traceback in log: " + " | ".join(t.strip()[:120] for t in tail))
+    if log_text:
+        warns = log_text.count("Failed to execute Transaction")
+        total = seen.get("TOTAL", sum(seen.values()))
+        if total > 0 and warns / total > 0.01:
+            issues.append("failure storm: %d failed txns in log vs %d executed (%.1f%%)"
+                          % (warns, total, 100.0 * warns / total))
     if issues:
         return {"status": FAIL, "issues": issues}
     return {"status": PASS, "issues": []}
 
 
-def check_invariants(condition_rows):
-    """T2: every consistency condition must return zero rows. Fail-closed."""
+def check_invariants(condition_rows, warn_keys=()):
+    """T2: every consistency condition must return zero rows. Fail-closed.
+    Keys in warn_keys (e.g. quirk-suspect value mismatches with paired
+    receipts) produce WARN issues instead of FAIL."""
     if not condition_rows:
         return {"status": FAIL, "issues": ["no invariant results supplied"]}
-    issues = []
+    fail_issues = []
+    warn_issues = []
     for cond, rows in condition_rows.items():
         if rows is None:
-            issues.append(f"{cond}: malformed result (query failed)")
+            fail_issues.append("%s: malformed result (query failed)" % cond)
         elif len(rows) > 0:
-            issues.append(f"{cond} violated ({len(rows)} rows, e.g. {rows[0]!r})")
-    if issues:
-        return {"status": FAIL, "issues": issues}
+            (warn_issues if cond in warn_keys else fail_issues).append(
+                "%s violated (%d rows, e.g. %r)" % (cond, len(rows), rows[0]))
+    if fail_issues:
+        return {"status": FAIL, "issues": fail_issues + warn_issues}
+    if warn_issues:
+        return {"status": WARN, "issues": warn_issues}
     return {"status": PASS, "issues": []}
 
 
@@ -222,6 +327,10 @@ def main():
     ap.add_argument("--source", default=None, help="rewritten driver .py under test")
     ap.add_argument("--baseline-source", default=None, help="pristine driver .py")
     ap.add_argument("--invariants", default=None, help="JSON file {condition: [rows]}")
+    ap.add_argument("--warn-keys", default="",
+                    help="comma-separated conditions that WARN instead of FAIL")
+    ap.add_argument("--probe-baseline", default=None, help="read_probe.py JSON for baseline code")
+    ap.add_argument("--probe-arm", default=None, help="read_probe.py JSON for rewrite code")
     ap.add_argument("--payment-executed", type=int, default=None)
     ap.add_argument("--history-count", type=int, default=None,
                     help="HISTORY growth during the smoke run (after - before)")
@@ -249,7 +358,18 @@ def main():
             checks["history"] = check_history(args.payment_executed, args.history_count)
     if args.invariants:
         with open(args.invariants, encoding="utf-8") as f:
-            checks["invariants"] = check_invariants(json.load(f))
+            warn_keys = {k.strip() for k in args.warn_keys.split(",") if k.strip()}
+            checks["invariants"] = check_invariants(json.load(f), warn_keys)
+    if args.probe_baseline or args.probe_arm:
+        try:
+            with open(args.probe_baseline, encoding="utf-8") as f:
+                base_doc = json.load(f)
+            with open(args.probe_arm, encoding="utf-8") as f:
+                arm_doc = json.load(f)
+            checks["reads"] = check_read_equivalence(base_doc, arm_doc)
+        except (OSError, ValueError) as e:
+            checks["reads"] = {"status": FAIL,
+                               "issues": ["unreadable probe results: %s" % e]}
 
     status = aggregate(checks)
     with open(args.output, "w", encoding="utf-8") as f:

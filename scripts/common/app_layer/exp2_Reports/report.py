@@ -8,9 +8,18 @@ import datetime
 from collections import defaultdict
 try:
     from tpcc_correctness import load_verify_statuses, verify_warning_lines
-except ImportError:  # report run from another cwd without the checker module
-    load_verify_statuses = None
-    verify_warning_lines = None
+except ImportError:
+    # Checker lives in scripts/tpcc/exp2_Correctness (sibling of the tpcc
+    # workload drivers); fall back to loading it from there.
+    try:
+        import sys
+        sys.path.insert(0, os.path.normpath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            '..', '..', '..', 'tpcc', 'exp2_Correctness')))
+        from tpcc_correctness import load_verify_statuses, verify_warning_lines
+    except ImportError:
+        load_verify_statuses = None
+        verify_warning_lines = None
 
 def calculate_median(values):
     if not values:
