@@ -245,3 +245,5 @@ out/
 workload/apps/*
 .venv_hash
 tools/tpch-kit
+baselines/NaiveLLM/prompts/selected-smallbank.txt
+baselines/NaiveLLM/prompts/selected-tpcc.txt
