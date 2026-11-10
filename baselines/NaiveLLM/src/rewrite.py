@@ -81,26 +81,40 @@ def _read(output_dir: Path, relpath: str) -> str:
     return (output_dir / relpath).read_text(encoding="utf-8")
 
 
-def build_prompt(output_dir: Path, rewrite_files: list, context_files: list) -> str:
+TASK = (
+    "Task: improve the performance of the application below without changing its\n"
+    "observable behavior or its public interface. Performance here means the speed\n"
+    "and throughput of this application's own execution against its database."
+)
+
+RULES = [
+    "Rules:",
+    "- Only modify the files listed under FILES TO OPTIMIZE.",
+    "- Return the FULL contents of every file you change, each preceded by a line exactly like:",
+    "### FILE: <relative path>",
+    "- Do not wrap file contents in markdown code fences.",
+    "- If a file needs no change, omit it.",
+    "- Do not add new files or dependencies.",
+]
+
+
+def build_prompt(
+    output_dir: Path, rewrite_files: list, context_files: list, guidance: "str | None" = None
+) -> str:
     # Honestly naive single-shot baseline: task + files + I/O mechanics only.
-    # No optimization guidance, no learned rules — whatever the model does
-    # with the code as-is is the floor other approaches must beat.
+    # No optimization guidance unless the caller supplies a prompt file —
+    # whatever the model does with the code as-is is the floor to beat.
     lines = [
         "You are a coding assistant optimizing a database application.",
         "",
-        "Task: improve the performance of the application below without changing its",
-        "observable behavior or its public interface. Performance here means the speed",
-        "and throughput of this application's own execution against its database.",
-        "",
-        "Rules:",
-        "- Only modify the files listed under FILES TO OPTIMIZE.",
-        "- Return the FULL contents of every file you change, each preceded by a line exactly like:",
-        "### FILE: <relative path>",
-        "- Do not wrap file contents in markdown code fences.",
-        "- If a file needs no change, omit it.",
-        "- Do not add new files or dependencies.",
+        *TASK.splitlines(),
         "",
     ]
+    if guidance and guidance.strip():
+        lines.extend(guidance.strip().splitlines())
+        lines.append("")
+    lines.extend(RULES)
+    lines.append("")
     if context_files:
         lines.append("DATABASE SCHEMA (read-only context):")
         for relpath in context_files:

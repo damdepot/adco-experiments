@@ -1,0 +1,9 @@
+Briefly analyze the hot path in one short paragraph, then after the analysis return only the files.
+- Identify the dominant or hottest transaction and the serialized round-trips on its critical path.
+- Prefer set-based queries over N+1 and per-row lookups, mapping results back by full key, never by position.
+- Push filtering, aggregation, and joins into SQL and select only the needed columns.
+- Replace per-row writes with bulk writes while keeping the exact write set and row-write count.
+- Reuse connections, cursors, and prepared statements; cache read-only lookups within a transaction.
+- Preserve commit/rollback placement, null/type semantics, ordering, and the public interface.
+- Keep observable behavior identical and do not change the database schema.
+- Do not add new files or dependencies.

@@ -5,6 +5,8 @@ dbms="${1:-postgres}"
 warehouses="${2:-${TPCC_WAREHOUSES:-32}}"
 clients="${3:-${TPCC_CLIENTS:-8}}"
 benchmark="${4:-tpcc}"
+arm="${5:-${ARM:-naive-llm}}"
+rewrite_root="${6:-${NAIVE_REWRITE_ROOT:-out/app_layer/NaiveLLM-results}}"
 duration="${TPCC_DURATION:-180}"
 
 # Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.
@@ -33,9 +35,9 @@ exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 # shellcheck disable=SC1091
 source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/${benchmark}"
-benchmarks_dir="${exp_path}/results/tpcc/naive-llm/benchmarks"
-base_log_fname="${exp_path}/results/tpcc/naive-llm/benchmarks/runExperiment1-tpcc-${dbms}"
-rewrite_dir="${exp_path}/out/app_layer/NaiveLLM-results/Rewrite/${dbms}/tpcc-NaiveLLM"
+benchmarks_dir="${BENCH_RESULTS_DIR:-${exp_path}/results/tpcc/${arm}/benchmarks}"
+base_log_fname="${benchmarks_dir}/runExperiment1-tpcc-${dbms}"
+rewrite_dir="${exp_path}/${rewrite_root}/Rewrite/${dbms}/tpcc-NaiveLLM"
 
 cd "${workload_path}"
 source venv/bin/activate
@@ -64,10 +66,10 @@ else
         if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
         if [ "${reps}" -eq 1 ]; then
             log_fname="${base_log_fname}"
-            primary_fname="${benchmarks_dir}/naive-llm.csv"
+            primary_fname="${benchmarks_dir}/${arm}.csv"
         else
             log_fname="${base_log_fname}_r${rep}"
-            primary_fname="${benchmarks_dir}/naive-llm_r${rep}.csv"
+            primary_fname="${benchmarks_dir}/${arm}_r${rep}.csv"
         fi
         echo "----------------->> TPCC/Naive-LLM rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
         python tpcc.py "${dbms}" \

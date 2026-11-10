@@ -5,19 +5,23 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
 
+ARM="${ARM:-naive-llm}"
+NAIVE_REWRITE_ROOT="${NAIVE_REWRITE_ROOT:-out/app_layer/NaiveLLM-results}"
+PROMPT_FILE="${PROMPT_FILE:-}"
+export ARM NAIVE_REWRITE_ROOT PROMPT_FILE
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"
-bench_timer "tpcc/run_naive-llm" "results/tpcc/naive-llm" "naive-llm"
+bench_timer "tpcc/run_${ARM}" "results/tpcc/${ARM}" "${ARM}"
 
 # clean original results
-rm -rf results/tpcc/naive-llm
-mkdir -p results/tpcc/naive-llm/benchmarks
+rm -rf "results/tpcc/${ARM}"
+mkdir -p "results/tpcc/${ARM}/benchmarks"
 
-rm -rf out/app_layer/NaiveLLM-results
-mkdir -p out/app_layer/NaiveLLM-results
+rm -rf "${NAIVE_REWRITE_ROOT}"
+mkdir -p "${NAIVE_REWRITE_ROOT}"
 
-export result_output_path="out/app_layer/NaiveLLM-results"
+export result_output_path="${NAIVE_REWRITE_ROOT}"
 
 CMDNaive=./scripts/common/app_layer/exp1_Baselines/runExperiment1-NaiveLLM.sh
 CMDRunTPCC=./scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh
@@ -64,7 +68,7 @@ source_file="drivers/postgresdriver.py"
 if $CMDNaive workload/apps/tpcc postgres tpcc ${model}; then
     echo '-------------------<< Running the TPCC workload >>-------------------'
     measure_prep
-    PHASE=execute $CMDRunTPCC postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc
+    PHASE=execute $CMDRunTPCC postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc "${ARM}"
 else
     echo 'WARNING: Naive-LLM TPCC rewrite failed; skipping its measurement.' >&2
 fi

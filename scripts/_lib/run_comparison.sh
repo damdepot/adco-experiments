@@ -104,7 +104,7 @@ if not candidates:
 # Canonical column order (matches run_reports.sh --systems); unrecognised
 # labels follow, alphabetically.
 CANONICAL = [
-    "baseline", "py-dbridge", "naive-llm", "ottertune", "gptuner",
+    "baseline", "py-dbridge", "naive-llm", "naive-llm-aggressive", "ottertune", "gptuner",
     "agenttune", "aco", "dco", "adco",
 ]
 labels = sorted(

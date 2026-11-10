@@ -1,0 +1,6 @@
+- Reuse connections, cursors, and prepared statements instead of reconnecting or re-setup per transaction.
+- Cache read-only lookups within a transaction when the cached value cannot change during that transaction.
+- Avoid redundant connection setup, session initialization, and statement preparation on hot paths.
+- Preserve transaction isolation, commit/rollback placement, and connection lifetime semantics.
+- Keep the same observable behavior, public interface, and error handling.
+- Do not add new files or dependencies, and do not change the schema.

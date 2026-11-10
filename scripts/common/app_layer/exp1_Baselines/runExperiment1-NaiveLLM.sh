@@ -22,8 +22,16 @@ case "${source_path}" in
 esac
 
 # Rewrite
-output_path="${exp_path}/out/app_layer/NaiveLLM-results/Rewrite/${dbms}/${benchmark}-NaiveLLM"
+rewrite_root="${NAIVE_REWRITE_ROOT:-out/app_layer/NaiveLLM-results}"
+output_path="${exp_path}/${rewrite_root}/Rewrite/${dbms}/${benchmark}-NaiveLLM"
 mkdir -p "$(dirname "${output_path}")"
+
+# Optional alternate prompt, resolved against the repo root like source_path.
+case "${PROMPT_FILE:-}" in
+    "") prompt_path="" ;;
+    /*) prompt_path="${PROMPT_FILE}" ;;
+    *) prompt_path="${exp_path}/${PROMPT_FILE}" ;;
+esac
 
 llm_model="${4:-${MODEL:-gemini-3.5-flash-lite}}"
 
@@ -36,7 +44,7 @@ else
     exit 1
 fi
 
-python -m src.cli --source-dir "${src_dir}" --output-dir "${output_path}" --db "${dbms}" --model "${llm_model}"
+python -m src.cli --source-dir "${src_dir}" --output-dir "${output_path}" --db "${dbms}" --model "${llm_model}" ${prompt_path:+--prompt-file "$prompt_path"}
 
 # Smoke: run the rewritten app before the paid measurement reps. Executors log
 # failed transactions and continue (exit 0), so the log — not the exit code —

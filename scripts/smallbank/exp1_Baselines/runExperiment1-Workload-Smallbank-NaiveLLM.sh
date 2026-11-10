@@ -5,6 +5,8 @@ dbms="${1:-postgres}"
 accounts="${2:-${SMALLBANK_ACCOUNTS:-5000000}}"
 transactions="${3:-${SMALLBANK_TRANSACTIONS:-60000}}"
 benchmark="${4:-smallbank}"
+arm="${5:-${ARM:-naive-llm}}"
+rewrite_root="${6:-${NAIVE_REWRITE_ROOT:-out/app_layer/NaiveLLM-results}}"
 
 # Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.
 phase="${PHASE:-execute}"
@@ -27,9 +29,9 @@ exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 # Per-rep measurement hygiene (shared): reset DB state before each measured rep.
 # shellcheck disable=SC1091
 source "${exp_path}/scripts/_lib/bench_lib.sh"
-benchmarks_dir="${exp_path}/results/smallbank/naive-llm/benchmarks"
-base_log_fname="${exp_path}/results/smallbank/naive-llm/benchmarks/runExperiment1-smallbank-${dbms}"
-rewrite_dir="${exp_path}/out/app_layer/NaiveLLM-results/Rewrite/${dbms}/smallbank-NaiveLLM"
+benchmarks_dir="${BENCH_RESULTS_DIR:-${exp_path}/results/smallbank/${arm}/benchmarks}"
+base_log_fname="${benchmarks_dir}/runExperiment1-smallbank-${dbms}"
+rewrite_dir="${exp_path}/${rewrite_root}/Rewrite/${dbms}/smallbank-NaiveLLM"
 
 cd "${exp_path}/workload/apps/smallbank"
 source venv/bin/activate
@@ -56,10 +58,10 @@ else
         if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
         if [ "${reps}" -eq 1 ]; then
             log_fname="${base_log_fname}"
-            primary_fname="${benchmarks_dir}/naive-llm.csv"
+            primary_fname="${benchmarks_dir}/${arm}.csv"
         else
             log_fname="${base_log_fname}_r${rep}"
-            primary_fname="${benchmarks_dir}/naive-llm_r${rep}.csv"
+            primary_fname="${benchmarks_dir}/${arm}_r${rep}.csv"
         fi
         echo "----------------->> Smallbank/Naive-LLM rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
         python main.py run \

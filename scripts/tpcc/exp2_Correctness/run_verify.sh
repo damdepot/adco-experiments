@@ -14,7 +14,7 @@ bench_lock "${ROOT}"
 bench_timer "tpcc/run_verify" "results/tpcc" "run_verify"
 
 DBMS="${1:-postgres}"
-ARMS_CSV="${2:-baseline,aco,adco,py-dbridge,naive-llm}"
+ARMS_CSV="${2:-baseline,aco,adco,py-dbridge,naive-llm,naive-llm-aggressive}"
 # Forgiving CLI: `./run_verify.sh aco` means "verify arm aco", not dbms=aco.
 case "${DBMS}" in
     postgres|mysql) ;;
@@ -54,6 +54,7 @@ arm_spec() {
         adco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} 1 tpcc adco|${ROOT}/out/app_layer/ADCo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/adco/benchmarks/adco.csv" ;;
         py-dbridge) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc|${ROOT}/out/app_layer/Py-DBridge-results/Rewrite/${DBMS}/tpcc-Py-DBridge/drivers/postgresdriver.py|results/tpcc/py-dbridge/benchmarks/py-dbridge.csv" ;;
         naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc|${ROOT}/out/app_layer/NaiveLLM-results/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm/benchmarks/naive-llm.csv" ;;
+        naive-llm-aggressive) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc naive-llm-aggressive out/app_layer/NaiveLLM-aggressive-results|${ROOT}/out/app_layer/NaiveLLM-aggressive-results/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm-aggressive/benchmarks/naive-llm-aggressive.csv" ;;
         *) echo "UNKNOWN" ;;
     esac
 }
