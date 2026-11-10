@@ -4,12 +4,14 @@ Answers one question about each app-layer rewrite arm
 (`baseline, aco, adco, py-dbridge, naive-llm`): **is the rewritten code
 correct, or just fast?** A rewrite that drops writes, weakens isolation, or
 skips work looks faster while corrupting data — these checks catch that.
+`naive-llm` is a single arm that now rewrites with the prompt chosen by the
+offline search (`baselines/NaiveLLM/prompts/selected-tpcc.txt`).
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `run_verify.sh` | Verify driver. Restores the pristine `tpcc_seed`, runs a tiny single-client smoke per arm (seed scale, 1 client, 20 s, no warmup), runs every check below, writes `results/tpcc/verify_<arm>.json`. Called by thin entry point `run/tpcc/run_verify.sh`. Never deletes real results (benchmark dirs are moved aside during smoke and restored after). |
+| `run_verify.sh` | Verify driver. Restores the pristine `tpcc_seed`, runs a tiny single-client smoke per arm (seed scale, 1 client, 20 s, no warmup), runs every check below, writes `results/tpcc/verify_<arm>.json` (or `VERIFY_OUTPUT`). Called by thin entry point `run/tpcc/run_verify.sh`. Also supports generic tree mode for arbitrary rewrite trees. Never deletes real results (benchmark dirs are moved aside during smoke and restored after). |
 | `tpcc_correctness.py` | Pure checker (no DB writes). Static diff guard, smoke CSV/log gate, invariant verdicts, checksum drift, verify-status helpers consumed by `report.py`. Also usable standalone per arm (see CLI). |
 | `read_probe.py` | Probe worker: runs deterministic read-only probes (ORDER_STATUS ×8, STOCK_LEVEL ×5) through one tree's driver code, prints normalized JSON. Run twice (baseline tree, rewrite tree) on the same snapshot; outputs diffed as the `reads` check. |
 | `test_tpcc_correctness.py` | Spec-only unit tests: one per official condition below, plus fail-closed policy tests. No DB, no arm dirs. |
@@ -111,3 +113,50 @@ snapshot and a healthy `adcoexp-db` container.
 > while passing most runs. Treat a lone CC10/CC12 FAIL as suspect, not
 > guilty: re-run before concluding an arm is broken; only a reproducibly
 > failing arm is truly suspect.
+
+## Generic tree mode
+
+Verifies any Naive-LLM-style rewrite tree under an arbitrary arm name — used by
+the prompt-search winner gate and the robustness harness.
+
+| Var | Required | Meaning |
+|-----|----------|---------|
+| `VERIFY_REWRITE_ROOT` | yes | repo-relative root holding `Rewrite/<dbms>/tpcc-NaiveLLM/` |
+| `VERIFY_CSV` | yes | **absolute** path for the smoke CSV |
+| `BENCH_RESULTS_DIR` | yes | where the runner writes benchmarks; without it the runner falls back to `results/tpcc/<arm>/benchmarks` and the supplied CSV never appears |
+| `VERIFY_OUTPUT` | no | verdict JSON path (default `results/tpcc/verify_<arm>.json`) |
+| `BENCH_LOCK_HELD=1` | no | caller already holds `bench_lock` (search/robustness own it) |
+| `REVERIFY=1` | no | ignore a fresh verdict and re-run |
+
+Any arm name maps to that tree, so the name is just the label on the verdict.
+The CSV must be supplied — there is no default path in tree mode.
+
+```bash
+BENCH_LOCK_HELD=1 REVERIFY=1 \
+  VERIFY_REWRITE_ROOT=out/app_layer/NaiveLLM-search-results/candidates/aggressive-all \
+  VERIFY_CSV="$PWD/out/app_layer/NaiveLLM-search-results/winner-verify/aggressive-all.csv" \
+  BENCH_RESULTS_DIR="$PWD/out/app_layer/NaiveLLM-search-results/winner-verify/benchmarks" \
+  VERIFY_OUTPUT="$PWD/out/app_layer/NaiveLLM-search-results/winner-verify/verify.json" \
+  ./scripts/tpcc/exp2_Correctness/run_verify.sh postgres aggressive-all
+```
+
+## Robustness harness
+
+```bash
+./run/tpcc/run_naive-llm-robustness.sh [runs=10] [dbms=postgres] [model]
+```
+
+- Run `0` re-verifies the already-measured tree under
+  `out/app_layer/NaiveLLM-results/` (recorded separately as
+  `measured_artifact`).
+- Runs `1..N` rewrite from scratch with the selected prompt, each verified via
+  generic tree mode.
+- Writes `results/tpcc/robustness/naive-llm/latest.json` plus timestamped
+  `out/app_layer/robustness/naive-llm/<ts>/summary.{json,md}`. Rewrites, smoke
+  CSVs and per-run verdicts stay under `out/`.
+
+The reporter prefers `results/tpcc/robustness/<arm>/latest.json`; without it,
+it falls back to this arm's single `verify_<arm>.json` and shows `1-run PASS`.
+The summary's `Measured` column carries run 0's verdict on the tree that
+produced the reported performance number; a measured FAIL is warned separately
+from the fresh-run aggregate.

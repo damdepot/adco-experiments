@@ -1,6 +1,6 @@
 # NaiveLLM — single-shot LLM rewriter baseline
 
-The deliberately unguided baseline: copy an application, send its driver + entry
+The deliberately simple baseline: copy an application, send its driver + entry
 file to an LLM **once** at temperature 0, write back whatever comes back. No
 profiling, no iteration, no feedback from the database.
 
@@ -8,8 +8,11 @@ Two layers use the same CLI: the **app layer** (TPC-C / Smallbank driver +
 `tpcc.py`/`main.py`) and the **query layer** (`db_app.py` compiled from
 `query*.sql`, used by Stats and TPC-H).
 
-An optional second arm, `naive-llm-aggressive`, uses a guidance prompt that was
-chosen offline by evaluating a fixed bank of snippets (`run_prompt_search.sh`).
+TPC-C runs with the prompt chosen by the offline search
+(`prompts/selected-tpcc.txt`), not the unguided prompt. The file must exist
+before the arm runs; an **empty** file is valid and means the search's
+`control` (unguided) candidate won. Smallbank is deferred: it keeps the
+unguided default and has no correctness gate on its search yet.
 
 ## Layout
 
@@ -88,44 +91,102 @@ the workload.
 ## App-layer runs
 
 ```bash
-./run/tpcc/run_naive-llm.sh          # original (unguided) arm
-./run/smallbank/run_naive-llm.sh
+./run/tpcc/run_naive-llm.sh                  # searched prompt (selected-tpcc.txt)
+./run/tpcc/run_naive-llm-robustness.sh 10    # 1 measured re-check + 10 fresh rewrites
+./run/smallbank/run_naive-llm.sh             # unguided default (Smallbank search deferred)
 ```
 
-Knobs (defaults keep the original arm):
+Knobs (defaults are the reported TPC-C arm):
 
-| Var | Default |
-|-----|---------|
-| `ARM` | `naive-llm` |
-| `NAIVE_REWRITE_ROOT` | `out/app_layer/NaiveLLM-results` |
-| `PROMPT_FILE` | empty (control prompt) |
-| `MODEL` | `gemini-3.5-flash-lite` |
+| Var | Default | Notes |
+|-----|---------|-------|
+| `ARM` | `naive-llm` | result dir `results/tpcc/<ARM>` |
+| `NAIVE_REWRITE_ROOT` | `out/app_layer/NaiveLLM-results` | rewritten tree root |
+| `PROMPT_FILE` | `baselines/NaiveLLM/prompts/selected-tpcc.txt` | hard-fails if missing; empty = unguided |
+| `MODEL` | `gemini-3.5-flash-lite` | |
+
+`run_naive-llm.sh` refuses to start until the selected prompt exists:
+
+```
+ERROR: missing selected prompt .../selected-tpcc.txt
+Run ./run/tpcc/run_prompt_search.sh first (an empty file is valid).
+```
 
 The shell driver rewrites into `<root>/Rewrite/<dbms>/<bench>-NaiveLLM`, runs a
 smoke pass (fails on `Traceback`, on TPC-C transaction errors other than
 deadlocks, or on >5% Smallbank errors), then measures.
 
-## Aggressive arm (offline prompt search)
+## Selected-prompt workflow
 
 ```bash
-./scripts/common/app_layer/exp3_PromptSearch/run_prompt_search.sh tpcc      # or smallbank
-cp out/app_layer/NaiveLLM-search-results/selected-tpcc.txt baselines/NaiveLLM/prompts/selected-tpcc.txt
-./run/tpcc/run_naive-llm-aggressive.sh
+./run/tpcc/run_prompt_search.sh
+./run/tpcc/run_naive-llm.sh
 ```
 
-How the search works:
+Optional args: `[dbms=postgres] [model] [reps=2]` (the benchmark is implicit).
 
-Candidates: `control` (no prompt) plus every non-empty `.txt` in `prompts/` whose
-name is not `selected-*`. Each is rewritten on the real benchmark and measured
-(default 2 reps); score is the **median TOTAL txn/s**. Smallbank uses the held-out
-`SMALLBANK_SEED=1337` for search while the reported arm keeps the default seed 42;
-TPC-C is unseeded. Results, per-candidate CSVs and driver/entry `sha256` hashes go
-to `out/app_layer/NaiveLLM-search-results/search-<bench>.json` (scratch only —
-never `results/`). The winner is copied to `selected-<bench>.txt` in the search
-dir; if control wins that file is **empty**, which is valid and still promotes.
-`run_naive-llm-aggressive.sh` hard-fails until `prompts/selected-<bench>.txt` exists.
+| Step | Behavior |
+|------|----------|
+| Candidates | `control` (no prompt) + every non-empty `prompts/*.txt` whose name is not `selected-*` |
+| Narrow the sweep | `CANDIDATES=control,aggressive-batch ./run/tpcc/run_prompt_search.sh` (tests/debug) |
+| Score | median TOTAL txn/s across reps, on the real benchmark |
+| Gate | after scoring, **only the winner** is verified with the TPC-C checker |
+| PASS / WARN | auto-promotes `baselines/NaiveLLM/prompts/selected-tpcc.txt`; WARN is reported as SUSPECT |
+| FAIL / UNVERIFIED | no promotion, previous selected prompt untouched, non-zero exit |
+| `control` wins | selected file is written empty (unguided) |
+
+Scratch (per-candidate rewrites/CSVs, `search-tpcc.json`, `winner-verify/`) goes
+to `out/app_layer/NaiveLLM-search-results/` — never `results/`. The search JSON
+records each candidate's status, score, CSV and rewrite `sha256`, plus the
+winner, its verdict, and the promoted prompt's `sha256`.
+
+Smallbank: the search still scores candidates and writes
+`selected-smallbank.txt` into its scratch dir, but promotion stays manual and
+there is no correctness oracle yet, so no gate and no auto-promote.
+
+## Robustness (TPC-C)
+
+```bash
+./run/tpcc/run_naive-llm-robustness.sh [runs=10] [dbms=postgres] [model]
+```
+
+| Run | What it does |
+|-----|--------------|
+| `0` | re-verifies the actual measured tree in `out/app_layer/NaiveLLM-results/...` |
+| `1..N` | fresh rewrite with the selected prompt, each verified with the generic TPC-C verify arm |
+
+Reports:
+
+| Path | Contents |
+|------|----------|
+| `results/tpcc/robustness/naive-llm/latest.json` | headline summary consumed by the report |
+| `out/app_layer/robustness/naive-llm/<ts>/summary.json` | same, timestamped |
+| `out/app_layer/robustness/naive-llm/<ts>/summary.md` | markdown table + headline |
+
+`latest.json` holds `counts` (pass/fail/warn/unverified over fresh runs),
+`incorrect_rate` with a Wilson 95% CI, `distinct_outputs` (distinct rewrite
+hashes) and `measured_artifact` (run 0's verdict, kept separate so a stale
+measured tree cannot make a clean sweep read as FAIL). Rewrites, smoke CSVs and
+per-run verify JSON stay under `out/`; nothing is written under `results/`
+except `latest.json`.
+
+> Caveat: temperature 0. If `distinct_outputs` is 1, all N runs produced the
+> same code and the sweep is one effective sample, not N independent ones.
+
+## Correctness in reports
+
+`./run/tpcc/run_reports.sh` adds a `## Correctness` table and a Correctness
+column to both performance tables. Arms with a robustness summary use it
+(`PASS 9/10`, run counts, distinct rewrites); arms without one fall back to the
+single-run `results/tpcc/verify_<arm>.json` and show `1-run PASS`. The
+`Measured` column is run 0's verdict on the tree that produced the reported
+speedup, kept separate from the fresh sweep; a measured FAIL is warned even if
+all fresh runs pass. WARN shows as SUSPECT; no check at all shows UNVERIFIED.
 
 ## Prompt bank
+
+Hand-written guidance bank; the search sweeps whichever of these exist.
+`selected-*.txt` are search outputs, not bank entries (and may be empty).
 
 | File | Focus |
 |------|-------|
@@ -135,6 +196,7 @@ dir; if control wins that file is **empty**, which is valid and still promotes.
 | `aggressive-reuse.txt` | reuse connections, cursors, prepared statements; cache reads |
 | `aggressive-criticalpath.txt` | optimize the hottest transaction first |
 | `aggressive-plan-first.txt` | one-paragraph hot-path analysis, then all of the above |
+| `aggressive-safe.txt` | all of the above plus the detailed equivalence rules (key mapping, type casts, write set) |
 | `aggressive-all.txt` | all of the above combined |
 
 ## Tests
@@ -153,7 +215,11 @@ markdown fences or `### FILE:` lines.
 - No schema changes, no new files, no new dependencies (enforced by prompt, not code).
 - Validation is syntax-only (`py_compile`). Runtime failures are caught by the
   app-layer smoke run; TPC-C correctness by `run_verify.sh`.
-- The default prompt is byte-for-byte the unguided baseline, so that arm stays a
-  fair floor to beat.
-- The aggressive arm's prompt was tuned on the benchmark it is reported on —
-  label it that way, not as an out-of-the-box result.
+- `naive-llm-aggressive` is retired for TPC-C: there is one `naive-llm` arm, and
+  the unguided prompt survives only as the search's `control` candidate. The
+  Smallbank wrapper still exists (`run/smallbank/run_naive-llm-aggressive.sh`)
+  and is deferred until Smallbank gets a correctness oracle.
+- `results/tpcc/naive-llm` numbers recorded before the prompt switch are stale
+  (unguided) and must be re-run with `./run/tpcc/run_naive-llm.sh`.
+- The TPC-C prompt was tuned on TPC-C itself — label it that way, not as an
+  out-of-the-box result.

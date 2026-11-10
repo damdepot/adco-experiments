@@ -4,17 +4,21 @@
 # TPC-C invariant checks via scripts/common/app_layer/exp2_Reports/tpcc_correctness.py.
 # Writes results/tpcc/verify_<arm>.json (consumed by report.py). Never deletes
 # real results: per-arm benchmark dirs are moved aside during the smoke run.
+# VERIFY_REWRITE_ROOT=<repo-relative tree>: verify that tree under any arm name
+# (used by the prompt-search winner gate); VERIFY_OUTPUT overrides the JSON path.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
 
-bench_lock "${ROOT}"
+if [ "${BENCH_LOCK_HELD:-0}" != "1" ]; then
+    bench_lock "${ROOT}"
+fi
 bench_timer "tpcc/run_verify" "results/tpcc" "run_verify"
 
 DBMS="${1:-postgres}"
-ARMS_CSV="${2:-baseline,aco,adco,py-dbridge,naive-llm,naive-llm-aggressive}"
+ARMS_CSV="${2:-baseline,aco,adco,py-dbridge,naive-llm}"
 # Forgiving CLI: `./run_verify.sh aco` means "verify arm aco", not dbms=aco.
 case "${DBMS}" in
     postgres|mysql) ;;
@@ -47,14 +51,18 @@ bench_ensure_seed "${DB}" "${SEED_DB_TPCC}"
 bench_assert_seed "${SEED_DB_TPCC}"
 
 # Per-arm: runner script | runner args | rewrite driver | smoke CSV (REPS=1 paths).
+# With VERIFY_REWRITE_ROOT set, any arm name maps to that Naive-LLM-style tree.
 arm_spec() {
+    if [ -n "${VERIFY_REWRITE_ROOT:-}" ]; then
+        echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc ${1} ${VERIFY_REWRITE_ROOT}|${ROOT}/${VERIFY_REWRITE_ROOT}/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|${VERIFY_CSV}"
+        return 0
+    fi
     case "$1" in
         baseline) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-App.sh|${DBMS}|${BASELINE_DRIVER}|results/tpcc/baseline/benchmarks/runExperiment1-tpcc-${DBMS}" ;;
         aco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} 1 tpcc aco|${ROOT}/out/app_layer/ACo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/aco/benchmarks/aco.csv" ;;
         adco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} 1 tpcc adco|${ROOT}/out/app_layer/ADCo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/adco/benchmarks/adco.csv" ;;
         py-dbridge) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc|${ROOT}/out/app_layer/Py-DBridge-results/Rewrite/${DBMS}/tpcc-Py-DBridge/drivers/postgresdriver.py|results/tpcc/py-dbridge/benchmarks/py-dbridge.csv" ;;
         naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc|${ROOT}/out/app_layer/NaiveLLM-results/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm/benchmarks/naive-llm.csv" ;;
-        naive-llm-aggressive) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc naive-llm-aggressive out/app_layer/NaiveLLM-aggressive-results|${ROOT}/out/app_layer/NaiveLLM-aggressive-results/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm-aggressive/benchmarks/naive-llm-aggressive.csv" ;;
         *) echo "UNKNOWN" ;;
     esac
 }
@@ -94,13 +102,14 @@ IR2_SQL="SELECT 'warehouse' WHERE EXISTS (SELECT 1 FROM warehouse WHERE w_ytd IS
 
 verify_one_arm() {
     local arm="$1"
-    local out="results/tpcc/verify_${arm}.json"
+    local out="${VERIFY_OUTPUT:-results/tpcc/verify_${arm}.json}"
+    local out_stem="${out%.json}"
     if [ "${REVERIFY:-0}" != "1" ] && [ -f "${out}" ] && [ -z "$(find "${out}" -mmin +1440 2>/dev/null)" ]; then
         echo "----------------->> ${arm}: skipped (fresh ${out}) <<-----------------"
         return 0
     fi
 
-    local spec runner rargs driver csv bdir bak tmp inv_json
+    local spec runner rargs driver csv bdir bak tmp inv_json smoke_csv
     spec="$(arm_spec "${arm}")"
     if [ "${spec}" = "UNKNOWN" ]; then
         echo "WARNING: unknown arm '${arm}'; skipping." >&2
@@ -109,6 +118,10 @@ verify_one_arm() {
     runner="${spec%%|*}"; rest="${spec#*|}"
     rargs="${rest%%|*}"; rest="${rest#*|}"
     driver="${rest%%|*}"; csv="${rest#*|}"
+    if [ -z "${csv}" ]; then
+        echo "ERROR: no smoke CSV for arm '${arm}'; set VERIFY_CSV in tree mode." >&2
+        return 1
+    fi
     bdir="$(dirname "${csv}")"
 
     if [ "${arm}" != "baseline" ] && [ ! -f "${driver}" ]; then
@@ -139,6 +152,11 @@ verify_one_arm() {
         mv "${bdir}" "${bak}"
     fi
     mkdir -p "${bdir}"
+    # Generic tree mode passes an absolute VERIFY_CSV while the runner writes
+    # under BENCH_RESULTS_DIR, which is not necessarily the CSV's directory.
+    if [ -n "${BENCH_RESULTS_DIR:-}" ]; then
+        mkdir -p "${BENCH_RESULTS_DIR}"
+    fi
     tmp="$(mktemp -d)"
     # RP — read-probe equivalence: identical deterministic reads (ORDER_STATUS,
     # STOCK_LEVEL) through baseline and rewrite code on this same snapshot.
@@ -157,7 +175,11 @@ verify_one_arm() {
     fi
     # shellcheck disable=SC2086
     ./"${runner}" ${rargs} >"${tmp}/smoke.log" 2>&1 || echo "WARNING: smoke run failed for '${arm}' (see ${out})." >&2
-    [ -f "${csv}" ] && cp "${csv}" "${tmp}/smoke.csv" || : >"${tmp}/smoke.csv"
+    smoke_csv="${csv}"
+    if [ ! -f "${smoke_csv}" ] && [ -n "${BENCH_RESULTS_DIR:-}" ]; then
+        smoke_csv="${BENCH_RESULTS_DIR}/$(basename "${csv}")"
+    fi
+    [ -f "${smoke_csv}" ] && cp "${smoke_csv}" "${tmp}/smoke.csv" || : >"${tmp}/smoke.csv"
     cp "${tmp}/smoke.log" "${tmp}/smoke.log.keep" 2>/dev/null || true
 
     # Official consistency conditions (Spec Clause 3.3) on post-smoke state.
@@ -180,14 +202,15 @@ verify_one_arm() {
     psql -d "${DB}" -tA -F'|' -c "${IR2_SQL}" >"${tmp}/IR2.txt" 2>/dev/null || echo __QUERY_FAILED__ >"${tmp}/IR2.txt"
 
     # Restore real results before writing anything (but keep this run's
-    # smoke CSV as evidence alongside the verdict JSON).
-    cp "${tmp}/smoke.csv" "results/tpcc/verify_${arm}.smoke.csv" 2>/dev/null || true
+    # smoke CSV as evidence alongside the verdict JSON — after the restore,
+    # since the verdict dir itself may be the dir moved aside above).
     rm -rf "${bdir}"
     if [ -n "${bak}" ]; then
         mv "${bak}" "${bdir}"
     else
         rmdir "${bdir}" 2>/dev/null || true
     fi
+    cp "${tmp}/smoke.csv" "${out_stem}.smoke.csv" 2>/dev/null || true
 
     python3 - "${tmp}" "${tmp}/invariants.json" <<'PY'
 import json, sys
@@ -215,7 +238,7 @@ PY
     rc=$?
     set -e
     # Keep the smoke log next to the verdict for post-mortems (tmp goes away).
-    cp "${tmp}/smoke.log.keep" "results/tpcc/verify_${arm}.smoke.log" 2>/dev/null || true
+    cp "${tmp}/smoke.log.keep" "${out_stem}.smoke.log" 2>/dev/null || true
     rm -rf "${tmp}"
     [ "${rc}" -eq 0 ]
 }

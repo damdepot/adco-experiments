@@ -11,7 +11,7 @@ mkdir -p "${ROOT}/reports/tpcc"
 DBMS="${1:-postgres}"
 
 python3 "${ROOT}/scripts/common/app_layer/exp2_Reports/report.py" \
-    --systems baseline,py-dbridge,naive-llm,naive-llm-aggressive,ottertune,gptuner,agenttune,aco,dco,adco \
+    --systems baseline,py-dbridge,naive-llm,ottertune,gptuner,agenttune,aco,dco,adco \
     --workload tpcc \
     --dbms "${DBMS}" \
     --results-dir "${ROOT}/results" \

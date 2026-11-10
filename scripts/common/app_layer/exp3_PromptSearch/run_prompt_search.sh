@@ -100,6 +100,35 @@ else
     echo "WARNING: prompt directory ${PROMPT_DIR} not found; searching control only." >&2
 fi
 
+# CANDIDATES=id1,id2 restricts the search to those ids (fast tests). Each id
+# must be 'control' or an existing, non-promoted prompt file.
+if [ -n "${CANDIDATES:-}" ]; then
+    CANDIDATE_IDS=()
+    IFS=',' read -ra requested_ids <<<"${CANDIDATES}"
+    for candidate_id in "${requested_ids[@]}"; do
+        candidate_id="${candidate_id// /}"
+        [ -z "${candidate_id}" ] && continue
+        case "${candidate_id}" in
+            control) ;;
+            selected-*|/*|*/*)
+                echo "ERROR: invalid candidate id '${candidate_id}' (promoted prompts are not candidates)." >&2
+                exit 2
+                ;;
+            *)
+                if [ ! -f "${PROMPT_DIR}/${candidate_id}.txt" ]; then
+                    echo "ERROR: candidate '${candidate_id}' has no prompt at ${PROMPT_DIR}/${candidate_id}.txt." >&2
+                    exit 2
+                fi
+                ;;
+        esac
+        CANDIDATE_IDS+=("${candidate_id}")
+    done
+    if [ "${#CANDIDATE_IDS[@]}" -eq 0 ]; then
+        echo "ERROR: CANDIDATES='${CANDIDATES}' listed no usable candidate ids." >&2
+        exit 2
+    fi
+fi
+
 # sha256 over the rewritten driver + entry file contents (whichever tool exists).
 combined_sha256() {
     local driver="$1" entry="$2"
@@ -110,6 +139,15 @@ combined_sha256() {
         cat "${driver}" "${entry}" | sha256sum | awk '{print $1}'
     else
         cat "${driver}" "${entry}" | shasum -a 256 | awk '{print $1}'
+    fi
+}
+
+# sha256 of one file (whichever tool exists).
+file_sha256() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    else
+        shasum -a 256 "$1" | awk '{print $1}'
     fi
 }
 
@@ -264,6 +302,59 @@ fi
 
 winner="${winner_line%%$'\t'*}"
 winner_score="${winner_line#*$'\t'}"
+promoted="${PROMPT_DIR}/selected-${BENCHMARK}.txt"
+winner_correctness=""
+
+# TPC-C only: the promoted prompt drives a measured arm, so verify the winner's
+# rewritten tree on pristine data before it can become the baseline. Smallbank
+# has no correctness oracle yet, so it promotes unverified (as before).
+if [ "${BENCHMARK}" = "tpcc" ]; then
+    verify_dir="${ROOT}/${SCRATCH}/winner-verify"
+    rm -rf "${verify_dir}"
+    mkdir -p "${verify_dir}"
+    echo "----------------->> Verifying winner '${winner}' (${BENCHMARK}) <<-----------------"
+    rc=0
+    BENCH_LOCK_HELD=1 REVERIFY=1 \
+        VERIFY_REWRITE_ROOT="${SCRATCH}/candidates/${winner}" \
+        VERIFY_CSV="${verify_dir}/${winner}.csv" \
+        BENCH_RESULTS_DIR="${verify_dir}/benchmarks" \
+        VERIFY_OUTPUT="${verify_dir}/verify.json" \
+        "${ROOT}/scripts/tpcc/exp2_Correctness/run_verify.sh" postgres "${winner}" || rc=$?
+    winner_correctness="$(python3 - "${verify_dir}/verify.json" <<'PY'
+import json
+import sys
+
+try:
+    with open(sys.argv[1], encoding="utf-8") as handle:
+        document = json.load(handle)
+except (OSError, ValueError):
+    print("UNVERIFIED")
+    raise SystemExit
+print(str(document.get("status", "")).upper() or "UNVERIFIED")
+for name, check in (document.get("checks") or {}).items():
+    state = str((check or {}).get("status", "")).upper()
+    if state in ("FAIL", "WARN"):
+        for issue in (check or {}).get("issues") or ["(no detail)"]:
+            print("[{}] {}: {}".format(state, name, issue), file=sys.stderr)
+PY
+)"
+    if [ "${rc}" -ne 0 ]; then
+        echo "ERROR: winner '${winner}' verification exited ${rc} (status ${winner_correctness}); not promoting." >&2
+        echo "       See ${SCRATCH}/winner-verify/verify.json" >&2
+        exit 1
+    fi
+    case "${winner_correctness}" in
+        PASS) ;;
+        WARN)
+            echo "WARNING: SUSPECT: winner '${winner}' verified with WARN; promoting anyway." >&2
+            ;;
+        *)
+            echo "ERROR: winner '${winner}' is not verified (status ${winner_correctness}); not promoting." >&2
+            echo "       See ${SCRATCH}/winner-verify/verify.json" >&2
+            exit 1
+            ;;
+    esac
+fi
 
 SELECTED="${ROOT}/${SCRATCH}/selected-${BENCHMARK}.txt"
 if [ "${winner}" = "control" ]; then
@@ -271,6 +362,31 @@ if [ "${winner}" = "control" ]; then
 else
     cp "${PROMPT_DIR}/${winner}.txt" "${SELECTED}"
 fi
+if [ "${BENCHMARK}" = "tpcc" ]; then
+    # Auto-promoted: the file above is exactly the verified winner prompt from
+    # ${SCRATCH}/candidates/<winner>/ (an empty file is valid: unguided).
+    cp "${SELECTED}" "${promoted}"
+fi
+
+# Winner + provenance in the search JSON: rewrite hash from the scores TSV,
+# sha256 of the promoted prompt file (empty file for 'control').
+winner_sha256="$(awk -F'\t' -v id="${winner}" '$1 == id { print $6; exit }' "${SCORES_TSV}")"
+prompt_sha256="$(file_sha256 "${SELECTED}")"
+python3 - "${SEARCH_JSON}" "${winner}" "${winner_correctness}" "${winner_sha256}" "${prompt_sha256}" <<'PY'
+import json
+import sys
+
+path, winner, correctness, rewrite_sha, prompt_sha = sys.argv[1:6]
+with open(path, encoding="utf-8") as handle:
+    document = json.load(handle)
+document["winner"] = winner
+document["winner_correctness"] = correctness or None
+document["winner_sha256"] = rewrite_sha or None
+document["prompt_sha256"] = prompt_sha or None
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(document, handle, indent=2)
+    handle.write("\n")
+PY
 
 echo
 echo "----------------->> Scores (${BENCHMARK}, median TOTAL txn/s) <<-----------------"
@@ -282,4 +398,7 @@ echo "Winner: ${winner} (${winner_score} txn/s)"
 echo "JSON:   ${SCRATCH}/search-${BENCHMARK}.json"
 echo "Prompt: ${SCRATCH}/selected-${BENCHMARK}.txt"
 echo "Promote with:"
-echo "  cp \"${SCRATCH}/selected-${BENCHMARK}.txt\" \"${ROOT}/baselines/NaiveLLM/prompts/selected-${BENCHMARK}.txt\""
+echo "  cp \"${SCRATCH}/selected-${BENCHMARK}.txt\" \"${promoted}\""
+if [ "${BENCHMARK}" = "tpcc" ]; then
+    echo "  (already promoted automatically; winner correctness: ${winner_correctness})"
+fi

@@ -291,32 +291,148 @@ def aggregate(checks):
     return PASS
 
 
-def load_verify_statuses(results_dir, workload, systems):
-    """Read results/<workload>/verify_<sys>.json -> {sys: PASS|FAIL|UNVERIFIED}."""
-    statuses = {}
+# WARN (needs human review) is shown as SUSPECT wherever a verdict is reported.
+SUSPECT = "SUSPECT"
+COUNT_KEYS = ("pass", "fail", "warn", "unverified")
+_STATUSES = (PASS, FAIL, SUSPECT, "UNVERIFIED")
+
+
+def _as_int(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _load_json(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def _norm_status(v):
+    st = str(v or "").upper()
+    if st == WARN:
+        return SUSPECT
+    return st if st in _STATUSES else "UNVERIFIED"
+
+
+def status_label(info):
+    """SUSPECT-normalized status for a loader struct (or a bare status string)."""
+    return _norm_status(info.get("status") if isinstance(info, dict) else info)
+
+
+def load_correctness_statuses(results_dir, workload, systems):
+    """Per-arm correctness verdicts.
+
+    Prefers the repeated-run summary results/<workload>/robustness/<sys>/latest.json
+    (counts over N runs, Wilson CI, distinct rewrites); falls back to the
+    single-run results/<workload>/verify_<sys>.json. WARN is reported as SUSPECT.
+
+    Struct keys: status, runs (completed runs), counts {pass,fail,warn,unverified},
+    incorrect_rate, wilson_ci95, distinct_outputs, measured_artifact,
+    run_details (per-run list), fallback, path.
+    """
+    out = {}
     for sys in systems:
-        path = os.path.join(results_dir, workload, f"verify_{sys}.json")
-        try:
-            with open(path, encoding="utf-8") as f:
-                st = str(json.load(f).get("status", "")).upper()
-            statuses[sys] = st if st in (PASS, FAIL) else "UNVERIFIED"
-        except (OSError, ValueError):
-            statuses[sys] = "UNVERIFIED"
-    return statuses
+        base = os.path.join(results_dir, workload)
+        summary_path = os.path.join(base, "robustness", sys, "latest.json")
+        doc = _load_json(summary_path)
+        if isinstance(doc, dict):
+            counts = doc.get("counts") or {}
+            run_details = doc.get("runs") or []
+            out[sys] = {
+                "status": _norm_status(doc.get("status")),
+                "runs": _as_int(doc.get("runs_completed")) or len(run_details),
+                "counts": {k: _as_int(counts.get(k)) for k in COUNT_KEYS},
+                "incorrect_rate": doc.get("incorrect_rate"),
+                "wilson_ci95": doc.get("wilson_ci95"),
+                "distinct_outputs": doc.get("distinct_outputs"),
+                "measured_artifact": doc.get("measured_artifact"),
+                "run_details": run_details,
+                "fallback": False,
+                "path": summary_path,
+            }
+            continue
+
+        verify_path = os.path.join(base, f"verify_{sys}.json")
+        doc = _load_json(verify_path)
+        st = _norm_status((doc or {}).get("status"))
+        counts = {k: 0 for k in COUNT_KEYS}
+        if st != "UNVERIFIED":
+            # A real single-run verdict is one completed run.
+            counts[{PASS: "pass", FAIL: "fail", SUSPECT: "warn"}[st]] = 1
+        out[sys] = {
+            "status": st,
+            "runs": 1 if st != "UNVERIFIED" else 0,
+            "counts": counts,
+            "incorrect_rate": None,
+            "wilson_ci95": None,
+            "distinct_outputs": None,
+            "measured_artifact": None,
+            "run_details": [],
+            "fallback": True,
+            "path": verify_path if isinstance(doc, dict) else None,
+        }
+    return out
+
+
+def correctness_cell(info):
+    """Compact verdict for a table cell: 'PASS 10/10', 'FAIL 1/10',
+    'SUSPECT 1/10', 'UNVERIFIED', '1-run PASS', or 'N/A' when never checked.
+    The numerator is the number of runs in the reported bucket."""
+    if not info:
+        return "N/A"
+    st = status_label(info)
+    if st == "UNVERIFIED":
+        return "UNVERIFIED"
+    if info.get("fallback"):
+        return f"1-run {st}"
+    runs = _as_int(info.get("runs"))
+    if not runs:
+        return st
+    bucket = {PASS: "pass", FAIL: "fail", SUSPECT: "warn"}[st]
+    return f"{st} {_as_int((info.get('counts') or {}).get(bucket))}/{runs}"
 
 
 def verify_warning_lines(statuses, display_names=None):
-    """Terminal/report warning lines for failed or unverified arms."""
+    """Warning lines for arms that failed, warned, or were never verified.
+    Accepts loader structs from load_correctness_statuses or plain status strings."""
     names = display_names or {}
     lines = []
-    for sys, st in statuses.items():
+    for sys, info in statuses.items():
         disp = names.get(sys, sys)
-        if st == FAIL:
-            lines.append(f"SUSPECT: arm '{disp}' failed correctness verification "
-                         f"(see results/*/verify_{sys}.json) -- treat its speedup with caution.")
+        st = status_label(info)
+        runs = info.get("run_details") if isinstance(info, dict) else None
+        failed = [str(r.get("run", "?")) for r in (runs or [])
+                  if str(r.get("verify_status") or r.get("status") or "").upper() == FAIL]
+        where = (info.get("path") if isinstance(info, dict) else None) \
+            or f"results/*/verify_{sys}.json"
+        if st == FAIL or failed:
+            extra = (f" ({len(failed)} of {len(runs)} runs failed: runs "
+                     f"{', '.join(failed)})") if failed else ""
+            lines.append(f"SUSPECT: arm '{disp}' failed correctness verification{extra} "
+                         f"(see {where}) -- treat its speedup with caution.")
+        elif st == SUSPECT:
+            lines.append(f"SUSPECT: arm '{disp}' raised correctness warnings "
+                         f"(see {where}) -- treat its speedup with caution.")
         elif st == "UNVERIFIED":
             lines.append(f"UNVERIFIED: no correctness result for arm '{disp}' -- run run/tpcc/run_verify.sh.")
+        measured = info.get("measured_artifact") if isinstance(info, dict) else None
+        if measured:
+            mst = status_label(measured)
+            if mst != PASS:
+                lines.append(f"MEASURED: arm '{disp}' measured artifact is {mst} "
+                             f"(see {where}) -- the reported speedup was measured on that tree.")
     return lines
+
+
+def load_verify_statuses(results_dir, workload, systems):
+    """Compat: {sys: PASS|FAIL|SUSPECT|UNVERIFIED} from load_correctness_statuses."""
+    return {sys: info["status"] for sys, info in
+            load_correctness_statuses(results_dir, workload, systems).items()}
 
 
 def main():

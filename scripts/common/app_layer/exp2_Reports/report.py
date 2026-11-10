@@ -7,7 +7,8 @@ import re
 import datetime
 from collections import defaultdict
 try:
-    from tpcc_correctness import load_verify_statuses, verify_warning_lines
+    from tpcc_correctness import (correctness_cell, load_correctness_statuses,
+                                  status_label, verify_warning_lines)
 except ImportError:
     # Checker lives in scripts/tpcc/exp2_Correctness (sibling of the tpcc
     # workload drivers); fall back to loading it from there.
@@ -16,9 +17,12 @@ except ImportError:
         sys.path.insert(0, os.path.normpath(os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             '..', '..', '..', 'tpcc', 'exp2_Correctness')))
-        from tpcc_correctness import load_verify_statuses, verify_warning_lines
+        from tpcc_correctness import (correctness_cell, load_correctness_statuses,
+                                      status_label, verify_warning_lines)
     except ImportError:
-        load_verify_statuses = None
+        correctness_cell = None
+        load_correctness_statuses = None
+        status_label = None
         verify_warning_lines = None
 
 def calculate_median(values):
@@ -91,6 +95,69 @@ def describe_sources(sources, systems):
             f"verify the source list above before trusting speedups."
         )
     return source_lines, warning_lines
+
+
+def _arm_status(info):
+    """Status of a correctness struct (or bare string), WARN shown as SUSPECT."""
+    if status_label:
+        return status_label(info)
+    st = str((info.get('status') if isinstance(info, dict) else info) or 'UNVERIFIED').upper()
+    return 'SUSPECT' if st == 'WARN' else st
+
+
+def correctness_rows(systems, display_names, verify_statuses):
+    """Markdown rows for the Correctness table (one per arm).
+
+    Fallback arms report a single run; arms with no result at all stay
+    UNVERIFIED rather than being silently dropped.
+    """
+    rows = []
+    for sys in systems:
+        info = (verify_statuses or {}).get(sys)
+        name = display_names.get(sys, sys.capitalize())
+        if not info:
+            rows.append(f"| {name} | - | - | - | - | - | - | - | UNVERIFIED |")
+            continue
+        st = _arm_status(info)
+        measured = '-'
+        if isinstance(info, dict):
+            if info.get('measured_artifact'):
+                measured = _arm_status(info['measured_artifact'])
+            elif info.get('fallback') and st != 'UNVERIFIED':
+                # Single-run fallback: the one verified tree is the measured one.
+                measured = st
+        counts = (info.get('counts') or {}) if isinstance(info, dict) else {}
+        if isinstance(info, dict) and info.get('fallback'):
+            # Single-run fallback: one run, bucketed by its verdict. A missing
+            # verify file is UNVERIFIED, i.e. no run at all.
+            if st == 'UNVERIFIED':
+                runs_str = '-'
+                counts = {}
+            else:
+                runs_str = "1 (single run)"
+                counts = {'pass': int(st == 'PASS'), 'fail': int(st == 'FAIL'),
+                          'warn': int(st == 'SUSPECT'), 'unverified': 0}
+        else:
+            runs_str = str(info.get('runs') or '-')
+        distinct = '-' if not isinstance(info, dict) or info.get('fallback') \
+            else (str(info.get('distinct_outputs')) if info.get('distinct_outputs') is not None else '-')
+        rows.append(
+            f"| {name} | {runs_str} | {int(counts.get('pass') or 0)} | "
+            f"{int(counts.get('fail') or 0)} | {int(counts.get('warn') or 0)} | "
+            f"{int(counts.get('unverified') or 0)} | {distinct} | {measured} | {st} |")
+    return rows
+
+
+def correctness_value(txn, info, has_data):
+    """Correctness cell for a rate/time table row: verdict on TOTAL only,
+    '-' on transaction rows, 'N/A' when the arm has no performance data."""
+    if not has_data:
+        return "N/A"
+    if txn.upper() != 'TOTAL':
+        return "-"
+    if not correctness_cell:
+        return _arm_status(info)
+    return correctness_cell(info)
 
 
 def discover_workloads(results_dir, dbms):
@@ -220,6 +287,9 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
     base_sys = systems[0]
     other_systems = systems[1:]
     speedups = {sys: [] for sys in other_systems}
+    # An arm with no parsed benchmark numbers gets N/A (not a verdict it never earned).
+    has_data = {sys: any(stats[sys].get(t, {}).get('rate') is not None for t in all_txns)
+                for sys in systems}
     
     # Format terminal output
     lines = []
@@ -241,7 +311,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
     if verify_statuses and verify_warning_lines:
         for w in verify_warning_lines(verify_statuses, system_display_names):
             lines.append(w)
-        if any(s != "PASS" for s in verify_statuses.values()):
+        if any(_arm_status(s) != "PASS" for s in verify_statuses.values()):
             lines.append("")
     
     base_display = system_display_names.get(base_sys, base_sys.capitalize())
@@ -305,9 +375,9 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         md_lines.append("")
         if verify_statuses:
             md_lines.append("## Correctness\n")
-            for sys in systems:
-                sys_name = system_display_names.get(sys, sys.capitalize())
-                md_lines.append(f"- {sys_name}: {verify_statuses.get(sys, 'UNVERIFIED')}")
+            md_lines.append("| Arm | Runs | PASS | FAIL | SUSPECT | UNVERIFIED | Distinct rewrites | Measured | Status |")
+            md_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |")
+            md_lines.extend(correctness_rows(systems, system_display_names, verify_statuses))
             md_lines.append("")
 
         # Table 1: Throughput (Transaction Rate)
@@ -316,8 +386,8 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         md_sep = "| :--- | :---: |"
         for sys in other_systems:
             sys_name = system_display_names.get(sys, sys.capitalize())
-            md_header += f" {sys_name} (txn/s) | {sys_name} Speedup |"
-            md_sep += " :---: | :---: |"
+            md_header += f" {sys_name} (txn/s) | {sys_name} Speedup | {sys_name} Correctness |"
+            md_sep += " :---: | :---: | :---: |"
         md_lines.append(md_header)
         md_lines.append(md_sep)
         
@@ -338,7 +408,10 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
                 else:
                     spd_str = "N/A"
                 r_str = f"{sys_rate:.2f}" if sys_rate is not None else "N/A"
-                row_str += f" {prefix}{r_str}{suffix} | {prefix}{spd_str}{suffix} |"
+                c_str = correctness_value(txn, (verify_statuses or {}).get(sys),
+                                          has_data.get(sys, False))
+                row_str += (f" {prefix}{r_str}{suffix} | {prefix}{spd_str}{suffix} | "
+                            f"{prefix}{c_str}{suffix} |")
             md_lines.append(row_str)
             
         # Geo Mean row
@@ -346,7 +419,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         for sys in other_systems:
             g_spd = geometric_mean(speedups[sys])
             g_str = f"{g_spd:.2f}x" if g_spd > 0 else "N/A"
-            geo_row += f" **-** | **{g_str}** |"
+            geo_row += f" **-** | **{g_str}** | **-** |"
         md_lines.append(geo_row)
         md_lines.append("\n")
         
@@ -356,8 +429,8 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         md_sep_time = "| :--- | :---: |"
         for sys in other_systems:
             sys_name = system_display_names.get(sys, sys.capitalize())
-            md_header_time += f" {sys_name} (ms) | {sys_name} Latency Reduction |"
-            md_sep_time += " :---: | :---: |"
+            md_header_time += f" {sys_name} (ms) | {sys_name} Latency Reduction | {sys_name} Correctness |"
+            md_sep_time += " :---: | :---: | :---: |"
         md_lines.append(md_header_time)
         md_lines.append(md_sep_time)
         
@@ -378,7 +451,10 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
                 else:
                     spd_str = "N/A"
                 t_str = f"{sys_time:.2f}" if sys_time is not None else "N/A"
-                row_str += f" {prefix}{t_str}{suffix} | {prefix}{spd_str}{suffix} |"
+                c_str = correctness_value(txn, (verify_statuses or {}).get(sys),
+                                          has_data.get(sys, False))
+                row_str += (f" {prefix}{t_str}{suffix} | {prefix}{spd_str}{suffix} | "
+                            f"{prefix}{c_str}{suffix} |")
             md_lines.append(row_str)
         md_lines.append("\n")
         
@@ -451,8 +527,8 @@ def main():
         data, raw_records, sources = parse_workload_data(args.results_dir, wl, args.dbms, systems)
         output_dir = args.output_dir or os.path.join('reports', wl, 'app_layer')
         verify_statuses = None
-        if load_verify_statuses:
-            verify_statuses = load_verify_statuses(args.results_dir, wl, systems)
+        if load_correctness_statuses:
+            verify_statuses = load_correctness_statuses(args.results_dir, wl, systems)
         generate_workload_report(data, raw_records, wl, args.dbms, systems, system_display_names, output_dir, sources, title_prefix, quiet=args.quiet, verify_statuses=verify_statuses)
 
 if __name__ == '__main__':
