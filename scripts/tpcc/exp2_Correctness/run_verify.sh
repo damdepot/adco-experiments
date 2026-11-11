@@ -51,10 +51,14 @@ export PGOPTIONS="${PGOPTIONS:--c statement_timeout=300000 -c lock_timeout=60000
 # smaller scale would destroy the shared seed). Warmup off, one rep.
 export TPCC_CLIENTS=1 TPCC_DURATION="${VERIFY_DURATION:-20}" REPS=1 TPCC_WARMUP=0 PHASE=execute
 
-echo "----------------->> Seed tpcc (reuse snapshot) <<-----------------"
-if [ "${VERIFY_SKIP_SEED:-0}" != "1" ]; then
+# A caller holding the benchmark lock (search/robustness orchestrators) has
+# already ensured and asserted the seed; skip the redundant Docker/psql probe.
+if [ "${VERIFY_SKIP_SEED:-0}" != "1" ] && [ "${BENCH_LOCK_HELD:-0}" != "1" ]; then
+    echo "----------------->> Seed tpcc (reuse snapshot) <<-----------------"
     bench_ensure_seed "${DB}" "${SEED_DB_TPCC}"
     bench_assert_seed "${SEED_DB_TPCC}"
+else
+    echo "----------------->> Seed tpcc: parent ensured; per-run restore follows <<-----------------"
 fi
 
 # Per-arm: runner script | runner args | rewrite driver | smoke CSV (REPS=1 paths).

@@ -38,6 +38,11 @@ if [ ! -x "${ROOT}/baselines/NaiveLLM/venv/bin/python" ]; then
     echo "ERROR: NaiveLLM venv missing; run ./run/setup/app-setup-baselines.sh" >&2
     exit 1
 fi
+if ! grep -q "VERIFY_SKIP_SEED" "${ROOT}/scripts/tpcc/exp2_Correctness/run_verify.sh"; then
+    echo "ERROR: scripts/tpcc/exp2_Correctness/run_verify.sh is outdated (missing VERIFY_SKIP_SEED)." >&2
+    echo "Sync the repo before running the search." >&2
+    exit 1
+fi
 
 bench_lock "${ROOT}"
 

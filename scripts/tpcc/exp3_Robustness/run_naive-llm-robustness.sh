@@ -311,6 +311,14 @@ if [ ! -f "${ROOT}/workload/apps/tpcc/venv/bin/activate" ]; then
     exit 1
 fi
 
+# Version skew guard: an older verifier ignores VERIFY_SKIP_SEED and hangs in
+# bench_ensure_seed (Docker/psql probe) for the full timeout.
+if ! grep -q "VERIFY_SKIP_SEED" "${ROOT}/scripts/tpcc/exp2_Correctness/run_verify.sh"; then
+    echo "ERROR: scripts/tpcc/exp2_Correctness/run_verify.sh is outdated (missing VERIFY_SKIP_SEED)." >&2
+    echo "Sync the repo (run_verify.sh is newer than this harness) and re-run." >&2
+    exit 1
+fi
+
 # bench_ensure_seed loads the seed via BENCH_CMDRUNTPCC (bench_lib default points
 # at a nonexistent scripts/_lib/tpcc.sh); point it at the canonical DB runner.
 export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
