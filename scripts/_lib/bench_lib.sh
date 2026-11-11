@@ -507,8 +507,10 @@ bench_verify_arm() {
     local db="$2"
     local seed="$3"
     local warehouses="$4"
-    echo "-------------------<< Verify: checking seed '${seed}' >>-------------------"
-    bench_assert_seed "${seed}"
+    if [ "${VERIFY_SKIP_SEED_ASSERT:-0}" != "1" ]; then
+        echo "-------------------<< Verify: checking seed '${seed}' >>-------------------"
+        bench_assert_seed "${seed}"
+    fi
     echo "-------------------<< Verify: restoring '${db}' from '${seed}' >>-------------------"
     bench_restore "${db}" "${seed}"
     echo "-------------------<< Verify: resetting knobs >>-------------------"

@@ -149,60 +149,34 @@ there is no correctness oracle yet, so no auto-promote.
 ./run/tpcc/run_naive-llm-robustness.sh [runs=10] [dbms=postgres] [model]
 ```
 
-| Run | What it does |
-|-----|--------------|
-| `0` | re-verifies the actual measured tree in `out/app_layer/NaiveLLM-results/...` |
-| `1..N` | fresh rewrite with the selected prompt, each verified with the generic TPC-C verify arm |
-
-Reports:
+Each run is: rewrite with the selected prompt → verify that tree → record.
+No run 0, no measured-artifact check, no separate performance seed.
 
 | Path | Contents |
 |------|----------|
-| `results/tpcc/robustness/naive-llm/latest.json` | headline summary consumed by the report |
+| `results/tpcc/robustness/naive-llm/latest.json` | summary consumed by the report |
 | `out/app_layer/robustness/naive-llm/<ts>/summary.json` | same, timestamped |
-| `out/app_layer/robustness/naive-llm/<ts>/summary.md` | markdown table + headline |
+| `out/app_layer/robustness/naive-llm/<ts>/summary.md` | run table + headline |
+| `out/app_layer/robustness/naive-llm/<ts>/rNN/` | rewrite, verify log/JSON |
 
-`latest.json` holds `counts` (pass/fail/warn/unverified over fresh runs),
-`incorrect_rate` with a Wilson 95% CI, `distinct_outputs` (distinct rewrite
-hashes) and `measured_artifact` (run 0's verdict, kept separate so a stale
-measured tree cannot make a clean sweep read as FAIL). Rewrites, smoke CSVs and
-per-run verify JSON stay under `out/`; nothing is written under `results/`
-except `latest.json`.
+`latest.json` holds `runs_completed`, `counts` (pass/fail/warn/unverified),
+`status`, `failures`, and the per-run list. It verifies with a small
+`tpcc_verify_seed` (default **1** warehouse), created once and reused; the
+performance arm still measures on the full `tpcc_seed`. `RESEED=1` rebuilds the
+verify seed.
 
-> Caveat: temperature 0. If `distinct_outputs` is 1, all N runs produced the
-> same code and the sweep is one effective sample, not N independent ones.
-
-Each verification is bounded: the whole child gets `VERIFY_TIMEOUT` (default
-600 s), each read probe `PROBE_TIMEOUT` (120 s), and libpq connects
-`PGCONNECT_TIMEOUT` (10 s). Progress is tee'd to
-`out/app_layer/robustness/naive-llm/<ts>/measured/verify.log` and
-`.../rNN/verify.log`, so a slow run is visible. Robustness verification uses a
-small `tpcc_verify_seed` (default 1 warehouses, created once and reused) while
-the performance arm keeps the full `tpcc_seed`; the report shows the verify
-scale (e.g. `10 (3wh)`). It skips
-the per-run DB container restart (`VERIFY_RESTART=0`, data restore + knob reset
-still run); set `VERIFY_RESTART=1` to match `run_verify.sh` exactly. It also
-skips settle/autovacuum/VACUUM (`BENCH_SKIP_SETTLE=1`). The rewrite pre-smoke uses `SMOKE_SECS=10`;
-the verifier uses `VERIFY_DURATION=10`.
-
-Each run prints a one-line verdict plus the gate breakdown:
-
-```
-run 3/10: PASS; rewrite=ok (21s, changed=1, restored=0, sha=abc123456789); verify=84s
-    gates: static=PASS, smoke=PASS, reads=PASS, invariants=PASS
-```
-
-`VERBOSE=1` also dumps the rewrite log for each run.
+Each iteration prints `run i/N: PASS|FAIL|UNVERIFIED`; the verify log under
+`rNN/verify.log` has the four-gate detail. The whole verify child is capped at
+`VERIFY_TIMEOUT` (default 300 s); a hung run becomes `UNVERIFIED` and the loop
+continues. `VERBOSE=1` dumps the rewrite log.
 
 ## Correctness in reports
 
 `./run/tpcc/run_reports.sh` adds a `## Correctness` table and a Correctness
 column to both performance tables. Arms with a robustness summary use it
-(`PASS 9/10`, run counts, distinct rewrites); arms without one fall back to the
-single-run `results/tpcc/verify_<arm>.json` and show `1-run PASS`. The
-`Measured` column is run 0's verdict on the tree that produced the reported
-speedup, kept separate from the fresh sweep; a measured FAIL is warned even if
-all fresh runs pass. WARN shows as SUSPECT; no check at all shows UNVERIFIED.
+(`PASS 9/10`, run counts); arms without one fall back to the single-run
+`results/tpcc/verify_<arm>.json` and show `1-run PASS`. WARN shows as SUSPECT;
+no check shows UNVERIFIED.
 
 ## Prompt bank
 

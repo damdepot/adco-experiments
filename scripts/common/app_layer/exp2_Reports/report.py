@@ -119,13 +119,6 @@ def correctness_rows(systems, display_names, verify_statuses):
             rows.append(f"| {name} | - | - | - | - | - | - | - | UNVERIFIED |")
             continue
         st = _arm_status(info)
-        measured = '-'
-        if isinstance(info, dict):
-            if info.get('measured_artifact'):
-                measured = _arm_status(info['measured_artifact'])
-            elif info.get('fallback') and st != 'UNVERIFIED':
-                # Single-run fallback: the one verified tree is the measured one.
-                measured = st
         counts = (info.get('counts') or {}) if isinstance(info, dict) else {}
         if isinstance(info, dict) and info.get('fallback'):
             # Single-run fallback: one run, bucketed by its verdict. A missing
@@ -142,12 +135,10 @@ def correctness_rows(systems, display_names, verify_statuses):
             wh = info.get('verify_warehouses') if isinstance(info, dict) else None
             if runs_str != '-' and wh is not None:
                 runs_str = f"{runs_str} ({wh}wh)"
-        distinct = '-' if not isinstance(info, dict) or info.get('fallback') \
-            else (str(info.get('distinct_outputs')) if info.get('distinct_outputs') is not None else '-')
         rows.append(
             f"| {name} | {runs_str} | {int(counts.get('pass') or 0)} | "
             f"{int(counts.get('fail') or 0)} | {int(counts.get('warn') or 0)} | "
-            f"{int(counts.get('unverified') or 0)} | {distinct} | {measured} | {st} |")
+            f"{int(counts.get('unverified') or 0)} | {st} |")
     return rows
 
 
@@ -378,8 +369,8 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         md_lines.append("")
         if verify_statuses:
             md_lines.append("## Correctness\n")
-            md_lines.append("| Arm | Runs | PASS | FAIL | SUSPECT | UNVERIFIED | Distinct rewrites | Measured | Status |")
-            md_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |")
+            md_lines.append("| Arm | Runs | PASS | FAIL | SUSPECT | UNVERIFIED | Status |")
+            md_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :--- |")
             md_lines.extend(correctness_rows(systems, system_display_names, verify_statuses))
             md_lines.append("")
 

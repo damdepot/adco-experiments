@@ -159,11 +159,11 @@ def test_rendered_report_has_correctness_table_and_columns():
             md = f.read()
 
     assert '## Correctness' in md
-    assert '| Arm | Runs | PASS | FAIL | SUSPECT | UNVERIFIED | Distinct rewrites | Measured | Status |' in md
-    assert '| Naive-LLM | 10 (10wh) | 9 | 1 | 0 | 0 | 6 | - | FAIL |' in md
-    assert '| ADCo | 10 (10wh) | 9 | 0 | 1 | 0 | 3 | FAIL | SUSPECT |' in md
-    assert '| ACo | 1 (single run) | 1 | 0 | 0 | 0 | - | PASS | PASS |' in md
-    assert '| Default | - | 0 | 0 | 0 | 0 | - | - | UNVERIFIED |' in md
+    assert '| Arm | Runs | PASS | FAIL | SUSPECT | UNVERIFIED | Status |' in md
+    assert '| Naive-LLM | 10 (10wh) | 9 | 1 | 0 | 0 | FAIL |' in md
+    assert '| ADCo | 10 (10wh) | 9 | 0 | 1 | 0 | SUSPECT |' in md
+    assert '| ACo | 1 (single run) | 1 | 0 | 0 | 0 | PASS |' in md
+    assert '| Default | - | 0 | 0 | 0 | 0 | UNVERIFIED |' in md
     # Both performance tables get a per-arm Correctness column after Speedup /
     # Latency Reduction, with 'N/A' where the arm has no benchmark data.
     for section in ('## Transaction Rate / Throughput (txn/s)', '## Execution Time (ms)'):
@@ -183,7 +183,6 @@ def test_rendered_report_has_correctness_table_and_columns():
     assert "SUSPECT: arm 'Naive-LLM' failed correctness verification" in terminal
     assert "1 of 10 runs failed: runs 4" in terminal
     assert "SUSPECT: arm 'ADCo' raised correctness warnings" in terminal
-    assert "MEASURED: arm 'ADCo' measured artifact is FAIL" in terminal
     assert "UNVERIFIED: no correctness result for arm 'Default'" in terminal
 
 

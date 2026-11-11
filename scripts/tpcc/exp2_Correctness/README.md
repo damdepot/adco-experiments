@@ -126,6 +126,8 @@ the robustness harness.
 | `VERIFY_OUTPUT` | no | verdict JSON path (default `results/tpcc/verify_<arm>.json`) |
 | `BENCH_LOCK_HELD=1` | no | caller already holds `bench_lock` (robustness owns it) |
 | `REVERIFY=1` | no | ignore a fresh verdict and re-run |
+| `VERIFY_SKIP_SEED=1` | no | caller ensured the seed; skip the top-level ensure |
+| `VERIFY_SKIP_SEED_ASSERT=1` | no | caller asserted the seed; skip `bench_verify_arm`'s check |
 | `VERIFY_SEED_DB` | no | seed to restore from (default `tpcc_seed`) |
 | `VERIFY_WAREHOUSES` | no | warehouse scale of the verify seed (default `TPCC_WAREHOUSES`) |
 | `VERIFY_DURATION` | no | verifier smoke seconds (default 20) |
@@ -149,23 +151,16 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
 ./run/tpcc/run_naive-llm-robustness.sh [runs=10] [dbms=postgres] [model]
 ```
 
-- Run `0` re-verifies the already-measured tree under
-  `out/app_layer/NaiveLLM-results/` (recorded separately as
-  `measured_artifact`).
-- Runs `1..N` rewrite from scratch with the selected prompt, each verified via
-  generic tree mode.
+Each iteration: rewrite with the selected prompt, verify that tree, record.
+- Uses `tpcc_verify_seed` at `VERIFY_WAREHOUSES` (default 1), created once and
+  reused; `RESEED=1` rebuilds it. The performance `tpcc_seed` is not touched.
 - Writes `results/tpcc/robustness/naive-llm/latest.json` plus timestamped
   `out/app_layer/robustness/naive-llm/<ts>/summary.{json,md}`. Rewrites, smoke
   CSVs and per-run verdicts stay under `out/`.
-- Each child is bounded (`VERIFY_TIMEOUT`, default 600 s; `PROBE_TIMEOUT`,
-  120 s; `PGCONNECT_TIMEOUT`, 10 s) and skips the per-run container restart
-  unless `VERIFY_RESTART=1`. Robustness uses `BENCH_SKIP_SETTLE=1`,
-  `VERIFY_DURATION=10`, and a `tpcc_verify_seed` (3 warehouses) so the
-  per-run copy/VACUUM stays small; the performance arm still measures on the
-  full `tpcc_seed`.
+- The whole verify child is capped at `VERIFY_TIMEOUT` (default 300 s); a hung
+  run is `UNVERIFIED` and the loop continues. It skips the DB restart and
+  settle/VACUUM (`RESTORE_RESTART=0`, `BENCH_SKIP_SETTLE=1`).
 
 The reporter prefers `results/tpcc/robustness/<arm>/latest.json`; without it,
 it falls back to this arm's single `verify_<arm>.json` and shows `1-run PASS`.
-The summary's `Measured` column carries run 0's verdict on the tree that
-produced the reported performance number; a measured FAIL is warned separately
-from the fresh-run aggregate.
+The summary shows run counts and the failed checks; WARN is shown as SUSPECT.

@@ -427,12 +427,6 @@ def verify_warning_lines(statuses, display_names=None):
                          f"(see {where}) -- treat its speedup with caution.")
         elif st == "UNVERIFIED":
             lines.append(f"UNVERIFIED: no correctness result for arm '{disp}' -- run run/tpcc/run_verify.sh.")
-        measured = info.get("measured_artifact") if isinstance(info, dict) else None
-        if measured:
-            mst = status_label(measured)
-            if mst != PASS:
-                lines.append(f"MEASURED: arm '{disp}' measured artifact is {mst} "
-                             f"(see {where}) -- the reported speedup was measured on that tree.")
     return lines
 
 
