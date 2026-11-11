@@ -179,7 +179,10 @@ Each verification is bounded: the whole child gets `VERIFY_TIMEOUT` (default
 `out/app_layer/robustness/naive-llm/<ts>/measured/verify.log` and
 `.../rNN/verify.log`, so a slow run is visible. Robustness verification skips
 the per-run DB container restart (`VERIFY_RESTART=0`, data restore + knob reset
-still run); set `VERIFY_RESTART=1` to match `run_verify.sh` exactly.
+still run); set `VERIFY_RESTART=1` to match `run_verify.sh` exactly. It also
+skips the 5 s settle sleeps (`VERIFY_SETTLE_SECS=0`); set it to 5 to match the
+measured protocol. The rewrite pre-smoke uses `SMOKE_SECS=20` (the driver
+fallback is 60 s); the verifier uses `VERIFY_DURATION=20`.
 
 Each run prints a one-line verdict plus the gate breakdown:
 

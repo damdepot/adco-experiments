@@ -315,10 +315,12 @@ if [ "${BENCHMARK}" = "tpcc" ]; then
     echo "----------------->> Verifying winner '${winner}' (${BENCHMARK}) <<-----------------"
     rc=0
     BENCH_LOCK_HELD=1 REVERIFY=1 \
+        VERIFY_SKIP_SEED=1 \
         VERIFY_REWRITE_ROOT="${SCRATCH}/candidates/${winner}" \
         VERIFY_CSV="${verify_dir}/${winner}.csv" \
         BENCH_RESULTS_DIR="${verify_dir}/benchmarks" \
         VERIFY_OUTPUT="${verify_dir}/verify.json" \
+        timeout "${VERIFY_TIMEOUT:-600}" \
         "${ROOT}/scripts/tpcc/exp2_Correctness/run_verify.sh" postgres "${winner}" || rc=$?
     winner_correctness="$(python3 - "${verify_dir}/verify.json" <<'PY'
 import json

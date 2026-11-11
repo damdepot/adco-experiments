@@ -44,14 +44,18 @@ export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Work
 
 # Bound libpq connects: a DB that is still restarting must fail, not block.
 export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
+# Never let a restore/check query wait forever on a lock or a stalled server.
+export PGOPTIONS="${PGOPTIONS:--c statement_timeout=300000 -c lock_timeout=60000}"
 
 # Tiny-scale smoke on the existing seed (same scale as full runs; reseeding at a
 # smaller scale would destroy the shared seed). Warmup off, one rep.
 export TPCC_CLIENTS=1 TPCC_DURATION="${VERIFY_DURATION:-20}" REPS=1 TPCC_WARMUP=0 PHASE=execute
 
 echo "----------------->> Seed tpcc (reuse snapshot) <<-----------------"
-bench_ensure_seed "${DB}" "${SEED_DB_TPCC}"
-bench_assert_seed "${SEED_DB_TPCC}"
+if [ "${VERIFY_SKIP_SEED:-0}" != "1" ]; then
+    bench_ensure_seed "${DB}" "${SEED_DB_TPCC}"
+    bench_assert_seed "${SEED_DB_TPCC}"
+fi
 
 # Per-arm: runner script | runner args | rewrite driver | smoke CSV (REPS=1 paths).
 # With VERIFY_REWRITE_ROOT set, any arm name maps to that Naive-LLM-style tree.

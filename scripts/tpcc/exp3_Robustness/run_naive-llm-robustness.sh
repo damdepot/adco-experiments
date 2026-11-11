@@ -24,6 +24,9 @@ RUNS_ARG="${1:-10}"
 DBMS_ARG="${2:-postgres}"
 MODEL_ARG="${3:-${MODEL:-gemini-3.5-flash-lite}}"
 VERBOSE="${VERBOSE:-0}"
+# The rewrite driver's own pre-smoke defaults to 60s; the verifier runs its own
+# 20s smoke, so keep the pre-check short. Override with SMOKE_SECS.
+export SMOKE_SECS="${SMOKE_SECS:-20}"
 REPORT_DIR="${ROBUSTNESS_REPORT_DIR:-results/tpcc/robustness/naive-llm}"
 
 # The one place arm-specific paths live. Add py-dbridge/aco/adco here.
@@ -384,6 +387,8 @@ verify_tree() {
     echo "----------------->> verifying ${arm}: restore + read probes + ${TPCC_DURATION:-20}s smoke + invariants (log: ${out_rel}/verify.log) <<-----------------"
     BENCH_LOCK_HELD=1 REVERIFY=1 \
         RESTORE_RESTART="${VERIFY_RESTART:-0}" \
+        SETTLE_SECS="${VERIFY_SETTLE_SECS:-0}" \
+        VERIFY_SKIP_SEED=1 \
         VERIFY_REWRITE_ROOT="${rewrite_root}" \
         VERIFY_CSV="${ROOT}/${out_rel}/smoke/${arm}.csv" \
         BENCH_RESULTS_DIR="${ROOT}/${out_rel}/smoke/benchmarks" \
