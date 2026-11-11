@@ -38,11 +38,6 @@ if [ ! -x "${ROOT}/baselines/NaiveLLM/venv/bin/python" ]; then
     echo "ERROR: NaiveLLM venv missing; run ./run/setup/app-setup-baselines.sh" >&2
     exit 1
 fi
-if ! grep -q "VERIFY_SKIP_SEED" "${ROOT}/scripts/tpcc/exp2_Correctness/run_verify.sh"; then
-    echo "ERROR: scripts/tpcc/exp2_Correctness/run_verify.sh is outdated (missing VERIFY_SKIP_SEED)." >&2
-    echo "Sync the repo before running the search." >&2
-    exit 1
-fi
 
 bench_lock "${ROOT}"
 
@@ -308,63 +303,9 @@ fi
 winner="${winner_line%%$'\t'*}"
 winner_score="${winner_line#*$'\t'}"
 promoted="${PROMPT_DIR}/selected-${BENCHMARK}.txt"
-winner_correctness=""
 
-# TPC-C only: the promoted prompt drives a measured arm, so verify the winner's
-# rewritten tree on pristine data before it can become the baseline. Smallbank
-# has no correctness oracle yet, so it promotes unverified (as before).
-if [ "${BENCHMARK}" = "tpcc" ]; then
-    verify_dir="${ROOT}/${SCRATCH}/winner-verify"
-    rm -rf "${verify_dir}"
-    mkdir -p "${verify_dir}"
-    echo "----------------->> Verifying winner '${winner}' (${BENCHMARK}) <<-----------------"
-    rc=0
-    BENCH_LOCK_HELD=1 REVERIFY=1 \
-        VERIFY_SKIP_SEED=1 \
-        BENCH_SKIP_SETTLE=1 \
-        VERIFY_DURATION="${VERIFY_DURATION:-10}" \
-        VERIFY_REWRITE_ROOT="${SCRATCH}/candidates/${winner}" \
-        VERIFY_CSV="${verify_dir}/${winner}.csv" \
-        BENCH_RESULTS_DIR="${verify_dir}/benchmarks" \
-        VERIFY_OUTPUT="${verify_dir}/verify.json" \
-        timeout "${VERIFY_TIMEOUT:-600}" \
-        "${ROOT}/scripts/tpcc/exp2_Correctness/run_verify.sh" postgres "${winner}" || rc=$?
-    winner_correctness="$(python3 - "${verify_dir}/verify.json" <<'PY'
-import json
-import sys
-
-try:
-    with open(sys.argv[1], encoding="utf-8") as handle:
-        document = json.load(handle)
-except (OSError, ValueError):
-    print("UNVERIFIED")
-    raise SystemExit
-print(str(document.get("status", "")).upper() or "UNVERIFIED")
-for name, check in (document.get("checks") or {}).items():
-    state = str((check or {}).get("status", "")).upper()
-    if state in ("FAIL", "WARN"):
-        for issue in (check or {}).get("issues") or ["(no detail)"]:
-            print("[{}] {}: {}".format(state, name, issue), file=sys.stderr)
-PY
-)"
-    if [ "${rc}" -ne 0 ]; then
-        echo "ERROR: winner '${winner}' verification exited ${rc} (status ${winner_correctness}); not promoting." >&2
-        echo "       See ${SCRATCH}/winner-verify/verify.json" >&2
-        exit 1
-    fi
-    case "${winner_correctness}" in
-        PASS) ;;
-        WARN)
-            echo "WARNING: SUSPECT: winner '${winner}' verified with WARN; promoting anyway." >&2
-            ;;
-        *)
-            echo "ERROR: winner '${winner}' is not verified (status ${winner_correctness}); not promoting." >&2
-            echo "       See ${SCRATCH}/winner-verify/verify.json" >&2
-            exit 1
-            ;;
-    esac
-fi
-
+# The search selects by throughput only. Correctness of the chosen prompt is
+# checked separately by the robustness harness (small verify seed), not here.
 SELECTED="${ROOT}/${SCRATCH}/selected-${BENCHMARK}.txt"
 if [ "${winner}" = "control" ]; then
     : > "${SELECTED}"
@@ -372,7 +313,7 @@ else
     cp "${PROMPT_DIR}/${winner}.txt" "${SELECTED}"
 fi
 if [ "${BENCHMARK}" = "tpcc" ]; then
-    # Auto-promoted: the file above is exactly the verified winner prompt from
+    # Auto-promoted: the file above is the selected winner prompt from
     # ${SCRATCH}/candidates/<winner>/ (an empty file is valid: unguided).
     cp "${SELECTED}" "${promoted}"
 fi
@@ -381,15 +322,14 @@ fi
 # sha256 of the promoted prompt file (empty file for 'control').
 winner_sha256="$(awk -F'\t' -v id="${winner}" '$1 == id { print $6; exit }' "${SCORES_TSV}")"
 prompt_sha256="$(file_sha256 "${SELECTED}")"
-python3 - "${SEARCH_JSON}" "${winner}" "${winner_correctness}" "${winner_sha256}" "${prompt_sha256}" <<'PY'
+python3 - "${SEARCH_JSON}" "${winner}" "${winner_sha256}" "${prompt_sha256}" <<'PY'
 import json
 import sys
 
-path, winner, correctness, rewrite_sha, prompt_sha = sys.argv[1:6]
+path, winner, rewrite_sha, prompt_sha = sys.argv[1:5]
 with open(path, encoding="utf-8") as handle:
     document = json.load(handle)
 document["winner"] = winner
-document["winner_correctness"] = correctness or None
 document["winner_sha256"] = rewrite_sha or None
 document["prompt_sha256"] = prompt_sha or None
 with open(path, "w", encoding="utf-8") as handle:
@@ -409,5 +349,5 @@ echo "Prompt: ${SCRATCH}/selected-${BENCHMARK}.txt"
 echo "Promote with:"
 echo "  cp \"${SCRATCH}/selected-${BENCHMARK}.txt\" \"${promoted}\""
 if [ "${BENCHMARK}" = "tpcc" ]; then
-    echo "  (already promoted automatically; winner correctness: ${winner_correctness})"
+    echo "  (already promoted automatically; correctness is checked by the robustness harness)"
 fi

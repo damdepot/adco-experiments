@@ -130,19 +130,18 @@ Optional args: `[dbms=postgres] [model] [reps=2]` (the benchmark is implicit).
 | Candidates | `control` (no prompt) + every non-empty `prompts/*.txt` whose name is not `selected-*` |
 | Narrow the sweep | `CANDIDATES=control,aggressive-batch ./run/tpcc/run_prompt_search.sh` (tests/debug) |
 | Score | median TOTAL txn/s across reps, on the real benchmark |
-| Gate | after scoring, **only the winner** is verified with the TPC-C checker |
-| PASS / WARN | auto-promotes `baselines/NaiveLLM/prompts/selected-tpcc.txt`; WARN is reported as SUSPECT |
-| FAIL / UNVERIFIED | no promotion, previous selected prompt untouched, non-zero exit |
+| Correctness | **not checked here**; the search selects by throughput only |
+| Promotion | TPC-C auto-promotes the winning prompt to `baselines/NaiveLLM/prompts/selected-tpcc.txt`; the robustness harness checks correctness afterwards |
 | `control` wins | selected file is written empty (unguided) |
 
-Scratch (per-candidate rewrites/CSVs, `search-tpcc.json`, `winner-verify/`) goes
-to `out/app_layer/NaiveLLM-search-results/` — never `results/`. The search JSON
+Scratch (per-candidate rewrites/CSVs, `search-tpcc.json`) goes to
+`out/app_layer/NaiveLLM-search-results/` — never `results/`. The search JSON
 records each candidate's status, score, CSV and rewrite `sha256`, plus the
-winner, its verdict, and the promoted prompt's `sha256`.
+winner and the promoted prompt's `sha256`.
 
 Smallbank: the search still scores candidates and writes
 `selected-smallbank.txt` into its scratch dir, but promotion stays manual and
-there is no correctness oracle yet, so no gate and no auto-promote.
+there is no correctness oracle yet, so no auto-promote.
 
 ## Robustness (TPC-C)
 

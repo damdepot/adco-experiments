@@ -117,14 +117,14 @@ snapshot and a healthy `adcoexp-db` container.
 ## Generic tree mode
 
 Verifies any Naive-LLM-style rewrite tree under an arbitrary arm name — used by
-the prompt-search winner gate and the robustness harness.
+the robustness harness.
 | Var | Required | Meaning |
 |-----|----------|---------|
 | `VERIFY_REWRITE_ROOT` | yes | repo-relative root holding `Rewrite/<dbms>/tpcc-NaiveLLM/` |
 | `VERIFY_CSV` | yes | **absolute** path for the smoke CSV |
 | `BENCH_RESULTS_DIR` | yes | where the runner writes benchmarks; without it the runner falls back to `results/tpcc/<arm>/benchmarks` and the supplied CSV never appears |
 | `VERIFY_OUTPUT` | no | verdict JSON path (default `results/tpcc/verify_<arm>.json`) |
-| `BENCH_LOCK_HELD=1` | no | caller already holds `bench_lock` (search/robustness own it) |
+| `BENCH_LOCK_HELD=1` | no | caller already holds `bench_lock` (robustness owns it) |
 | `REVERIFY=1` | no | ignore a fresh verdict and re-run |
 | `VERIFY_SEED_DB` | no | seed to restore from (default `tpcc_seed`) |
 | `VERIFY_WAREHOUSES` | no | warehouse scale of the verify seed (default `TPCC_WAREHOUSES`) |
@@ -136,11 +136,11 @@ The CSV must be supplied — there is no default path in tree mode.
 
 ```bash
 BENCH_LOCK_HELD=1 REVERIFY=1 \
-  VERIFY_REWRITE_ROOT=out/app_layer/NaiveLLM-search-results/candidates/aggressive-all \
-  VERIFY_CSV="$PWD/out/app_layer/NaiveLLM-search-results/winner-verify/aggressive-all.csv" \
-  BENCH_RESULTS_DIR="$PWD/out/app_layer/NaiveLLM-search-results/winner-verify/benchmarks" \
-  VERIFY_OUTPUT="$PWD/out/app_layer/NaiveLLM-search-results/winner-verify/verify.json" \
-  ./scripts/tpcc/exp2_Correctness/run_verify.sh postgres aggressive-all
+  VERIFY_REWRITE_ROOT=out/app_layer/robustness/naive-llm/<ts>/r01 \
+  VERIFY_CSV="$PWD/out/app_layer/robustness/naive-llm/<ts>/r01/smoke/naive-llm-r01.csv" \
+  BENCH_RESULTS_DIR="$PWD/out/app_layer/robustness/naive-llm/<ts>/r01/smoke/benchmarks" \
+  VERIFY_OUTPUT="$PWD/out/app_layer/robustness/naive-llm/<ts>/r01/verify.json" \
+  ./scripts/tpcc/exp2_Correctness/run_verify.sh postgres naive-llm-r01
 ```
 
 ## Robustness harness
