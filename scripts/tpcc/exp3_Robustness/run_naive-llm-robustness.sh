@@ -334,6 +334,9 @@ export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Work
 
 echo "----------------->> Seed tpcc (reuse snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "tpcc_seed"
+# The working 'tpcc' DB may hold a previous verify-scale load; restore the
+# full seed before asserting its scale.
+bench_restore "tpcc" "tpcc_seed"
 bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 
 echo "----------------->> Seed ${VERIFY_SEED_DB} (verify scale, reuse snapshot) <<-----------------"
