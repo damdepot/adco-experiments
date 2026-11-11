@@ -149,18 +149,33 @@ bench_snapshot() {
 bench_restore() {
     local db="$1"
     local seed="$2"
+    local t0 elapsed seed_size
+
+    echo "-------------------<< Restore: terminate sessions on '${db}'/'${seed}' >>-------------------"
     # A killed verify/app can leave sessions on the target or, more subtly, on
     # the template; CREATE DATABASE ... TEMPLATE then waits forever. The lock
     # guarantees a single writer, so terminate both before restoring.
     psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('${db}', '${seed}') AND pid <> pg_backend_pid();" >/dev/null 2>&1 || true
+
+    echo "-------------------<< Restore: DROP DATABASE '${db}' >>-------------------"
+    t0="$(date +%s)"
     psql -d postgres -c "DROP DATABASE IF EXISTS \"${db}\" WITH (FORCE);"
+    echo "-------------------<< Restore: DROP done in $(( $(date +%s) - t0 ))s >>-------------------"
+
+    seed_size="$(psql -d postgres -tA -c "SELECT pg_size_pretty(pg_database_size('${seed}'))" 2>/dev/null || true)"
+    echo "-------------------<< Restore: CREATE '${db}' TEMPLATE '${seed}' (seed ${seed_size:-unknown}) >>-------------------"
+    t0="$(date +%s)"
     psql -d postgres -c "CREATE DATABASE \"${db}\" TEMPLATE \"${seed}\";"
+    echo "-------------------<< Restore: CREATE done in $(( $(date +%s) - t0 ))s >>-------------------"
     echo "-------------------<< Database restored: '${db}' from snapshot '${seed}' >>-------------------"
     if [ "${BENCH_SKIP_SETTLE:-0}" = "1" ]; then
         return 0
     fi
+    echo "-------------------<< Restore: checkpoint + settle >>-------------------"
+    t0="$(date +%s)"
     "${BENCH_CMDDOCKER}" Checkpoint "${BENCH_DB_CONTAINER}"
     bench_settle
+    echo "-------------------<< Restore: checkpoint + settle done in $(( $(date +%s) - t0 ))s >>-------------------"
 }
 
 # Warmup dirties the DB (autovacuum thresholds crossed mid-warmup land the
