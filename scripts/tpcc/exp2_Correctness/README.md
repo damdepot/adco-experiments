@@ -118,7 +118,6 @@ snapshot and a healthy `adcoexp-db` container.
 
 Verifies any Naive-LLM-style rewrite tree under an arbitrary arm name — used by
 the prompt-search winner gate and the robustness harness.
-
 | Var | Required | Meaning |
 |-----|----------|---------|
 | `VERIFY_REWRITE_ROOT` | yes | repo-relative root holding `Rewrite/<dbms>/tpcc-NaiveLLM/` |
@@ -154,6 +153,9 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
 - Writes `results/tpcc/robustness/naive-llm/latest.json` plus timestamped
   `out/app_layer/robustness/naive-llm/<ts>/summary.{json,md}`. Rewrites, smoke
   CSVs and per-run verdicts stay under `out/`.
+- Each child is bounded (`VERIFY_TIMEOUT`, default 600 s; `PROBE_TIMEOUT`,
+  120 s; `PGCONNECT_TIMEOUT`, 10 s) and skips the per-run container restart
+  unless `VERIFY_RESTART=1`.
 
 The reporter prefers `results/tpcc/robustness/<arm>/latest.json`; without it,
 it falls back to this arm's single `verify_<arm>.json` and shows `1-run PASS`.

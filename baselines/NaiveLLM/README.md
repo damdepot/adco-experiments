@@ -173,6 +173,23 @@ except `latest.json`.
 > Caveat: temperature 0. If `distinct_outputs` is 1, all N runs produced the
 > same code and the sweep is one effective sample, not N independent ones.
 
+Each verification is bounded: the whole child gets `VERIFY_TIMEOUT` (default
+600 s), each read probe `PROBE_TIMEOUT` (120 s), and libpq connects
+`PGCONNECT_TIMEOUT` (10 s). Progress is tee'd to
+`out/app_layer/robustness/naive-llm/<ts>/measured/verify.log` and
+`.../rNN/verify.log`, so a slow run is visible. Robustness verification skips
+the per-run DB container restart (`VERIFY_RESTART=0`, data restore + knob reset
+still run); set `VERIFY_RESTART=1` to match `run_verify.sh` exactly.
+
+Each run prints a one-line verdict plus the gate breakdown:
+
+```
+run 3/10: PASS; rewrite=ok (21s, changed=1, restored=0, sha=abc123456789); verify=84s
+    gates: static=PASS, smoke=PASS, reads=PASS, invariants=PASS
+```
+
+`VERBOSE=1` also dumps the rewrite log for each run.
+
 ## Correctness in reports
 
 `./run/tpcc/run_reports.sh` adds a `## Correctness` table and a Correctness

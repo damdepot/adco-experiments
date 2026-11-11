@@ -23,6 +23,7 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 RUNS_ARG="${1:-10}"
 DBMS_ARG="${2:-postgres}"
 MODEL_ARG="${3:-${MODEL:-gemini-3.5-flash-lite}}"
+VERBOSE="${VERBOSE:-0}"
 REPORT_DIR="${ROBUSTNESS_REPORT_DIR:-results/tpcc/robustness/naive-llm}"
 
 # The one place arm-specific paths live. Add py-dbridge/aco/adco here.
@@ -338,28 +339,74 @@ record_row() {
         "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" >>"${RECORDS}"
 }
 
+verify_status_of() {
+    python3 - "$1" <<'PY'
+import json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as handle:
+        document = json.load(handle)
+except (OSError, ValueError):
+    print("UNVERIFIED")
+    raise SystemExit
+print(str(document.get("status") or "UNVERIFIED").upper())
+PY
+}
+
+# One compact line per gate, plus the first issue for FAIL/WARN gates.
+print_verify_summary() {
+    local json="$1"
+    python3 - "$json" <<'PY'
+import json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as handle:
+        document = json.load(handle)
+except (OSError, ValueError):
+    print("    verify: UNVERIFIED (no verify JSON)")
+    raise SystemExit
+checks = document.get("checks") or {}
+gates = ["%s=%s" % (name, (check or {}).get("status") or "?")
+         for name, check in checks.items()]
+print("    gates: %s" % (", ".join(gates) if gates else "none"))
+for name, check in checks.items():
+    check = check or {}
+    if check.get("status") in ("FAIL", "WARN"):
+        for issue in (check.get("issues") or [])[:3]:
+            print("      %s: %s" % (name, issue))
+PY
+}
+
 # Verify one rewritten tree through the generic arm. A nonzero exit is not an
-# error here: the verdict is the JSON's status/checks object.
+# error here: the verdict is the JSON's status/checks object. The verify child
+# is bounded and tees its progress so a slow run is visible instead of silent.
 verify_tree() {
     local arm="$1" rewrite_root="$2" out_rel="$3"
     mkdir -p "${ROOT}/${out_rel}/smoke/benchmarks"
+    echo "----------------->> verifying ${arm}: restore + read probes + ${TPCC_DURATION:-20}s smoke + invariants (log: ${out_rel}/verify.log) <<-----------------"
     BENCH_LOCK_HELD=1 REVERIFY=1 \
+        RESTORE_RESTART="${VERIFY_RESTART:-0}" \
         VERIFY_REWRITE_ROOT="${rewrite_root}" \
         VERIFY_CSV="${ROOT}/${out_rel}/smoke/${arm}.csv" \
         BENCH_RESULTS_DIR="${ROOT}/${out_rel}/smoke/benchmarks" \
         VERIFY_OUTPUT="${ROOT}/${out_rel}/verify.json" \
+        timeout "${VERIFY_TIMEOUT:-600}" \
         bash "./scripts/tpcc/exp2_Correctness/run_verify.sh" "${DBMS_ARG}" "${arm}" \
-        >"${ROOT}/${out_rel}/verify.log" 2>&1 || true
+        2>&1 | tee "${ROOT}/${out_rel}/verify.log" || true
 }
 
-echo "=================>> Run 0: re-verify the measured artifact <<================="
+echo "=================>> Run 0: re-verify the measured artifact (full verify, ~2-4 min) <<================="
 MEASURED_ROOT="out/app_layer/NaiveLLM-results"
 MEASURED_TREE="${MEASURED_ROOT}/Rewrite/${DBMS_ARG}/${ARM_TREE}"
 if [ -d "${MEASURED_TREE}" ]; then
+    start_ts=$(date +%s)
     verify_tree "naive-llm-measured" "${MEASURED_ROOT}" "${OUT_TS}/measured"
+    elapsed=$(( $(date +%s) - start_ts ))
     sha="$(sha256_tree "${MEASURED_TREE}/${ARM_DRIVER}" "${MEASURED_TREE}/${ARM_ENTRY}")" || sha=""
+    sha_short="${sha:0:12}"; [ -z "${sha_short}" ] && sha_short="none"
+    vstat="$(verify_status_of "${ROOT}/${OUT_TS}/measured/verify.json")"
     record_row 0 measured "${sha}" ok "" "" "" "" "${OUT_TS}/measured/verify.json" 0
-    echo "measured artifact verified: ${MEASURED_TREE}"
+    echo "run 0 (measured): ${vstat}; verified in ${elapsed}s; sha=${sha_short}; tree=${MEASURED_TREE}"
+    print_verify_summary "${ROOT}/${OUT_TS}/measured/verify.json"
+    [ "${VERBOSE}" = "1" ] && echo "    verify log: ${OUT_TS}/measured/verify.log"
 else
     echo "measured artifact missing: ${MEASURED_TREE} (run/tpcc/run_naive-llm.sh first); recorded as null."
 fi
@@ -372,11 +419,13 @@ for ((i = 1; i <= RUNS_ARG; i++)); do
     driver_rel="${tree_rel}/${ARM_DRIVER}"
     mkdir -p "${abs_run}/smoke/benchmarks"
 
-    echo "=================>> Run ${i}/${RUNS_ARG}: fresh rewrite <<================="
+    echo "=================>> Run ${i}/${RUNS_ARG}: fresh rewrite (prompt=$(basename "${PROMPT_FILE_ABS}")) <<================="
+    start_ts=$(date +%s)
     rc=0
     NAIVE_REWRITE_ROOT="${rel_run}" PROMPT_FILE="${PROMPT_FILE_ABS}" \
         bash "./${ARM_REWRITE_CMD}" "${ARM_SOURCE}" "${DBMS_ARG}" tpcc "${MODEL_ARG}" \
         >"${abs_run}/rewrite.log" 2>&1 || rc=$?
+    rewrite_elapsed=$(( $(date +%s) - start_ts ))
 
     changed=""
     restored=""
@@ -384,16 +433,25 @@ for ((i = 1; i <= RUNS_ARG; i++)); do
     if [ -n "${parsed}" ]; then
         read -r changed restored <<<"${parsed}"
     fi
+    if [ "${VERBOSE}" = "1" ] && [ -s "${abs_run}/rewrite.log" ]; then
+        sed 's/^/    rewrite | /' "${abs_run}/rewrite.log"
+    fi
 
     if [ -f "${ROOT}/${driver_rel}" ]; then
         sha="$(sha256_tree "${ROOT}/${driver_rel}" "${ROOT}/${tree_rel}/${ARM_ENTRY}")" || sha=""
+        sha_short="${sha:0:12}"; [ -z "${sha_short}" ] && sha_short="none"
         rw_status="ok"
         [ "${rc}" -ne 0 ] && rw_status="failed"
+        start_ts=$(date +%s)
         verify_tree "${ARM}-r${idx}" "${rel_run}" "${rel_run}"
+        verify_elapsed=$(( $(date +%s) - start_ts ))
+        vstat="$(verify_status_of "${ROOT}/${rel_run}/verify.json")"
         record_row "${i}" fresh "${sha}" "${rw_status}" "${changed}" "${restored}" "" "" "${rel_run}/verify.json" "${rc}"
-        echo "run ${i}: rewrite=${rw_status} (exit ${rc}), verify JSON ${rel_run}/verify.json"
+        echo "run ${i}/${RUNS_ARG}: ${vstat}; rewrite=${rw_status} (${rewrite_elapsed}s, changed=${changed:-?}, restored=${restored:-?}, sha=${sha_short}); verify=${verify_elapsed}s"
+        print_verify_summary "${ROOT}/${rel_run}/verify.json"
     else
         echo "WARNING: run ${i}: no rewrite tree at ${tree_rel} (driver exit ${rc}); UNVERIFIED." >&2
+        echo "         rewrite log: ${rel_run}/rewrite.log"
         record_row "${i}" fresh "" missing "${changed}" "${restored}" "UNVERIFIED" "no rewrite tree" "" "${rc}"
     fi
 done

@@ -42,6 +42,9 @@ BASELINE_DRIVER="${ROOT}/workload/apps/tpcc/drivers/postgresdriver.py"
 # at a nonexistent scripts/_lib/tpcc.sh); point it at the canonical DB runner.
 export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
 
+# Bound libpq connects: a DB that is still restarting must fail, not block.
+export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
+
 # Tiny-scale smoke on the existing seed (same scale as full runs; reseeding at a
 # smaller scale would destroy the shared seed). Warmup off, one rep.
 export TPCC_CLIENTS=1 TPCC_DURATION="${VERIFY_DURATION:-20}" REPS=1 TPCC_WARMUP=0 PHASE=execute
@@ -166,15 +169,17 @@ verify_one_arm() {
     [ -x "${VENV_PY}" ] || VENV_PY="python3"
     PROBE="${ROOT}/scripts/tpcc/exp2_Correctness/read_probe.py"
     DBCONFIG="${ROOT}/workload/apps/tpcc/db.config"
-    (cd "${ROOT}/workload/apps/tpcc" && "${VENV_PY}" "${PROBE}" --dbms "${DBMS}" --config "${DBCONFIG}" >"${probe_base}" 2>"${tmp}/probe_base.err") || echo "WARNING: baseline read probe failed for '${arm}'." >&2
+    echo "----------------->> ${arm}: read-probe equivalence <<-----------------"
+    (cd "${ROOT}/workload/apps/tpcc" && timeout "${PROBE_TIMEOUT:-120}" "${VENV_PY}" "${PROBE}" --dbms "${DBMS}" --config "${DBCONFIG}" >"${probe_base}" 2>"${tmp}/probe_base.err") || echo "WARNING: baseline read probe failed for '${arm}'." >&2
     if [ "${arm}" = "baseline" ]; then
         cp "${probe_base}" "${probe_arm}" 2>/dev/null || : >"${probe_arm}"
     else
         arm_tree="$(cd "$(dirname "${driver}")/.." && pwd)"
-        (cd "${arm_tree}" && "${VENV_PY}" "${PROBE}" --dbms "${DBMS}" --config "${DBCONFIG}" >"${probe_arm}" 2>"${tmp}/probe_arm.err") || echo "WARNING: rewrite read probe failed for '${arm}'." >&2
+        (cd "${arm_tree}" && timeout "${PROBE_TIMEOUT:-120}" "${VENV_PY}" "${PROBE}" --dbms "${DBMS}" --config "${DBCONFIG}" >"${probe_arm}" 2>"${tmp}/probe_arm.err") || echo "WARNING: rewrite read probe failed for '${arm}'." >&2
     fi
+    echo "----------------->> ${arm}: smoke (${TPCC_DURATION}s, 1 client) <<-----------------"
     # shellcheck disable=SC2086
-    ./"${runner}" ${rargs} >"${tmp}/smoke.log" 2>&1 || echo "WARNING: smoke run failed for '${arm}' (see ${out})." >&2
+    timeout "$(( ${TPCC_DURATION:-20} + 240 ))" ./"${runner}" ${rargs} >"${tmp}/smoke.log" 2>&1 || echo "WARNING: smoke run failed for '${arm}' (see ${out})." >&2
     smoke_csv="${csv}"
     if [ ! -f "${smoke_csv}" ] && [ -n "${BENCH_RESULTS_DIR:-}" ]; then
         smoke_csv="${BENCH_RESULTS_DIR}/$(basename "${csv}")"
@@ -183,6 +188,7 @@ verify_one_arm() {
     cp "${tmp}/smoke.log" "${tmp}/smoke.log.keep" 2>/dev/null || true
 
     # Official consistency conditions (Spec Clause 3.3) on post-smoke state.
+    echo "----------------->> ${arm}: consistency conditions + verdict <<-----------------"
     # CC6/CC7 run on a recent-orders window and CC10/CC12 on a deterministic
     # customer sample; the rest are full checks. CC11 is intentionally absent:
     # every delivery legitimately grows orders-minus-new_orders, so it only
