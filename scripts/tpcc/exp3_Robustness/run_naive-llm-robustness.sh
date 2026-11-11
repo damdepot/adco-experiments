@@ -334,13 +334,12 @@ export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Work
 
 # Robustness verifies on the small verify seed only; the 50-warehouse
 # performance seed belongs to run_naive-llm.sh and is never touched here.
-# RESEED=1 is a no-op on this path; use RESEED_VERIFY=1 to rebuild the
-# verify seed.
+# RESEED=1 rebuilds the verify seed (alias of RESEED_VERIFY=1).
 echo "----------------->> Seed ${VERIFY_SEED_DB} (verify scale, reuse snapshot) <<-----------------"
 ORIG_WAREHOUSES="${TPCC_WAREHOUSES:-}"
 export TPCC_WAREHOUSES="${VERIFY_WAREHOUSES}"
 _verify_exists="$(psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname='${VERIFY_SEED_DB}'" 2>/dev/null || true)"
-if [ "${RESEED_VERIFY:-0}" = "1" ] || [[ "${_verify_exists}" != *1* ]]; then
+if [ "${RESEED_VERIFY:-0}" = "1" ] || [ "${RESEED:-0}" = "1" ] || [[ "${_verify_exists}" != *1* ]]; then
     bench_seed_once tpcc "${VERIFY_SEED_DB}"
 else
     echo "Reusing existing seed database '${VERIFY_SEED_DB}'."
