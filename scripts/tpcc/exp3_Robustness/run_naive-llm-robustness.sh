@@ -332,13 +332,10 @@ fi
 # at a nonexistent scripts/_lib/tpcc.sh); point it at the canonical DB runner.
 export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
 
-echo "----------------->> Seed tpcc (reuse snapshot) <<-----------------"
-bench_ensure_seed "tpcc" "tpcc_seed"
-# The working 'tpcc' DB may hold a previous verify-scale load; restore the
-# full seed before asserting its scale.
-bench_restore "tpcc" "tpcc_seed"
-bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
-
+# Robustness verifies on the small verify seed only; the 50-warehouse
+# performance seed belongs to run_naive-llm.sh and is never touched here.
+# RESEED=1 is a no-op on this path; use RESEED_VERIFY=1 to rebuild the
+# verify seed.
 echo "----------------->> Seed ${VERIFY_SEED_DB} (verify scale, reuse snapshot) <<-----------------"
 ORIG_WAREHOUSES="${TPCC_WAREHOUSES:-}"
 export TPCC_WAREHOUSES="${VERIFY_WAREHOUSES}"
