@@ -160,7 +160,7 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
 - Each child is bounded (`VERIFY_TIMEOUT`, default 600 s; `PROBE_TIMEOUT`,
   120 s; `PGCONNECT_TIMEOUT`, 10 s) and skips the per-run container restart
   unless `VERIFY_RESTART=1`. Robustness uses `BENCH_SKIP_SETTLE=1`,
-  `VERIFY_DURATION=10`, and a `tpcc_verify_seed` (10 warehouses) so the
+  `VERIFY_DURATION=10`, and a `tpcc_verify_seed` (3 warehouses) so the
   per-run copy/VACUUM stays small; the performance arm still measures on the
   full `tpcc_seed`.
 

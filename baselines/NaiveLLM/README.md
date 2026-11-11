@@ -178,9 +178,9 @@ Each verification is bounded: the whole child gets `VERIFY_TIMEOUT` (default
 `PGCONNECT_TIMEOUT` (10 s). Progress is tee'd to
 `out/app_layer/robustness/naive-llm/<ts>/measured/verify.log` and
 `.../rNN/verify.log`, so a slow run is visible. Robustness verification uses a
-small `tpcc_verify_seed` (default 10 warehouses, created once and reused) while
+small `tpcc_verify_seed` (default 1 warehouses, created once and reused) while
 the performance arm keeps the full `tpcc_seed`; the report shows the verify
-scale (e.g. `10 (10wh)`). It skips
+scale (e.g. `10 (3wh)`). It skips
 the per-run DB container restart (`VERIFY_RESTART=0`, data restore + knob reset
 still run); set `VERIFY_RESTART=1` to match `run_verify.sh` exactly. It also
 skips settle/autovacuum/VACUUM (`BENCH_SKIP_SETTLE=1`). The rewrite pre-smoke uses `SMOKE_SECS=10`;

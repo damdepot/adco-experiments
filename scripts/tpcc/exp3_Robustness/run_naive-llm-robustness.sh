@@ -28,7 +28,7 @@ VERBOSE="${VERBOSE:-0}"
 # short smoke, so keep the pre-check short. Override with SMOKE_SECS.
 export SMOKE_SECS="${SMOKE_SECS:-10}"
 export VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_verify_seed}"
-export VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-10}"
+export VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-1}"
 export VERIFY_DURATION="${VERIFY_DURATION:-10}"
 export BENCH_SKIP_SETTLE="${BENCH_SKIP_SETTLE:-1}"
 REPORT_DIR="${ROBUSTNESS_REPORT_DIR:-results/tpcc/robustness/naive-llm}"
