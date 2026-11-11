@@ -1,7 +1,0 @@
-- Replace per-row inserts and updates with bulk writes such as executemany, multi-row INSERT, or COPY where the driver supports it.
-- Reduce the number of round-trips and commits without changing the set of rows written.
-- Keep the exact write set: same rows, same columns, same values, same ordering semantics, and the same row-write count.
-- Preserve commit and rollback placement so partial failures leave the same state as before.
-- Preserve generated-key, default-value, and conflict behavior for every write path.
-- Do not change the public interface, observable behavior, or transaction boundaries.
-- Do not add new files or dependencies.

@@ -4,8 +4,9 @@ Answers one question about each app-layer rewrite arm
 (`baseline, aco, adco, py-dbridge, naive-llm`): **is the rewritten code
 correct, or just fast?** A rewrite that drops writes, weakens isolation, or
 skips work looks faster while corrupting data — these checks catch that.
-`naive-llm` is a single arm that now rewrites with the prompt chosen by the
-offline search (`baselines/NaiveLLM/prompts/selected-tpcc.txt`).
+`naive-llm` is a single arm that now rewrites with the generated prompt
+(`baselines/NaiveLLM/prompts/selected.txt`, produced by the repair loop that
+uses these checks as its fitness).
 
 ## Files
 

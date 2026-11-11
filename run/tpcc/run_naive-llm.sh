@@ -7,8 +7,8 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 
 ARM="${ARM:-naive-llm}"
 NAIVE_REWRITE_ROOT="${NAIVE_REWRITE_ROOT:-out/app_layer/NaiveLLM-results}"
-# Default to the prompt selected by PromptSearch; an empty file means unguided.
-PROMPT_FILE="${PROMPT_FILE:-${ROOT}/baselines/NaiveLLM/prompts/selected-tpcc.txt}"
+# Default to the generated prompt; an empty file means unguided.
+PROMPT_FILE="${PROMPT_FILE:-${ROOT}/baselines/NaiveLLM/prompts/selected.txt}"
 if [ ! -f "${PROMPT_FILE}" ]; then
     echo "ERROR: missing selected prompt ${PROMPT_FILE}" >&2
     echo "Run ./run/tpcc/run_prompt_search.sh first (an empty file is valid)." >&2

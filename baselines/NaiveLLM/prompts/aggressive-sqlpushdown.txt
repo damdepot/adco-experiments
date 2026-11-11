@@ -1,6 +1,0 @@
-- Push filtering, aggregation, and joins into SQL instead of pulling rows into Python.
-- Select only the columns that are actually needed by the caller.
-- Replace Python-side loops that scan a result set with a single query that returns the same result.
-- Preserve null handling, type semantics, ordering, and duplicate behavior exactly.
-- Keep the same observable behavior and public interface at every call site.
-- Avoid changing schema, indexes, or adding new files and dependencies.

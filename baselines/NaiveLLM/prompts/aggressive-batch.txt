@@ -1,7 +1,0 @@
-- Replace N+1 queries and per-row lookups with set-based queries that fetch each required row once.
-- Batch key lists into a single lookup (for example one IN clause or one join) instead of issuing one query per key.
-- Map results back to their callers by the full key value, never by row position or result order.
-- Preserve every lookup's null, missing-row, and duplicate-key semantics exactly as before.
-- Keep the same observable behavior, return values, and public interface while reducing round-trips.
-- Avoid unbounded batches that could exceed driver or database parameter limits; split only where semantics allow.
-- Do not add new files or dependencies, and do not change the database schema.

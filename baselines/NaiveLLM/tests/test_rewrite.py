@@ -94,9 +94,8 @@ def test_prompt_bank_files():
     assert files, f"no prompt files in {PROMPTS_DIR}"
     for path in files:
         text = path.read_text(encoding="utf-8")
-        # selected-*.txt are search outputs and may legitimately be empty
-        # (control wins); the hand-written bank must always have guidance.
-        if not path.name.startswith("selected-"):
+        # selected*.txt are generated outputs and may legitimately be empty.
+        if not path.name.startswith("selected"):
             assert text.strip(), path
             assert "- " in text, path
         assert "### FILE:" not in text, path

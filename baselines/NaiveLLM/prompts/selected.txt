@@ -1,0 +1,9 @@
+- Remove N+1 queries and per-row lookups; fetch each needed row once with set-based access.
+- When converting iterative read-modify-write loops to batch operations, the batched SELECT must include FOR UPDATE to preserve row-level locking. Account for duplicate keys in the input sequence by updating the local dictionary/cache with the new state during the loop so subsequent iterations for the same key see accumulated changes, preventing lost updates.
+- Push filtering, aggregation and joins into SQL; select only the columns the caller needs.
+- Batch writes using ONLY the driver's standard batch execution methods (e.g., cursor.executemany). Do not import non-standard extensions or check for undefined variables (e.g., if execute_batch is not None: raises NameError). Ensure the query contains the exact parameter placeholders for a single row (e.g., VALUES (%s, %s)), rather than manually constructing complex UPDATE ... FROM (VALUES ...) statements. Keep the exact write set and row-write count.
+- For multi-column IN clauses, avoid passing a list of tuples to array operators like ANY(%s), as this can trigger strict type mismatch errors for record types. Instead, dynamically generate explicit parameter placeholders (e.g., IN ((%s, %s), (%s, %s))) and flatten the argument list. Single-column ANY(%s) is safe.
+- When modifying SQL strings that undergo Python string formatting (e.g., query % var) to inject dynamic identifiers, ensure database parameter placeholders remain properly escaped (e.g., %%s instead of %s) so they are not prematurely consumed by the initial formatting step, preventing "not enough arguments for format string" errors.
+- Reuse connections, cursors and prepared statements; cache read-only lookups within a transaction.
+- Preserve observable behavior, transaction boundaries, ordering, null/type semantics and the public interface.
+- Do not add files or dependencies, and do not change the database schema.

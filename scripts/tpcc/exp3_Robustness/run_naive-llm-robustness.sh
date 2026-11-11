@@ -28,7 +28,7 @@ if ! [[ "${RUNS}" =~ ^[1-9][0-9]*$ ]]; then
     exit 2
 fi
 
-PROMPT_FILE="${ROOT}/baselines/NaiveLLM/prompts/selected-tpcc.txt"
+PROMPT_FILE="${ROOT}/baselines/NaiveLLM/prompts/selected.txt"
 if [ ! -f "${PROMPT_FILE}" ]; then
     echo "ERROR: missing selected prompt ${PROMPT_FILE}" >&2
     echo "Run ./run/tpcc/run_prompt_search.sh first (an empty file is valid)." >&2
@@ -50,11 +50,12 @@ fi
 
 bench_lock "${ROOT}"
 export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
-export SMOKE_SECS
+export SMOKE_SECS SMOKE_CLIENTS=1
 
 # --- one verify seed -------------------------------------------------------
 echo "----------------->> Seed ${VERIFY_SEED_DB} (${VERIFY_WAREHOUSES} warehouses) <<-----------------"
-ORIG_WAREHOUSES="${TPCC_WAREHOUSES:-}"
+# Everything below runs at the verify scale: the rewrite's own smoke and the
+# verifier both hit the 1-warehouse database, so the warehouse count must match.
 export TPCC_WAREHOUSES="${VERIFY_WAREHOUSES}"
 _seed_exists="$(psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname='${VERIFY_SEED_DB}'" 2>/dev/null || true)"
 if [ "${RESEED:-0}" = "1" ] || [[ "${_seed_exists}" != *1* ]]; then
@@ -64,7 +65,6 @@ else
     echo "Reusing existing seed database '${VERIFY_SEED_DB}'."
 fi
 bench_assert_rows "${VERIFY_SEED_DB}" warehouse "${VERIFY_WAREHOUSES}"
-export TPCC_WAREHOUSES="${ORIG_WAREHOUSES}"
 unset _seed_exists
 
 # --- loop ------------------------------------------------------------------
@@ -77,7 +77,7 @@ mkdir -p "${OUT_TS}"
 {
     printf 'timestamp\t%s\n' "${STAMP}"
     printf 'model\t%s\n' "${MODEL_ARG}"
-    printf 'prompt_file\t%s\n' "baselines/NaiveLLM/prompts/selected-tpcc.txt"
+    printf 'prompt_file\t%s\n' "baselines/NaiveLLM/prompts/selected.txt"
     printf 'prompt_sha256\t%s\n' "$(sha256sum "${PROMPT_FILE}" 2>/dev/null | awk '{print $1}' || shasum -a 256 "${PROMPT_FILE}" | awk '{print $1}')"
     printf 'runs\t%s\n' "${RUNS}"
     printf 'verify_seed_db\t%s\n' "${VERIFY_SEED_DB}"

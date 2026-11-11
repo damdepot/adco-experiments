@@ -1,8 +1,8 @@
 #!/bin/bash
-# TPC-C prompt-search entry point.
-# Usage: run_prompt_search.sh [dbms=postgres] [model] [reps=2]
-# The benchmark is implicit; the shared driver lives in
-# scripts/common/app_layer/exp3_PromptSearch/ and also serves Smallbank.
+# TPC-C prompt-repair entry point.
+# Usage: run_prompt_search.sh [dbms=postgres] [model]
+# The benchmark is implicit; the shared loop lives in
+# scripts/common/app_layer/exp3_PromptSearch/.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

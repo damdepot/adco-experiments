@@ -1,8 +1,0 @@
-- Identify the dominant or hottest transaction and remove serialized round-trips on its critical path first, without starving the others.
-- Replace N+1 queries and per-row lookups with set-based queries, batching key lists and mapping results back by full key, never by position.
-- Push filtering, aggregation, and joins into SQL, selecting only the needed columns instead of pulling rows into Python.
-- Replace per-row writes with bulk writes such as executemany, multi-row INSERT, or COPY, reducing round-trips and commits while keeping the exact write set and row-write count.
-- Reuse connections, cursors, and prepared statements, and cache read-only lookups within a transaction.
-- Preserve commit/rollback placement, transaction boundaries, null/type semantics, ordering, and the public interface.
-- Keep observable behavior identical and do not change the database schema.
-- Do not add new files or dependencies.

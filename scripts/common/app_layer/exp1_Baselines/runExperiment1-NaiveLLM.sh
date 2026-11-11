@@ -44,7 +44,7 @@ else
     exit 1
 fi
 
-python -m src.cli --source-dir "${src_dir}" --output-dir "${output_path}" --db "${dbms}" --model "${llm_model}" ${prompt_path:+--prompt-file "$prompt_path"}
+python -m src.cli --source-dir "${src_dir}" --output-dir "${output_path}" --db "${dbms}" --model "${llm_model}" ${prompt_path:+--prompt-file "$prompt_path"} ${TEMPERATURE:+--temperature "$TEMPERATURE"}
 
 # Smoke: run the rewritten app before the paid measurement reps. Executors log
 # failed transactions and continue (exit 0), so the log — not the exit code —

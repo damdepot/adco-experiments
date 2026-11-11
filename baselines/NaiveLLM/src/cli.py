@@ -15,6 +15,7 @@ def main() -> None:
     parser.add_argument("--db", default="postgres")
     parser.add_argument("--model", default="gemini-3.5-flash-lite")
     parser.add_argument("--prompt-file", default=None)
+    parser.add_argument("--temperature", type=float, default=0.0)
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[3]
@@ -80,7 +81,7 @@ def main() -> None:
             model=args.model,
             contents=prompt,
             config=types.GenerateContentConfig(
-                temperature=0.0, max_output_tokens=65536
+                temperature=args.temperature, max_output_tokens=65536
             ),
         )
         text = resp.text or ""

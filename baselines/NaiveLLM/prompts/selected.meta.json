@@ -1,0 +1,143 @@
+{
+  "generated": true,
+  "status": "pass",
+  "benchmark": "tpcc",
+  "model": "gemini-3.5-flash-lite",
+  "improver_model": "gemini-3.1-pro-preview",
+  "iterations": 6,
+  "confirm_temperature": 0.2,
+  "verify_seed_db": "tpcc_verify_seed",
+  "verify_warehouses": 1,
+  "prompt_file": "baselines/NaiveLLM/prompts/selected.txt",
+  "prompt_sha256": "1180e83a12bf91a476c1ffb0353a18f0ff955cfa6a4c404f17f65988597e4d32",
+  "prompt_bytes": 1943,
+  "timestamp": "2026-11-11T18:21:22Z",
+  "history": [
+    {
+      "iteration": "1",
+      "phase": "rewrite",
+      "rewrite": "failed",
+      "gates": "UNVERIFIED",
+      "prompt_sha256": "ce4313b0b908139dba6896e70afbd2d55f7b0553edbdc276599ed8f6b06b653e",
+      "rewrite_sha256": "27a64d47c5e9a9580dcbf7da94ce805ec373ecf76171580616c3b4134db9f6c4"
+    },
+    {
+      "iteration": "2",
+      "phase": "rewrite",
+      "rewrite": "ok",
+      "gates": "FAIL",
+      "prompt_sha256": "a9099a764f1ed6fc07e49f13920c6cd07aecb3c23ed18d6db21d4f1b8425009c",
+      "rewrite_sha256": "1173ab857eda13c2a04c73af4cfd860f028cdc0865c359080ae695260ccf8374"
+    },
+    {
+      "iteration": "3",
+      "phase": "rewrite",
+      "rewrite": "failed",
+      "gates": "UNVERIFIED",
+      "prompt_sha256": "2aed930a53a0955121d3df0d87c999d8368e8fbdb8335e6742e33b55919dd41e",
+      "rewrite_sha256": "6870fe8962b05618cef6d7d3f255f0df7ea77215a0cbad85c25505c2798e2a5e"
+    },
+    {
+      "iteration": "4",
+      "phase": "rewrite",
+      "rewrite": "failed",
+      "gates": "UNVERIFIED",
+      "prompt_sha256": "5d2ec179d792ff045f6d4cd669d48d0f928b0f1658d367cf0b4b8a6fde1b5271",
+      "rewrite_sha256": "c509226dccfc361e3d4f7754ec8be09b24b6283ad0361434b9a52591cfdd79cf"
+    },
+    {
+      "iteration": "5",
+      "phase": "rewrite",
+      "rewrite": "ok",
+      "gates": "FAIL",
+      "prompt_sha256": "c84594a9f2aa16782cb91189f0a2ebdbf4201466f1d0c334ec2a511531792a6a",
+      "rewrite_sha256": "31726fb482d10a52f93b2c16c3748b8cc945253b5c3fa312bb3fa858c3ad170c"
+    },
+    {
+      "iteration": "6",
+      "phase": "rewrite",
+      "rewrite": "ok",
+      "gates": "PASS",
+      "prompt_sha256": "1180e83a12bf91a476c1ffb0353a18f0ff955cfa6a4c404f17f65988597e4d32",
+      "rewrite_sha256": "0b5dfa89e01ac4a579920fb549cd29833eee9c6efc62248870f89fbde34320f2"
+    },
+    {
+      "iteration": "6",
+      "phase": "confirm-1",
+      "rewrite": "failed",
+      "gates": "UNVERIFIED",
+      "prompt_sha256": "1180e83a12bf91a476c1ffb0353a18f0ff955cfa6a4c404f17f65988597e4d32",
+      "rewrite_sha256": ""
+    },
+    {
+      "iteration": "6",
+      "phase": "confirm-2",
+      "rewrite": "ok",
+      "gates": "PASS",
+      "prompt_sha256": "1180e83a12bf91a476c1ffb0353a18f0ff955cfa6a4c404f17f65988597e4d32",
+      "rewrite_sha256": ""
+    }
+  ],
+  "repairs": [
+    {
+      "model": "gemini-3.1-pro-preview",
+      "temperature": 0.2,
+      "attempts": 1,
+      "generated_sha256": "a9099a764f1ed6fc07e49f13920c6cd07aecb3c23ed18d6db21d4f1b8425009c",
+      "bytes": 1006,
+      "bullets": 7,
+      "sanitized_tokens": [],
+      "dropped_bullets": [],
+      "truncated": false,
+      "timestamp": "2026-11-11T18:13:22Z"
+    },
+    {
+      "model": "gemini-3.1-pro-preview",
+      "temperature": 0.2,
+      "attempts": 1,
+      "generated_sha256": "2aed930a53a0955121d3df0d87c999d8368e8fbdb8335e6742e33b55919dd41e",
+      "bytes": 1375,
+      "bullets": 8,
+      "sanitized_tokens": [],
+      "dropped_bullets": [],
+      "truncated": false,
+      "timestamp": "2026-11-11T18:14:58Z"
+    },
+    {
+      "model": "gemini-3.1-pro-preview",
+      "temperature": 0.2,
+      "attempts": 1,
+      "generated_sha256": "5d2ec179d792ff045f6d4cd669d48d0f928b0f1658d367cf0b4b8a6fde1b5271",
+      "bytes": 1527,
+      "bullets": 8,
+      "sanitized_tokens": [],
+      "dropped_bullets": [],
+      "truncated": false,
+      "timestamp": "2026-11-11T18:16:05Z"
+    },
+    {
+      "model": "gemini-3.1-pro-preview",
+      "temperature": 0.2,
+      "attempts": 1,
+      "generated_sha256": "c84594a9f2aa16782cb91189f0a2ebdbf4201466f1d0c334ec2a511531792a6a",
+      "bytes": 1796,
+      "bullets": 9,
+      "sanitized_tokens": [],
+      "dropped_bullets": [],
+      "truncated": false,
+      "timestamp": "2026-11-11T18:17:14Z"
+    },
+    {
+      "model": "gemini-3.1-pro-preview",
+      "temperature": 0.2,
+      "attempts": 1,
+      "generated_sha256": "1180e83a12bf91a476c1ffb0353a18f0ff955cfa6a4c404f17f65988597e4d32",
+      "bytes": 1943,
+      "bullets": 9,
+      "sanitized_tokens": [],
+      "dropped_bullets": [],
+      "truncated": false,
+      "timestamp": "2026-11-11T18:19:26Z"
+    }
+  ]
+}

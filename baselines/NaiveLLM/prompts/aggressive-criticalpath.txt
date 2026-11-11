@@ -1,6 +1,0 @@
-- Identify the dominant or hottest transaction and remove serialized round-trips on its critical path.
-- Optimize the hot transaction's queries, batching, and writes before touching less frequent paths.
-- Do not starve or regress the other transactions; keep their behavior and throughput intact.
-- Preserve ordering, null, and type semantics on the critical path.
-- Keep the same observable behavior and public interface everywhere.
-- Do not add new files or dependencies, and do not change the schema.

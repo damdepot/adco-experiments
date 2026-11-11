@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
-# One-time offline prompt search for the Naive-LLM app-layer baseline.
-# Usage: run_prompt_search.sh <benchmark: tpcc|smallbank> [dbms=postgres]
-#        [model=$MODEL|gemini-3.5-flash-lite] [reps=2]
+# Prompt repair loop for the Naive-LLM app-layer baseline.
 #
-# Evaluates the current naive prompt (control) plus every
-# baselines/NaiveLLM/prompts/*.txt on the real benchmark, scores each
-# (median TOTAL txn/s across reps), records the result, and prints the winner.
-# Scratch output lives under out/ (never results/): run_comparison.sh globs
-# results/**/*.csv recursively, so search runs must not leak into that tree.
-
+# Usage: run_prompt_search.sh <benchmark: tpcc> [dbms=postgres] [model]
+#
+# One mutable prompt, seeded from prompts/basis.txt:
+#   rewrite -> four correctness gates -> PASS twice => freeze; otherwise the
+#   failing gates plus the offending diff are fed back and the prompt is
+#   revised by a model. The frozen prompts/selected.txt is generated, never
+#   hand-edited.
+#
+# Env: MAX_ITERS (8), CONFIRM_TEMPERATURE (0.2), VERIFY_SEED_DB
+#      (tpcc_verify_seed), VERIFY_WAREHOUSES (1), VERIFY_DURATION (10),
+#      VERIFY_TIMEOUT (300), RESEED (0), SMOKE_SECS (10).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
@@ -19,131 +22,103 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 BENCHMARK="${1:-}"
 DBMS="${2:-postgres}"
 SEARCH_MODEL="${3:-${MODEL:-gemini-3.5-flash-lite}}"
-REPS="${4:-2}"
+IMPROVER_MODEL="${IMPROVER_MODEL:-${SEARCH_MODEL}}"
+MAX_ITERS="${MAX_ITERS:-8}"
+CONFIRM_TEMPERATURE="${CONFIRM_TEMPERATURE:-0.2}"
+CONFIRM_TRIES="${CONFIRM_TRIES:-3}"
+VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_verify_seed}"
+VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-1}"
+VERIFY_DURATION="${VERIFY_DURATION:-10}"
+SMOKE_SECS="${SMOKE_SECS:-10}"
+VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-300}"
 
-if [ "${BENCHMARK}" != "tpcc" ] && [ "${BENCHMARK}" != "smallbank" ]; then
-    echo "Usage: $(basename "$0") <benchmark: tpcc|smallbank> [dbms=postgres] [model] [reps=2]" >&2
+# The search must never touch the performance seed (tpcc_seed) or its scale.
+# It runs exclusively on the small verify seed and the working 'tpcc' DB
+# restored from it.
+if [ "${VERIFY_SEED_DB}" = "tpcc_seed" ]; then
+    echo "ERROR: the prompt search must use the verify seed (e.g. tpcc_verify_seed), not the performance seed 'tpcc_seed'." >&2
     exit 2
 fi
-if ! [[ "${REPS}" =~ ^[1-9][0-9]*$ ]]; then
-    echo "ERROR: reps must be a positive integer (got '${REPS}')" >&2
+
+PROMPT_DIR="${ROOT}/baselines/NaiveLLM/prompts"
+BASIS_FILE="${PROMPT_DIR}/basis.txt"
+SELECTED_FILE="${PROMPT_DIR}/selected.txt"
+META_FILE="${PROMPT_DIR}/selected.meta.json"
+IMPROVER="${ROOT}/scripts/common/app_layer/exp3_PromptSearch/improve_prompt.py"
+REWRITE_DRIVER="${ROOT}/scripts/common/app_layer/exp1_Baselines/runExperiment1-NaiveLLM.sh"
+VERIFIER="${ROOT}/scripts/tpcc/exp2_Correctness/run_verify.sh"
+
+if [ "${BENCHMARK}" != "tpcc" ]; then
+    echo "Usage: $(basename "$0") <benchmark: tpcc> [dbms=postgres] [model]" >&2
+    echo "Only tpcc has a correctness oracle; Smallbank is deferred." >&2
     exit 2
 fi
-
-if [ ! -x "${ROOT}/workload/apps/${BENCHMARK}/venv/bin/python" ]; then
-    echo "ERROR: ${BENCHMARK} workload venv missing; run ./run/setup/app-setup-workloads.sh" >&2
-    exit 1
+if ! [[ "${MAX_ITERS}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ERROR: MAX_ITERS must be a positive integer (got '${MAX_ITERS}')." >&2
+    exit 2
 fi
+if ! [[ "${CONFIRM_TRIES}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ERROR: CONFIRM_TRIES must be a positive integer (got '${CONFIRM_TRIES}')." >&2
+    exit 2
+fi
+for path in "${BASIS_FILE}" "${IMPROVER}" "${REWRITE_DRIVER}" "${VERIFIER}"; do
+    if [ ! -f "${path}" ]; then
+        echo "ERROR: missing ${path}" >&2
+        exit 1
+    fi
+done
 if [ ! -x "${ROOT}/baselines/NaiveLLM/venv/bin/python" ]; then
     echo "ERROR: NaiveLLM venv missing; run ./run/setup/app-setup-baselines.sh" >&2
     exit 1
 fi
+if [ ! -x "${ROOT}/workload/apps/tpcc/venv/bin/python" ]; then
+    echo "ERROR: TPC-C workload venv missing; run ./run/setup/app-setup-workloads.sh" >&2
+    exit 1
+fi
+if ! grep -q "VERIFY_SKIP_SEED_ASSERT" "${ROOT}/scripts/_lib/bench_lib.sh"; then
+    echo "ERROR: scripts/_lib/bench_lib.sh is outdated (missing VERIFY_SKIP_SEED_ASSERT)." >&2
+    echo "Sync the repo before running the prompt loop." >&2
+    exit 1
+fi
 
 bench_lock "${ROOT}"
+export BENCH_LOCK_HELD=1
+export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
+# Rewrites and their smoke runs use the small verify seed, never the full one.
+export SMOKE_SECS SMOKE_CLIENTS=1 TPCC_WAREHOUSES="${VERIFY_WAREHOUSES}"
 
-SCRATCH="out/app_layer/NaiveLLM-search-results"
-PROMPT_DIR="${ROOT}/baselines/NaiveLLM/prompts"
-REWRITE_DRIVER="${ROOT}/scripts/common/app_layer/exp1_Baselines/runExperiment1-NaiveLLM.sh"
-
-if [ "${BENCHMARK}" = "tpcc" ]; then
-    DB="tpcc"
-    SEED_DB="tpcc_seed"
-    SOURCE_PATH="workload/apps/tpcc"
-    ENTRY_FILE="tpcc.py"
-    RUNNER="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh"
-    export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
-    SEED_USED=""
+# --- verify seed (created once) --------------------------------------------
+echo "----------------->> Seed ${VERIFY_SEED_DB} (${VERIFY_WAREHOUSES} warehouses) <<-----------------"
+_seed_exists="$(psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname='${VERIFY_SEED_DB}'" 2>/dev/null || true)"
+if [ "${RESEED:-0}" = "1" ] || [[ "${_seed_exists}" != *1* ]]; then
+    bench_seed_once tpcc "${VERIFY_SEED_DB}"
 else
-    DB="smallbank"
-    SEED_DB="smallbank_seed"
-    SOURCE_PATH="workload/apps/smallbank"
-    ENTRY_FILE="main.py"
-    RUNNER="${ROOT}/scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh"
-    export BENCH_CMDRUNTPCC="${ROOT}/scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-Db.sh"
-    # Held-out workload seed for the search; the reported arm keeps the default 42.
-    export SMALLBANK_SEED=1337
-    SEED_USED="${SMALLBANK_SEED}"
+    echo "Reusing existing seed database '${VERIFY_SEED_DB}'."
+fi
+bench_assert_rows "${VERIFY_SEED_DB}" warehouse "${VERIFY_WAREHOUSES}"
+unset _seed_exists
+bench_fresh_db tpcc "${VERIFY_SEED_DB}"
+
+# --- scratch ---------------------------------------------------------------
+STAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
+SCRATCH="out/app_layer/NaiveLLM-search-results/${STAMP}"
+mkdir -p "${ROOT}/${SCRATCH}"
+HISTORY="${SCRATCH}/history.tsv"
+printf 'iteration\tphase\trewrite\tgates\tprompt_sha256\trewrite_sha256\n' > "${ROOT}/${HISTORY}"
+WORK_PROMPT="${SCRATCH}/prompt-iter-00.txt"
+cp "${BASIS_FILE}" "${ROOT}/${WORK_PROMPT}"
+
+# Schema table names plus workload terms must never appear in the guidance;
+# the frozen prompt has to generalize to any codebase.
+DENY_TOKENS="${DENY_TOKENS:-tpcc,smallbank,neworder,new_order,order_line,orderstatus,stocklevel,warehouse,district,customer,orders,item,stock,history,payment,delivery}"
+SCHEMA_FILE="${ROOT}/workload/apps/tpcc/tpcc.postgres.sql"
+if [ -f "${SCHEMA_FILE}" ]; then
+    schema_tokens="$(grep -oiE 'CREATE[[:space:]]+TABLE([[:space:]]+IF[[:space:]]+NOT[[:space:]]+EXISTS)?[[:space:]]+[A-Za-z_][A-Za-z0-9_]*' "${SCHEMA_FILE}" \
+        | awk '{print $NF}' | paste -sd, - || true)"
+    [ -n "${schema_tokens}" ] && DENY_TOKENS="${DENY_TOKENS},${schema_tokens}"
 fi
 
-# Pin the measurement conditions explicitly: workload runners read these before
-# sourcing bench_lib, so the values must already be in the environment.
-export REPS SMOKE_SECS="${SMOKE_SECS:-20}"
-if [ "${BENCHMARK}" = "tpcc" ]; then
-    export TPCC_DURATION TPCC_WARMUP TPCC_WAREHOUSES TPCC_CLIENTS
-else
-    export SMALLBANK_ACCOUNTS SMALLBANK_TRANSACTIONS SMALLBANK_CLIENTS
-    export SMALLBANK_WARMUP_ACCOUNTS SMALLBANK_WARMUP_TRANSACTIONS
-fi
-
-# Candidate ids: control (no prompt file) + sorted, non-empty prompt basenames.
-CANDIDATE_IDS=("control")
-if [ -d "${PROMPT_DIR}" ]; then
-    while IFS= read -r prompt_path; do
-        if [ -z "$(tr -d '[:space:]' < "${prompt_path}")" ]; then
-            echo "Skipping empty prompt: ${prompt_path}" >&2
-            continue
-        fi
-        candidate_id="$(basename "${prompt_path}" .txt)"
-        case "${candidate_id}" in
-            control)
-                echo "WARNING: skipping prompt '${prompt_path}' (id 'control' is reserved)." >&2
-                continue
-                ;;
-            selected-*)
-                # Promoted winners are outputs of a previous search, not candidates.
-                continue
-                ;;
-        esac
-        CANDIDATE_IDS+=("${candidate_id}")
-    done < <(find "${PROMPT_DIR}" -maxdepth 1 -type f -name '*.txt' -print | sort)
-else
-    echo "WARNING: prompt directory ${PROMPT_DIR} not found; searching control only." >&2
-fi
-
-# CANDIDATES=id1,id2 restricts the search to those ids (fast tests). Each id
-# must be 'control' or an existing, non-promoted prompt file.
-if [ -n "${CANDIDATES:-}" ]; then
-    CANDIDATE_IDS=()
-    IFS=',' read -ra requested_ids <<<"${CANDIDATES}"
-    for candidate_id in "${requested_ids[@]}"; do
-        candidate_id="${candidate_id// /}"
-        [ -z "${candidate_id}" ] && continue
-        case "${candidate_id}" in
-            control) ;;
-            selected-*|/*|*/*)
-                echo "ERROR: invalid candidate id '${candidate_id}' (promoted prompts are not candidates)." >&2
-                exit 2
-                ;;
-            *)
-                if [ ! -f "${PROMPT_DIR}/${candidate_id}.txt" ]; then
-                    echo "ERROR: candidate '${candidate_id}' has no prompt at ${PROMPT_DIR}/${candidate_id}.txt." >&2
-                    exit 2
-                fi
-                ;;
-        esac
-        CANDIDATE_IDS+=("${candidate_id}")
-    done
-    if [ "${#CANDIDATE_IDS[@]}" -eq 0 ]; then
-        echo "ERROR: CANDIDATES='${CANDIDATES}' listed no usable candidate ids." >&2
-        exit 2
-    fi
-fi
-
-# sha256 over the rewritten driver + entry file contents (whichever tool exists).
-combined_sha256() {
-    local driver="$1" entry="$2"
-    if [ ! -f "${driver}" ] || [ ! -f "${entry}" ]; then
-        return 0
-    fi
-    if command -v sha256sum >/dev/null 2>&1; then
-        cat "${driver}" "${entry}" | sha256sum | awk '{print $1}'
-    else
-        cat "${driver}" "${entry}" | shasum -a 256 | awk '{print $1}'
-    fi
-}
-
-# sha256 of one file (whichever tool exists).
-file_sha256() {
+sha256_file() {
     if command -v sha256sum >/dev/null 2>&1; then
         sha256sum "$1" | awk '{print $1}'
     else
@@ -151,203 +126,250 @@ file_sha256() {
     fi
 }
 
-mkdir -p "${ROOT}/${SCRATCH}"
-SCORES_TSV="${ROOT}/${SCRATCH}/scores.tsv"
-: > "${SCORES_TSV}"
+json_status() {
+    python3 - "$1" <<'PY'
+import json, sys
+try:
+    with open(sys.argv[1], encoding="utf-8") as handle:
+        document = json.load(handle)
+except (OSError, ValueError):
+    print("UNVERIFIED")
+    raise SystemExit
+print(str(document.get("status") or "UNVERIFIED").upper())
+PY
+}
 
-echo "----------------->> Prompt search: ${BENCHMARK} (${DBMS}), model=${SEARCH_MODEL}, reps=${REPS}, seed_db=${SEED_DB}${SEED_USED:+, smallbank_seed=${SEED_USED}} <<-----------------"
-echo "----------------->> Seed ${BENCHMARK} (reuse snapshot) <<-----------------"
-bench_ensure_seed "${DB}" "${SEED_DB}"
-# First rewrite smoke needs a live dataset; later candidates run on its dirt,
-# which is fine (the smoke only checks for transaction errors).
-bench_fresh_db "${DB}" "${SEED_DB}"
+build_feedback() {
+    python3 - "$1" "$2" "$3" "$4" "$5" <<'PY'
+import json, os, sys
+out, rewrite_status, rewrite_log, verify_json, smoke_log = sys.argv[1:6]
+verify = None
+if verify_json and os.path.exists(verify_json):
+    try:
+        with open(verify_json, encoding="utf-8") as handle:
+            verify = json.load(handle)
+    except (OSError, ValueError):
+        verify = None
+tail = ""
+if rewrite_log and os.path.exists(rewrite_log):
+    with open(rewrite_log, encoding="utf-8", errors="replace") as handle:
+        tail = handle.read()[-2000:]
+smoke_errors = []
+if smoke_log and os.path.exists(smoke_log):
+    seen = set()
+    with open(smoke_log, encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            if "WARNING:" not in line and "ERROR" not in line and "Traceback" not in line:
+                continue
+            message = line.strip()
+            if message in seen:
+                continue
+            seen.add(message)
+            smoke_errors.append(message)
+            if len(smoke_errors) >= 15:
+                break
+with open(out, "w", encoding="utf-8") as handle:
+    json.dump({"rewrite_status": rewrite_status,
+               "rewrite_log_tail": tail,
+               "smoke_errors": smoke_errors,
+               "verify": verify}, handle, indent=2)
+    handle.write("\n")
+PY
+}
 
-for candidate_id in "${CANDIDATE_IDS[@]}"; do
-    echo "----------------->> [${BENCHMARK}] candidate ${candidate_id} <<-----------------"
-
-    candidate_rel="${SCRATCH}/candidates/${candidate_id}"
-    scores_dir="${ROOT}/${SCRATCH}/scores/${candidate_id}"
-    rm -rf "${ROOT}/${candidate_rel}" "${scores_dir}"
-    mkdir -p "${scores_dir}"
-
-    export NAIVE_REWRITE_ROOT="${candidate_rel}"
-    if [ "${candidate_id}" = "control" ]; then
-        unset PROMPT_FILE
-        prompt_field="control"
-    else
-        export PROMPT_FILE="${PROMPT_DIR}/${candidate_id}.txt"
-        prompt_field="${PROMPT_FILE}"
-    fi
-
-    status="failed"
-    score=""
-    csv_path=""
-    arm="search-${candidate_id}"
-
-    if ! "${REWRITE_DRIVER}" "${SOURCE_PATH}" "${DBMS}" "${BENCHMARK}" "${SEARCH_MODEL}"; then
-        echo "WARNING: rewrite/smoke failed for candidate '${candidate_id}'; skipping measurement." >&2
-    elif bench_fresh_db "${DB}" "${SEED_DB}"; then
-        rm -f "${scores_dir}/${arm}.csv" "${scores_dir}/${arm}"_r*.csv
-        run_ok=1
-        if [ "${BENCHMARK}" = "tpcc" ]; then
-            PHASE=execute BENCH_RESULTS_DIR="${scores_dir}" "${RUNNER}" \
-                "${DBMS}" "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" "${BENCHMARK}" "${arm}" || run_ok=0
-        else
-            PHASE=execute BENCH_RESULTS_DIR="${scores_dir}" "${RUNNER}" \
-                "${DBMS}" "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" "${BENCHMARK}" "${arm}" || run_ok=0
+write_diff() {
+    local out="$1" tree_rel="$2" rel orig new
+    : > "${out}"
+    for rel in drivers/postgresdriver.py tpcc.py; do
+        orig="${ROOT}/workload/apps/tpcc/${rel}"
+        new="${ROOT}/${tree_rel}/${rel}"
+        if [ -f "${orig}" ] && [ -f "${new}" ]; then
+            diff -u "${orig}" "${new}" >> "${out}" || true
         fi
+    done
+    head -c 8000 "${out}" > "${out}.cut" && mv "${out}.cut" "${out}"
+}
 
-        if [ "${run_ok}" -ne 1 ]; then
-            echo "WARNING: workload failed for candidate '${candidate_id}'." >&2
-        else
-            CSVS=()
-            if [ "${REPS}" -eq 1 ]; then
-                candidate_csv="${scores_dir}/${arm}.csv"
-                if [ -f "${candidate_csv}" ]; then
-                    CSVS+=("${candidate_csv}")
-                fi
-            else
-                for candidate_csv in "${scores_dir}/${arm}"_r*.csv; do
-                    if [ -f "${candidate_csv}" ]; then
-                        CSVS+=("${candidate_csv}")
-                    fi
-                done
-            fi
+run_rewrite() {
+    local prompt="$1" dir_rel="$2" log="$3" temperature="${4:-}" rc=0
+    TEMPERATURE="${temperature}" NAIVE_REWRITE_ROOT="${dir_rel}" PROMPT_FILE="${prompt}" \
+        bash "${REWRITE_DRIVER}" workload/apps/tpcc "${DBMS}" tpcc "${SEARCH_MODEL}" \
+        >"${log}" 2>&1 || rc=$?
+    return "${rc}"
+}
 
-            if [ "${#CSVS[@]}" -eq 0 ]; then
-                echo "WARNING: no CSV produced for candidate '${candidate_id}'." >&2
-            else
-                VALS=()
-                parse_ok=1
-                for candidate_csv in "${CSVS[@]}"; do
-                    if ! value="$(total_of "${candidate_csv}")"; then
-                        parse_ok=0
-                        break
-                    fi
-                    VALS+=("${value}")
-                done
-                if [ "${parse_ok}" -eq 1 ] && [ "${#VALS[@]}" -gt 0 ]; then
-                    score="$(median_of "${VALS[@]}")"
-                    status="ok"
-                    csv_path="$(IFS=,; echo "${CSVS[*]}")"
-                fi
-            fi
-        fi
-    else
-        echo "WARNING: fresh DB restore failed for candidate '${candidate_id}'." >&2
+verify_tree() {
+    local arm="$1" dir_rel="$2"
+    mkdir -p "${ROOT}/${dir_rel}/smoke/benchmarks"
+    BENCH_LOCK_HELD=1 REVERIFY=1 \
+        VERIFY_SKIP_SEED=1 VERIFY_SKIP_SEED_ASSERT=1 \
+        VERIFY_SEED_DB="${VERIFY_SEED_DB}" \
+        VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES}" \
+        VERIFY_DURATION="${VERIFY_DURATION}" \
+        RESTORE_RESTART=0 BENCH_SKIP_SETTLE=1 \
+        VERIFY_REWRITE_ROOT="${dir_rel}" \
+        VERIFY_CSV="${ROOT}/${dir_rel}/smoke/${arm}.csv" \
+        BENCH_RESULTS_DIR="${ROOT}/${dir_rel}/smoke/benchmarks" \
+        VERIFY_OUTPUT="${ROOT}/${dir_rel}/verify.json" \
+        timeout --kill-after=5 "${VERIFY_TIMEOUT}" \
+        bash "${VERIFIER}" "${DBMS}" "${arm}" \
+        >"${ROOT}/${dir_rel}/verify.log" 2>&1 || true
+}
+
+# One rewrite + verify attempt. Echoes "<rewrite>\t<gates>".
+attempt() {
+    local prompt="$1" dir_rel="$2" temperature="${3:-}"
+    local tree_rel rw="ok" gates="UNVERIFIED"
+    tree_rel="${dir_rel}/Rewrite/${DBMS}/tpcc-NaiveLLM"
+    mkdir -p "${ROOT}/${dir_rel}"
+    cp "${prompt}" "${ROOT}/${dir_rel}/prompt.txt"
+    if ! run_rewrite "${ROOT}/${dir_rel}/prompt.txt" "${dir_rel}" "${ROOT}/${dir_rel}/rewrite.log" "${temperature}"; then
+        rw="failed"
     fi
+    if [ "${rw}" = "ok" ] && [ ! -f "${ROOT}/${tree_rel}/drivers/postgresdriver.py" ]; then
+        rw="missing"
+    fi
+    if [ "${rw}" = "ok" ]; then
+        verify_tree "prompt-repair-${dir_rel##*/}" "${dir_rel}"
+        gates="$(json_status "${ROOT}/${dir_rel}/verify.json")"
+    fi
+    printf '%s\t%s\n' "${rw}" "${gates}"
+}
 
-    rewritten_root="${ROOT}/${candidate_rel}/Rewrite/${DBMS}/${BENCHMARK}-NaiveLLM"
-    sha="$(combined_sha256 "${rewritten_root}/drivers/postgresdriver.py" "${rewritten_root}/${ENTRY_FILE}")"
+echo "----------------->> Prompt repair: ${BENCHMARK} (${DBMS}), model=${SEARCH_MODEL}, improver=${IMPROVER_MODEL}, seed=${VERIFY_SEED_DB}, max_iterations=${MAX_ITERS} <<-----------------"
+echo "Seed prompt: ${BASIS_FILE}"
 
+seen=""
+frozen=0
+final_iter=""
+
+for ((i = 1; i <= MAX_ITERS; i++)); do
+    idx="$(printf '%02d' "${i}")"
+    prompt_sha="$(sha256_file "${ROOT}/${WORK_PROMPT}")"
+
+    case " ${seen} " in
+        *" ${prompt_sha} "*)
+            echo "ERROR: revised prompt repeats an earlier one (sha ${prompt_sha}); the improver is stalled." >&2
+            echo "Scratch: ${SCRATCH}" >&2
+            exit 3
+            ;;
+    esac
+    seen="${seen} ${prompt_sha}"
+
+    iter_rel="${SCRATCH}/iter-${idx}"
+    IFS=$'\t' read -r rw_status gate_status < <(attempt "${ROOT}/${WORK_PROMPT}" "${iter_rel}" "")
+    echo "iteration ${i}/${MAX_ITERS}: rewrite=${rw_status} gates=${gate_status}"
+    tree_rel="${iter_rel}/Rewrite/${DBMS}/tpcc-NaiveLLM"
+    rewrite_sha=""
+    if [ -f "${ROOT}/${tree_rel}/drivers/postgresdriver.py" ]; then
+        rewrite_sha="$(cat "${ROOT}/${tree_rel}/drivers/postgresdriver.py" "${ROOT}/${tree_rel}/tpcc.py" 2>/dev/null \
+            | { command -v sha256sum >/dev/null 2>&1 && sha256sum || shasum -a 256; } | awk '{print $1}')"
+    fi
     printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
-        "${candidate_id}" "${status}" "${score}" "${csv_path}" "${prompt_field}" "${sha}" \
-        >> "${SCORES_TSV}"
+        "${i}" "rewrite" "${rw_status}" "${gate_status}" "${prompt_sha}" "${rewrite_sha}" >> "${ROOT}/${HISTORY}"
 
-    echo "----------------->> [${BENCHMARK}] candidate ${candidate_id}: ${status}${score:+ (${score} txn/s)} <<-----------------"
+    if [ "${gate_status}" = "PASS" ]; then
+        # Resample the same prompt before touching it: rewriting is not
+        # deterministic even at temperature 0, so one bad resample must not
+        # discard a prompt that already passed.
+        for ((t = 1; t <= CONFIRM_TRIES; t++)); do
+            confirm_rel="${iter_rel}-confirm-${t}"
+            IFS=$'\t' read -r confirm_rw confirm_gates < <(attempt "${ROOT}/${WORK_PROMPT}" "${confirm_rel}" "${CONFIRM_TEMPERATURE}")
+            echo "iteration ${i}: confirmation ${t}/${CONFIRM_TRIES} (temperature ${CONFIRM_TEMPERATURE}): rewrite=${confirm_rw} gates=${confirm_gates}"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+                "${i}" "confirm-${t}" "${confirm_rw}" "${confirm_gates}" "${prompt_sha}" "" >> "${ROOT}/${HISTORY}"
+            if [ "${confirm_gates}" = "PASS" ]; then
+                frozen=1
+                final_iter="${i}"
+                break 2
+            fi
+            iter_rel="${confirm_rel}"
+            rw_status="${confirm_rw}"
+            gate_status="${confirm_gates}"
+        done
+    fi
+
+    echo "----------------->> iteration ${i}: repairing prompt <<-----------------"
+    build_feedback "${ROOT}/${iter_rel}/feedback.json" "${rw_status}" \
+        "${ROOT}/${iter_rel}/rewrite.log" "${ROOT}/${iter_rel}/verify.json" \
+        "${ROOT}/${iter_rel}/Rewrite/${DBMS}/smoke.log"
+    write_diff "${ROOT}/${iter_rel}/diff.txt" "${iter_rel}/Rewrite/${DBMS}/tpcc-NaiveLLM"
+    next_prompt="${SCRATCH}/prompt-iter-$(printf '%02d' $((i + 1))).txt"
+    if ! "${ROOT}/baselines/NaiveLLM/venv/bin/python" "${IMPROVER}" \
+        --current "${ROOT}/${WORK_PROMPT}" \
+        --output "${ROOT}/${next_prompt}" \
+        --feedback "${ROOT}/${iter_rel}/feedback.json" \
+        --diff "${ROOT}/${iter_rel}/diff.txt" \
+        --deny "${DENY_TOKENS}" \
+        --model "${IMPROVER_MODEL}" \
+        --meta "${ROOT}/${iter_rel}/prompt.meta.json"; then
+        echo "ERROR: prompt repair failed at iteration ${i}. Scratch: ${SCRATCH}" >&2
+        exit 1
+    fi
+    WORK_PROMPT="${next_prompt}"
 done
 
-SEARCH_JSON="${ROOT}/${SCRATCH}/search-${BENCHMARK}.json"
-TIMESTAMP="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+if [ "${frozen}" -ne 1 ]; then
+    echo "ERROR: no prompt passed twice within ${MAX_ITERS} iterations." >&2
+    echo "Last prompt: ${WORK_PROMPT}" >&2
+    echo "Scratch: ${SCRATCH}" >&2
+    exit 3
+fi
 
-if ! winner_line="$(python3 - "${SCORES_TSV}" "${SEARCH_JSON}" "${BENCHMARK}" "${DBMS}" \
-    "${SEARCH_MODEL}" "${REPS}" "${SEED_USED}" "${TIMESTAMP}" <<'PY'
-import json
-import sys
+cp "${ROOT}/${WORK_PROMPT}" "${SELECTED_FILE}"
+python3 - "${META_FILE}" "${SELECTED_FILE}" "${ROOT}/${HISTORY}" "${SEARCH_MODEL}" \
+    "${IMPROVER_MODEL}" "${CONFIRM_TEMPERATURE}" "${VERIFY_SEED_DB}" "${VERIFY_WAREHOUSES}" \
+    "${final_iter}" "${ROOT}/${SCRATCH}" <<'PY'
+import glob, hashlib, json, os, sys
+from datetime import datetime, timezone
 
-tsv_path, json_path, benchmark, dbms, model, reps, seed, timestamp = sys.argv[1:9]
-candidates = []
-with open(tsv_path, encoding="utf-8") as handle:
+meta_path, selected, history, model, improver_model, temperature, seed_db, warehouses, iterations, scratch = sys.argv[1:11]
+with open(selected, "rb") as handle:
+    prompt_bytes = handle.read()
+
+rows = []
+with open(history, encoding="utf-8") as handle:
+    header = handle.readline().rstrip("\n").split("\t")
     for line in handle:
-        line = line.rstrip("\n")
-        if not line:
-            continue
-        parts = line.split("\t")
-        while len(parts) < 6:
-            parts.append("")
-        cid, status, score, csv_path, prompt, sha = parts[:6]
-        candidates.append({
-            "id": cid,
-            "status": status,
-            "score": float(score) if score else None,
-            "csv": csv_path or None,
-            "prompt": prompt or None,
-            "sha256": sha or None,
-        })
+        row = line.rstrip("\n").split("\t")
+        if len(row) == len(header):
+            rows.append(dict(zip(header, row)))
+
+repairs = []
+for repair_path in sorted(glob.glob(os.path.join(scratch, "iter-*", "prompt.meta.json"))):
+    try:
+        with open(repair_path, encoding="utf-8") as handle:
+            repairs.append(json.load(handle))
+    except (OSError, ValueError):
+        continue
 
 document = {
-    "benchmark": benchmark,
-    "dbms": dbms,
+    "generated": True,
+    "status": "pass",
+    "benchmark": "tpcc",
     "model": model,
-    "reps": int(reps),
-    "smallbank_seed": int(seed) if seed else None,
-    "timestamp": timestamp,
-    "candidates": candidates,
+    "improver_model": improver_model,
+    "iterations": int(iterations),
+    "confirm_temperature": float(temperature),
+    "verify_seed_db": seed_db,
+    "verify_warehouses": int(warehouses),
+    "prompt_file": os.path.relpath(selected),
+    "prompt_sha256": hashlib.sha256(prompt_bytes).hexdigest(),
+    "prompt_bytes": len(prompt_bytes),
+    "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "history": rows,
+    "repairs": repairs,
 }
-with open(json_path, "w", encoding="utf-8") as handle:
+with open(meta_path, "w", encoding="utf-8") as handle:
     json.dump(document, handle, indent=2)
     handle.write("\n")
-
-scored = [c for c in candidates if c["status"] == "ok" and c["score"] is not None]
-if not scored:
-    sys.exit(3)
-# Highest median TOTAL rate wins; exact ties go to the smallest id.
-scored.sort(key=lambda c: (-c["score"], c["id"]))
-print("{}\t{}".format(scored[0]["id"], scored[0]["score"]))
-PY
-)"; then
-    echo "ERROR: no candidate produced a successful score (see ${SCRATCH}/search-${BENCHMARK}.json)." >&2
-    exit 1
-fi
-
-winner="${winner_line%%$'\t'*}"
-winner_score="${winner_line#*$'\t'}"
-promoted="${PROMPT_DIR}/selected-${BENCHMARK}.txt"
-
-# The search selects by throughput only. Correctness of the chosen prompt is
-# checked separately by the robustness harness (small verify seed), not here.
-SELECTED="${ROOT}/${SCRATCH}/selected-${BENCHMARK}.txt"
-if [ "${winner}" = "control" ]; then
-    : > "${SELECTED}"
-else
-    cp "${PROMPT_DIR}/${winner}.txt" "${SELECTED}"
-fi
-if [ "${BENCHMARK}" = "tpcc" ]; then
-    # Auto-promoted: the file above is the selected winner prompt from
-    # ${SCRATCH}/candidates/<winner>/ (an empty file is valid: unguided).
-    cp "${SELECTED}" "${promoted}"
-fi
-
-# Winner + provenance in the search JSON: rewrite hash from the scores TSV,
-# sha256 of the promoted prompt file (empty file for 'control').
-winner_sha256="$(awk -F'\t' -v id="${winner}" '$1 == id { print $6; exit }' "${SCORES_TSV}")"
-prompt_sha256="$(file_sha256 "${SELECTED}")"
-python3 - "${SEARCH_JSON}" "${winner}" "${winner_sha256}" "${prompt_sha256}" <<'PY'
-import json
-import sys
-
-path, winner, rewrite_sha, prompt_sha = sys.argv[1:5]
-with open(path, encoding="utf-8") as handle:
-    document = json.load(handle)
-document["winner"] = winner
-document["winner_sha256"] = rewrite_sha or None
-document["prompt_sha256"] = prompt_sha or None
-with open(path, "w", encoding="utf-8") as handle:
-    json.dump(document, handle, indent=2)
-    handle.write("\n")
+print("frozen prompt: {} ({} bytes, sha {})".format(
+    os.path.relpath(selected), len(prompt_bytes), document["prompt_sha256"]))
 PY
 
 echo
-echo "----------------->> Scores (${BENCHMARK}, median TOTAL txn/s) <<-----------------"
-printf '%-32s %-8s %12s\n' "candidate" "status" "txn/s"
-awk -F'\t' '{ score = $3; if (score == "") score = "-"; printf "%-32s %-8s %12s\n", $1, $2, score }' "${SCORES_TSV}"
-
-echo
-echo "Winner: ${winner} (${winner_score} txn/s)"
-echo "JSON:   ${SCRATCH}/search-${BENCHMARK}.json"
-echo "Prompt: ${SCRATCH}/selected-${BENCHMARK}.txt"
-echo "Promote with:"
-echo "  cp \"${SCRATCH}/selected-${BENCHMARK}.txt\" \"${promoted}\""
-if [ "${BENCHMARK}" = "tpcc" ]; then
-    echo "  (already promoted automatically; correctness is checked by the robustness harness)"
-fi
+echo "Frozen:  ${SELECTED_FILE}"
+echo "Meta:    ${META_FILE}"
+echo "Scratch: ${SCRATCH}"
+echo "Next:    ./run/tpcc/run_naive-llm.sh          # measure"
+echo "         ./run/tpcc/run_naive-llm-robustness.sh  # re-verify the frozen prompt"
