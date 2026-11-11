@@ -405,7 +405,9 @@ _bench_timer_record() {
 }
 
 psql() {
-    docker exec -i -u postgres "${BENCH_DB_CONTAINER}" psql -v ON_ERROR_STOP=1 -q "$@"
+    # No -i: verify children run under timeout/tee and an attached stdin can
+    # make docker exec wait forever. -X ignores .psqlrc; -w never prompts.
+    docker exec -u postgres "${BENCH_DB_CONTAINER}" psql -X -w -v ON_ERROR_STOP=1 -q "$@"
 }
 
 total_of() {
