@@ -64,6 +64,10 @@ bench_reset() {
 # Wait (bounded to 60s) for autovacuum workers to quiesce, then hold SETTLE_SECS
 # so both arms are measured from a comparably settled dataset.
 bench_settle() {
+    if [ "${BENCH_SKIP_SETTLE:-0}" = "1" ]; then
+        echo "bench_settle: skipped (BENCH_SKIP_SETTLE=1)"
+        return 0
+    fi
     local elapsed=0
     local n=1
     while [ "${elapsed}" -lt 60 ]; do
@@ -145,9 +149,16 @@ bench_snapshot() {
 bench_restore() {
     local db="$1"
     local seed="$2"
+    # A killed verify/app can leave sessions on the target or, more subtly, on
+    # the template; CREATE DATABASE ... TEMPLATE then waits forever. The lock
+    # guarantees a single writer, so terminate both before restoring.
+    psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('${db}', '${seed}') AND pid <> pg_backend_pid();" >/dev/null 2>&1 || true
     psql -d postgres -c "DROP DATABASE IF EXISTS \"${db}\" WITH (FORCE);"
     psql -d postgres -c "CREATE DATABASE \"${db}\" TEMPLATE \"${seed}\";"
     echo "-------------------<< Database restored: '${db}' from snapshot '${seed}' >>-------------------"
+    if [ "${BENCH_SKIP_SETTLE:-0}" = "1" ]; then
+        return 0
+    fi
     "${BENCH_CMDDOCKER}" Checkpoint "${BENCH_DB_CONTAINER}"
     bench_settle
 }
@@ -158,6 +169,12 @@ bench_restore() {
 # shortcut: full VACUUM (not per-table); upgrade to per-table if this gets slow.
 bench_warmup_settle() {
     local db="${1:-${BENCH_REP_DB:-tpcc}}"
+    if [ "${BENCH_SKIP_SETTLE:-0}" = "1" ]; then
+        echo "bench_settle: skipped (BENCH_SKIP_SETTLE=1)"
+        _BENCH_WARMUP_SETTLED=1
+        _BENCH_WARMUP_DB="${db}"
+        return 0
+    fi
     export BENCH_REP=0
     psql -d "${db}" -c "VACUUM (ANALYZE);"
     "${BENCH_CMDDOCKER}" Checkpoint "${BENCH_DB_CONTAINER}"
@@ -490,10 +507,14 @@ bench_verify_arm() {
     local db="$2"
     local seed="$3"
     local warehouses="$4"
+    echo "-------------------<< Verify: checking seed '${seed}' >>-------------------"
     bench_assert_seed "${seed}"
+    echo "-------------------<< Verify: restoring '${db}' from '${seed}' >>-------------------"
     bench_restore "${db}" "${seed}"
+    echo "-------------------<< Verify: resetting knobs >>-------------------"
     restore_defaults
     bench_assert_fresh_knobs
+    echo "-------------------<< Verify: checking row scale >>-------------------"
     bench_assert_rows "${db}" "warehouse" "${warehouses}"
     echo "-------------------<< Verify: arm '${arm}' on pristine '${db}' (${warehouses} warehouses) >>-------------------"
 }

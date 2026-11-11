@@ -39,6 +39,8 @@ def _summary(**kw):
         "counts": {"pass": 9, "fail": 1, "warn": 0, "unverified": 0},
         "status": "FAIL", "incorrect_rate": 0.1, "wilson_ci95": [0.02, 0.40],
         "distinct_outputs": 6, "measured_artifact": None,
+        "verify_seed_db": "tpcc_verify_seed", "verify_warehouses": 10,
+        "verify_duration": 10,
         "runs": [{"run": i, "kind": "fresh", "sha256": "s", "rewrite_status": "ok",
                   "changed": 1, "restored": 0,
                   "verify_status": "FAIL" if i == 4 else "PASS",
@@ -76,6 +78,9 @@ def test_loader_prefers_robustness_summary():
     assert n['incorrect_rate'] == 0.1
     assert len(n['run_details']) == 10
     assert n['measured_artifact'] is None
+    assert n['verify_seed_db'] == "tpcc_verify_seed"
+    assert n['verify_warehouses'] == 10
+    assert n['verify_duration'] == 10
 
 
 def test_loader_maps_warn_to_suspect():
@@ -90,6 +95,9 @@ def test_loader_falls_back_to_single_run_verify():
         info = load_correctness_statuses(_tree(tmp), 'tpcc', SYSTEMS)['aco']
     assert info['status'] == 'PASS' and info['fallback'] is True
     assert info['runs'] == 1
+    assert info['verify_seed_db'] is None
+    assert info['verify_warehouses'] is None
+    assert info['verify_duration'] is None
     assert correctness_cell(info) == '1-run PASS'
 
 
@@ -152,8 +160,8 @@ def test_rendered_report_has_correctness_table_and_columns():
 
     assert '## Correctness' in md
     assert '| Arm | Runs | PASS | FAIL | SUSPECT | UNVERIFIED | Distinct rewrites | Measured | Status |' in md
-    assert '| Naive-LLM | 10 | 9 | 1 | 0 | 0 | 6 | - | FAIL |' in md
-    assert '| ADCo | 10 | 9 | 0 | 1 | 0 | 3 | FAIL | SUSPECT |' in md
+    assert '| Naive-LLM | 10 (10wh) | 9 | 1 | 0 | 0 | 6 | - | FAIL |' in md
+    assert '| ADCo | 10 (10wh) | 9 | 0 | 1 | 0 | 3 | FAIL | SUSPECT |' in md
     assert '| ACo | 1 (single run) | 1 | 0 | 0 | 0 | - | PASS | PASS |' in md
     assert '| Default | - | 0 | 0 | 0 | 0 | - | - | UNVERIFIED |' in md
     # Both performance tables get a per-arm Correctness column after Speedup /

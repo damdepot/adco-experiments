@@ -8,6 +8,7 @@
 # (used by the prompt-search winner gate); VERIFY_OUTPUT overrides the JSON path.
 set -euo pipefail
 
+export BENCH_SKIP_SETTLE="${BENCH_SKIP_SETTLE:-0}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
@@ -35,6 +36,9 @@ esac
 model="${MODEL:-gemini-3.5-flash-lite}"
 SEED_DB_TPCC="tpcc_seed"
 DB="tpcc"
+VERIFY_SEED_DB="${VERIFY_SEED_DB:-$SEED_DB_TPCC}"
+VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-$TPCC_WAREHOUSES}"
+echo "----------------->> Verify seed/scale: seed='${VERIFY_SEED_DB}' warehouses='${VERIFY_WAREHOUSES}' <<-----------------"
 CHECKER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tpcc_correctness.py"
 BASELINE_DRIVER="${ROOT}/workload/apps/tpcc/drivers/postgresdriver.py"
 
@@ -49,14 +53,15 @@ export PGOPTIONS="${PGOPTIONS:--c statement_timeout=300000 -c lock_timeout=60000
 
 # Tiny-scale smoke on the existing seed (same scale as full runs; reseeding at a
 # smaller scale would destroy the shared seed). Warmup off, one rep.
+export VERIFY_DURATION="${VERIFY_DURATION:-20}"
 export TPCC_CLIENTS=1 TPCC_DURATION="${VERIFY_DURATION:-20}" REPS=1 TPCC_WARMUP=0 PHASE=execute
 
 # A caller holding the benchmark lock (search/robustness orchestrators) has
 # already ensured and asserted the seed; skip the redundant Docker/psql probe.
 if [ "${VERIFY_SKIP_SEED:-0}" != "1" ] && [ "${BENCH_LOCK_HELD:-0}" != "1" ]; then
     echo "----------------->> Seed tpcc (reuse snapshot) <<-----------------"
-    bench_ensure_seed "${DB}" "${SEED_DB_TPCC}"
-    bench_assert_seed "${SEED_DB_TPCC}"
+    bench_ensure_seed "${DB}" "${VERIFY_SEED_DB}"
+    bench_assert_seed "${VERIFY_SEED_DB}"
 else
     echo "----------------->> Seed tpcc: parent ensured; per-run restore follows <<-----------------"
 fi
@@ -65,7 +70,7 @@ fi
 # With VERIFY_REWRITE_ROOT set, any arm name maps to that Naive-LLM-style tree.
 arm_spec() {
     if [ -n "${VERIFY_REWRITE_ROOT:-}" ]; then
-        echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc ${1} ${VERIFY_REWRITE_ROOT}|${ROOT}/${VERIFY_REWRITE_ROOT}/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|${VERIFY_CSV}"
+        echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${VERIFY_WAREHOUSES} 1 tpcc ${1} ${VERIFY_REWRITE_ROOT}|${ROOT}/${VERIFY_REWRITE_ROOT}/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|${VERIFY_CSV}"
         return 0
     fi
     case "$1" in
@@ -141,7 +146,7 @@ verify_one_arm() {
         return 0
     fi
 
-    bench_verify_arm "${arm}" "${DB}" "${SEED_DB_TPCC}" "${TPCC_WAREHOUSES}"
+    bench_verify_arm "${arm}" "${DB}" "${VERIFY_SEED_DB}" "${VERIFY_WAREHOUSES}"
 
     # Pristine-state canary: a restore must yield loader-fresh data (d_next =
     # 3001 everywhere, one history row per customer). A silent restore failure
@@ -150,7 +155,7 @@ verify_one_arm() {
         echo "ERROR: non-pristine '${DB}' after restore (d_next_o_id already advanced); refusing to measure." >&2
         return 1
     fi
-    if [ "$(psql -d "${DB}" -tA -c "SELECT count(*) FROM history;" 2>/dev/null)" != "$((30000 * TPCC_WAREHOUSES))" ]; then
+    if [ "$(psql -d "${DB}" -tA -c "SELECT count(*) FROM history;" 2>/dev/null)" != "$((30000 * VERIFY_WAREHOUSES))" ]; then
         echo "ERROR: non-pristine '${DB}' after restore (history count off); refusing to measure." >&2
         return 1
     fi
@@ -185,9 +190,9 @@ verify_one_arm() {
         arm_tree="$(cd "$(dirname "${driver}")/.." && pwd)"
         (cd "${arm_tree}" && timeout "${PROBE_TIMEOUT:-120}" "${VENV_PY}" "${PROBE}" --dbms "${DBMS}" --config "${DBCONFIG}" >"${probe_arm}" 2>"${tmp}/probe_arm.err") || echo "WARNING: rewrite read probe failed for '${arm}'." >&2
     fi
-    echo "----------------->> ${arm}: smoke (${TPCC_DURATION}s, 1 client) <<-----------------"
+    echo "----------------->> ${arm}: smoke (${VERIFY_DURATION:-20}s, 1 client) <<-----------------"
     # shellcheck disable=SC2086
-    timeout "$(( ${TPCC_DURATION:-20} + 240 ))" ./"${runner}" ${rargs} >"${tmp}/smoke.log" 2>&1 || echo "WARNING: smoke run failed for '${arm}' (see ${out})." >&2
+    timeout "$(( ${VERIFY_DURATION:-20} + 240 ))" ./"${runner}" ${rargs} >"${tmp}/smoke.log" 2>&1 || echo "WARNING: smoke run failed for '${arm}' (see ${out})." >&2
     smoke_csv="${csv}"
     if [ ! -f "${smoke_csv}" ] && [ -n "${BENCH_RESULTS_DIR:-}" ]; then
         smoke_csv="${BENCH_RESULTS_DIR}/$(basename "${csv}")"

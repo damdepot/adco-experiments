@@ -25,8 +25,12 @@ DBMS_ARG="${2:-postgres}"
 MODEL_ARG="${3:-${MODEL:-gemini-3.5-flash-lite}}"
 VERBOSE="${VERBOSE:-0}"
 # The rewrite driver's own pre-smoke defaults to 60s; the verifier runs its own
-# 20s smoke, so keep the pre-check short. Override with SMOKE_SECS.
-export SMOKE_SECS="${SMOKE_SECS:-20}"
+# short smoke, so keep the pre-check short. Override with SMOKE_SECS.
+export SMOKE_SECS="${SMOKE_SECS:-10}"
+export VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_verify_seed}"
+export VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-10}"
+export VERIFY_DURATION="${VERIFY_DURATION:-10}"
+export BENCH_SKIP_SETTLE="${BENCH_SKIP_SETTLE:-1}"
 REPORT_DIR="${ROBUSTNESS_REPORT_DIR:-results/tpcc/robustness/naive-llm}"
 
 # The one place arm-specific paths live. Add py-dbridge/aco/adco here.
@@ -219,6 +223,9 @@ summary = {
     "prompt_sha256": cfg.get("prompt_sha256", ""),
     "runs_requested": runs_requested,
     "runs_completed": len(fresh),
+    "verify_seed_db": cfg.get("verify_seed_db") or os.environ.get("VERIFY_SEED_DB", ""),
+    "verify_warehouses": as_int(cfg.get("verify_warehouses")) if cfg.get("verify_warehouses") else as_int(os.environ.get("VERIFY_WAREHOUSES")),
+    "verify_duration": as_int(cfg.get("verify_duration")) if cfg.get("verify_duration") else as_int(os.environ.get("VERIFY_DURATION")),
     "counts": counts,
     "status": status,
     "incorrect_rate": incorrect_rate,
@@ -257,7 +264,9 @@ headline = (
     f"status **{status}**; fresh runs {counts['pass']} PASS / {counts['fail']} FAIL / "
     f"{counts['warn']} WARN / {counts['unverified']} UNVERIFIED of {runs_requested} "
     f"(incorrect rate {incorrect_rate:.2%}, Wilson 95% CI {ci[0]:.2%}-{ci[1]:.2%}); "
-    f"distinct outputs {distinct_outputs}"
+    f"distinct outputs {distinct_outputs}; "
+    f"verify seed {summary['verify_seed_db']} "
+    f"({summary['verify_warehouses']} warehouses, smoke {summary['verify_duration']}s)"
 )
 
 md = "\n".join([
@@ -327,6 +336,19 @@ echo "----------------->> Seed tpcc (reuse snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "tpcc_seed"
 bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 
+echo "----------------->> Seed ${VERIFY_SEED_DB} (verify scale, reuse snapshot) <<-----------------"
+ORIG_WAREHOUSES="${TPCC_WAREHOUSES:-}"
+export TPCC_WAREHOUSES="${VERIFY_WAREHOUSES}"
+_verify_exists="$(psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname='${VERIFY_SEED_DB}'" 2>/dev/null || true)"
+if [ "${RESEED_VERIFY:-0}" = "1" ] || [[ "${_verify_exists}" != *1* ]]; then
+    bench_seed_once tpcc "${VERIFY_SEED_DB}"
+else
+    echo "Reusing existing seed database '${VERIFY_SEED_DB}'."
+fi
+bench_assert_rows "${VERIFY_SEED_DB}" warehouse "${VERIFY_WAREHOUSES}"
+export TPCC_WAREHOUSES="${ORIG_WAREHOUSES}"
+unset _verify_exists
+
 STAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
 OUT_TS="out/app_layer/robustness/${ARM}/${STAMP}"
 RECORDS="${OUT_TS}/runs.tsv"
@@ -341,6 +363,9 @@ mkdir -p "${OUT_TS}"
     printf 'prompt_sha256\t%s\n' "${PROMPT_SHA}"
     printf 'runs_requested\t%s\n' "${RUNS_ARG}"
     printf 'dbms\t%s\n' "${DBMS_ARG}"
+    printf 'verify_seed_db\t%s\n' "${VERIFY_SEED_DB}"
+    printf 'verify_warehouses\t%s\n' "${VERIFY_WAREHOUSES}"
+    printf 'verify_duration\t%s\n' "${VERIFY_DURATION}"
 } >"${OUT_TS}/config.tsv"
 
 # run | kind | sha256 | rewrite_status | changed | restored | verify_status |
@@ -392,11 +417,15 @@ PY
 verify_tree() {
     local arm="$1" rewrite_root="$2" out_rel="$3"
     mkdir -p "${ROOT}/${out_rel}/smoke/benchmarks"
-    echo "----------------->> verifying ${arm}: restore + read probes + ${TPCC_DURATION:-20}s smoke + invariants (log: ${out_rel}/verify.log) <<-----------------"
+    echo "----------------->> verifying ${arm}: restore + read probes + ${VERIFY_DURATION}s smoke + invariants (log: ${out_rel}/verify.log) <<-----------------"
     BENCH_LOCK_HELD=1 REVERIFY=1 \
         RESTORE_RESTART="${VERIFY_RESTART:-0}" \
         SETTLE_SECS="${VERIFY_SETTLE_SECS:-0}" \
         VERIFY_SKIP_SEED=1 \
+        VERIFY_SEED_DB="${VERIFY_SEED_DB}" \
+        VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES}" \
+        VERIFY_DURATION="${VERIFY_DURATION}" \
+        BENCH_SKIP_SETTLE="${BENCH_SKIP_SETTLE}" \
         VERIFY_REWRITE_ROOT="${rewrite_root}" \
         VERIFY_CSV="${ROOT}/${out_rel}/smoke/${arm}.csv" \
         BENCH_RESULTS_DIR="${ROOT}/${out_rel}/smoke/benchmarks" \
@@ -406,7 +435,7 @@ verify_tree() {
         2>&1 | tee "${ROOT}/${out_rel}/verify.log" || true
 }
 
-echo "=================>> Run 0: re-verify the measured artifact (full verify, ~2-4 min) <<================="
+echo "=================>> Run 0: re-verify the measured artifact (verify seed ${VERIFY_SEED_DB}, ${VERIFY_WAREHOUSES} warehouses, smoke ${VERIFY_DURATION}s) <<================="
 MEASURED_ROOT="out/app_layer/NaiveLLM-results"
 MEASURED_TREE="${MEASURED_ROOT}/Rewrite/${DBMS_ARG}/${ARM_TREE}"
 if [ -d "${MEASURED_TREE}" ]; then
@@ -432,7 +461,7 @@ for ((i = 1; i <= RUNS_ARG; i++)); do
     driver_rel="${tree_rel}/${ARM_DRIVER}"
     mkdir -p "${abs_run}/smoke/benchmarks"
 
-    echo "=================>> Run ${i}/${RUNS_ARG}: fresh rewrite (prompt=$(basename "${PROMPT_FILE_ABS}")) <<================="
+    echo "=================>> Run ${i}/${RUNS_ARG}: fresh rewrite (prompt=$(basename "${PROMPT_FILE_ABS}"); verify seed ${VERIFY_SEED_DB}, ${VERIFY_WAREHOUSES} warehouses, smoke ${VERIFY_DURATION}s) <<================="
     start_ts=$(date +%s)
     rc=0
     NAIVE_REWRITE_ROOT="${rel_run}" PROMPT_FILE="${PROMPT_FILE_ABS}" \

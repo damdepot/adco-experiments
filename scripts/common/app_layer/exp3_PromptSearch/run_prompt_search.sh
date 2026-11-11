@@ -321,6 +321,8 @@ if [ "${BENCHMARK}" = "tpcc" ]; then
     rc=0
     BENCH_LOCK_HELD=1 REVERIFY=1 \
         VERIFY_SKIP_SEED=1 \
+        BENCH_SKIP_SETTLE=1 \
+        VERIFY_DURATION="${VERIFY_DURATION:-10}" \
         VERIFY_REWRITE_ROOT="${SCRATCH}/candidates/${winner}" \
         VERIFY_CSV="${verify_dir}/${winner}.csv" \
         BENCH_RESULTS_DIR="${verify_dir}/benchmarks" \

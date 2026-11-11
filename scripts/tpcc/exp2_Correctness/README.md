@@ -126,6 +126,10 @@ the prompt-search winner gate and the robustness harness.
 | `VERIFY_OUTPUT` | no | verdict JSON path (default `results/tpcc/verify_<arm>.json`) |
 | `BENCH_LOCK_HELD=1` | no | caller already holds `bench_lock` (search/robustness own it) |
 | `REVERIFY=1` | no | ignore a fresh verdict and re-run |
+| `VERIFY_SEED_DB` | no | seed to restore from (default `tpcc_seed`) |
+| `VERIFY_WAREHOUSES` | no | warehouse scale of the verify seed (default `TPCC_WAREHOUSES`) |
+| `VERIFY_DURATION` | no | verifier smoke seconds (default 20) |
+| `BENCH_SKIP_SETTLE=1` | no | skip settle/autovacuum/VACUUM in verification |
 
 Any arm name maps to that tree, so the name is just the label on the verdict.
 The CSV must be supplied — there is no default path in tree mode.
@@ -155,7 +159,10 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
   CSVs and per-run verdicts stay under `out/`.
 - Each child is bounded (`VERIFY_TIMEOUT`, default 600 s; `PROBE_TIMEOUT`,
   120 s; `PGCONNECT_TIMEOUT`, 10 s) and skips the per-run container restart
-  unless `VERIFY_RESTART=1`.
+  unless `VERIFY_RESTART=1`. Robustness uses `BENCH_SKIP_SETTLE=1`,
+  `VERIFY_DURATION=10`, and a `tpcc_verify_seed` (10 warehouses) so the
+  per-run copy/VACUUM stays small; the performance arm still measures on the
+  full `tpcc_seed`.
 
 The reporter prefers `results/tpcc/robustness/<arm>/latest.json`; without it,
 it falls back to this arm's single `verify_<arm>.json` and shows `1-run PASS`.

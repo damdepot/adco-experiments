@@ -333,6 +333,7 @@ def load_correctness_statuses(results_dir, workload, systems):
 
     Struct keys: status, runs (completed runs), counts {pass,fail,warn,unverified},
     incorrect_rate, wilson_ci95, distinct_outputs, measured_artifact,
+    verify_seed_db, verify_warehouses, verify_duration,
     run_details (per-run list), fallback, path.
     """
     out = {}
@@ -351,6 +352,9 @@ def load_correctness_statuses(results_dir, workload, systems):
                 "wilson_ci95": doc.get("wilson_ci95"),
                 "distinct_outputs": doc.get("distinct_outputs"),
                 "measured_artifact": doc.get("measured_artifact"),
+                "verify_seed_db": doc.get("verify_seed_db"),
+                "verify_warehouses": doc.get("verify_warehouses"),
+                "verify_duration": doc.get("verify_duration"),
                 "run_details": run_details,
                 "fallback": False,
                 "path": summary_path,
@@ -372,6 +376,9 @@ def load_correctness_statuses(results_dir, workload, systems):
             "wilson_ci95": None,
             "distinct_outputs": None,
             "measured_artifact": None,
+            "verify_seed_db": None,
+            "verify_warehouses": None,
+            "verify_duration": None,
             "run_details": [],
             "fallback": True,
             "path": verify_path if isinstance(doc, dict) else None,

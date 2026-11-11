@@ -139,6 +139,9 @@ def correctness_rows(systems, display_names, verify_statuses):
                           'warn': int(st == 'SUSPECT'), 'unverified': 0}
         else:
             runs_str = str(info.get('runs') or '-')
+            wh = info.get('verify_warehouses') if isinstance(info, dict) else None
+            if runs_str != '-' and wh is not None:
+                runs_str = f"{runs_str} ({wh}wh)"
         distinct = '-' if not isinstance(info, dict) or info.get('fallback') \
             else (str(info.get('distinct_outputs')) if info.get('distinct_outputs') is not None else '-')
         rows.append(
