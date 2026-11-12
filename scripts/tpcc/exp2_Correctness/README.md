@@ -149,18 +149,31 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
 ## Robustness harness
 
 ```bash
-./run/tpcc/run_naive-llm-robustness.sh [runs=10] [dbms=postgres] [model]
+# one arm at a time, same CLI shape
+./run/tpcc/run_naive-llm-robustness.sh   [runs=10] [dbms=postgres] [model]
+./run/tpcc/run_aco-robustness.sh         [runs=10] [dbms=postgres] [model]
+./run/tpcc/run_adco-robustness.sh        [runs=10] [dbms=postgres] [model]
+./run/tpcc/run_py-dbridge-robustness.sh  [runs=1]  [dbms=postgres] [model]
+
+# generic form
+./run/tpcc/run_robustness.sh <arm> [runs] [dbms=postgres] [model]
 ```
 
-Each iteration: rewrite with the selected prompt, verify that tree, record.
+Each iteration: generate a fresh tree with the arm's own pipeline, verify that
+tree, record. Default runs: `naive-llm 10`, `aco 10`, `adco 10`, `py-dbridge 1`.
+- `naive-llm`: one selected-prompt rewrite.
+- `aco` / `adco`: `runExperiment0.sh ACo|ADCo` (ADCo includes its tuner); the
+  sandbox is deleted first so repeated runs are independent.
+- `py-dbridge`: one deterministic transpile.
 - Uses `tpcc_verify_seed` at `VERIFY_WAREHOUSES` (default 1), created once and
   reused; `RESEED=1` rebuilds it. The performance `tpcc_seed` is not touched.
-- Writes `results/tpcc/robustness/naive-llm/latest.json` plus timestamped
-  `out/app_layer/robustness/naive-llm/<ts>/summary.{json,md}`. Rewrites, smoke
-  CSVs and per-run verdicts stay under `out/`.
-- The whole verify child is capped at `VERIFY_TIMEOUT` (default 300 s); a hung
-  run is `UNVERIFIED` and the loop continues. It skips the DB restart and
-  settle/VACUUM (`RESTORE_RESTART=0`, `BENCH_SKIP_SETTLE=1`).
+- Writes `results/tpcc/robustness/<arm>/latest.json` plus timestamped
+  `out/app_layer/robustness/<arm>/<ts>/summary.{json,md}`. Generated trees,
+  smoke CSVs and per-run verdicts stay under `out/`.
+- `GEN_TIMEOUT` (default 1800 s) bounds generation; the verify child is capped
+  at `VERIFY_TIMEOUT` (default 300 s). A hung child becomes `UNVERIFIED` and the
+  loop continues. It skips the DB restart and settle/VACUUM
+  (`RESTORE_RESTART=0`, `BENCH_SKIP_SETTLE=1`).
 
 The reporter prefers `results/tpcc/robustness/<arm>/latest.json`; without it,
 it falls back to this arm's single `verify_<arm>.json` and shows `1-run PASS`.

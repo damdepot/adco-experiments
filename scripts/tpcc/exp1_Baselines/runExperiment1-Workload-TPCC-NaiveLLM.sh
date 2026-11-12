@@ -37,7 +37,7 @@ source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/${benchmark}"
 benchmarks_dir="${BENCH_RESULTS_DIR:-${exp_path}/results/tpcc/${arm}/benchmarks}"
 base_log_fname="${benchmarks_dir}/runExperiment1-tpcc-${dbms}"
-rewrite_dir="${exp_path}/${rewrite_root}/Rewrite/${dbms}/tpcc-NaiveLLM"
+rewrite_dir="${exp_path}/${rewrite_root}/Rewrite/${dbms}/${TREE_NAME:-tpcc-NaiveLLM}"
 
 cd "${workload_path}"
 source venv/bin/activate

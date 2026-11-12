@@ -10,6 +10,7 @@ set -euo pipefail
 
 export BENCH_SKIP_SETTLE="${BENCH_SKIP_SETTLE:-0}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+TREE_NAME="${TREE_NAME:-tpcc-NaiveLLM}"
 cd "${ROOT}"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
 
@@ -70,7 +71,7 @@ fi
 # With VERIFY_REWRITE_ROOT set, any arm name maps to that Naive-LLM-style tree.
 arm_spec() {
     if [ -n "${VERIFY_REWRITE_ROOT:-}" ]; then
-        echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${VERIFY_WAREHOUSES} 1 tpcc ${1} ${VERIFY_REWRITE_ROOT}|${ROOT}/${VERIFY_REWRITE_ROOT}/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|${VERIFY_CSV}"
+        echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${VERIFY_WAREHOUSES} 1 tpcc ${1} ${VERIFY_REWRITE_ROOT}|${ROOT}/${VERIFY_REWRITE_ROOT}/Rewrite/${DBMS}/${TREE_NAME}/drivers/postgresdriver.py|${VERIFY_CSV}"
         return 0
     fi
     case "$1" in

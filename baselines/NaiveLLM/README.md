@@ -156,10 +156,15 @@ general SQL/driver guidance, not TPC-C advice.
 
 ```bash
 ./run/tpcc/run_naive-llm-robustness.sh [runs=10] [dbms=postgres] [model]
+# the other rewrite arms have their own wrappers (aco/adco 10 runs, py-dbridge 1):
+./run/tpcc/run_aco-robustness.sh
+./run/tpcc/run_adco-robustness.sh
+./run/tpcc/run_py-dbridge-robustness.sh
 ```
 
-Each run is: rewrite with the selected prompt → verify that tree → record.
-No run 0, no measured-artifact check, no separate performance seed.
+Each run is: generate a fresh tree with the arm's pipeline → verify that tree →
+record. No run 0, no measured-artifact check, no separate performance seed.
+Default runs: naive-llm 10, aco 10, adco 10, py-dbridge 1.
 
 | Path | Contents |
 |------|----------|
