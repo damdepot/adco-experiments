@@ -81,6 +81,56 @@ def guidance_bytes(lines):
     return len(("\n".join(lines) + "\n").encode("utf-8")) if lines else 0
 
 
+def _smoke_key(line):
+    """Message after the log level, so timestamps do not defeat dedupe."""
+    match = re.search(r"\b(?:WARNING|ERROR|CRITICAL):\s*(.*)", line)
+    return (match.group(1) if match else line).strip()
+
+
+def summarize_smoke_log(path, limit=15):
+    """Dedupe a smoke log by message, keep one example per error with a repeat
+    count, and fold multi-line tracebacks into one entry."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as handle:
+            lines = handle.readlines()
+    except OSError:
+        return []
+
+    entries = []
+    index = {}
+    i = 0
+    while i < len(lines):
+        line = lines[i].rstrip("\n")
+        if "Traceback" in line:
+            block = [line.strip()]
+            i += 1
+            while i < len(lines) and lines[i].strip() and len(block) < 6:
+                block.append(lines[i].strip())
+                i += 1
+            key = "traceback:" + block[-1]
+            message = " | ".join(block)
+        elif "WARNING:" in line or "ERROR" in line:
+            message = line.strip()
+            key = _smoke_key(line)
+            i += 1
+        else:
+            i += 1
+            continue
+
+        if key in index:
+            entries[index[key]][2] += 1
+        else:
+            index[key] = len(entries)
+            entries.append([key, message, 1])
+
+    out = []
+    for _, message, count in entries[:limit]:
+        if len(message) > 500:
+            message = message[:497] + "..."
+        out.append(message + (" (x{})".format(count) if count > 1 else ""))
+    return out
+
+
 def apply_caps(lines, max_bullets, max_bytes):
     """Cut whole bullets/lines at boundaries; the first bullet always survives."""
     out, bullets, size, truncated = [], 0, 0, False
@@ -109,6 +159,8 @@ def failure_summary(feedback):
     if tail:
         parts.append("rewrite_log_tail:\n{}".format(tail))
     smoke_errors = feedback.get("smoke_errors") or []
+    if not smoke_errors and feedback.get("smoke_log"):
+        smoke_errors = summarize_smoke_log(feedback["smoke_log"])
     if smoke_errors:
         parts.append("smoke_errors:\n{}".format("\n".join(smoke_errors)))
     checks = ((feedback.get("verify") or {}).get("checks")) or {}

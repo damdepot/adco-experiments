@@ -138,12 +138,12 @@ rewrite -> four gates -> PASS twice? freeze : (failures + diff -> revise prompt)
 | Step | Behavior |
 |------|----------|
 | Gates | static, smoke, reads, invariants (`run_verify.sh`) on the 1-warehouse verify seed |
-| Success | two consecutive PASSes; after a PASS the loop resamples the same prompt up to `CONFIRM_TRIES` (3) times at `CONFIRM_TEMPERATURE` (default 0.2) |
+| Success | base PASS plus `CONFIRM_RUNS` (3) confirmation rewrites at `CONFIRM_TEMPERATURE` (default 0.2), **all** of which must PASS; one lucky sample is not enough |
 | Nondeterminism | Vertex is not deterministic even at `temperature=0`, so a single PASS is not treated as stable |
-| Revision | `improve_prompt.py` gets the failing gates, smoke errors and the offending diff, and returns guidance only |
+| Revision | `improve_prompt.py` gets the failing gates, deduped smoke errors (timestamps stripped, repeats counted) and the offending diff, and returns guidance only |
 | Models | the rewrite uses the arm model; `IMPROVER_MODEL` (default: same) can be a stronger model for revision |
 | Generality | bullets must not name this benchmark, its tables, transactions, columns or literals; violations are re-asked, then dropped |
-| Caps | `MAX_ITERS` (8), 25 bullets, 4 KiB; a repeated prompt exits `stalled` |
+| Caps | `MAX_ITERS` (8), `CONFIRM_RUNS` (3), 25 bullets, 4 KiB; a repeated prompt exits `stalled` |
 | Freeze | `prompts/selected.txt` + `prompts/selected.meta.json` (model, iteration history, prompt `sha256`) |
 
 Scratch (every rewrite, `verify.json`, `prompt.meta.json`, `history.tsv`) goes

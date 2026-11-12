@@ -6,6 +6,8 @@ word-boundary denylist, offending-bullet removal and both caps.
 
 import sys
 import os
+import tempfile
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -17,6 +19,7 @@ from improve_prompt import (  # noqa: E402
     guidance_bytes,
     parse_guidance,
     strip_fences,
+    summarize_smoke_log,
 )
 
 
@@ -112,6 +115,45 @@ def test_failure_summary_reads_verifier_checks_dict():
     assert "invariants [FAIL]: CC2: gap" in summary, summary
     assert "static" not in summary, summary
     assert "cannot compare smallint and integer" in summary, summary
+
+
+def test_summarize_smoke_log_dedupes_timestamps_and_counts():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "smoke.log"
+        repeated = (
+            "11-12-2026 11:56:{:02d} [execute:070] WARNING: Failed to execute "
+            "Transaction 'NEW_ORDER': cannot compare dissimilar column types "
+            "smallint and integer at record column 2\n\n"
+        )
+        path.write_text(
+            "".join(repeated.format(13 + i) for i in range(20))
+            + "11-12-2026 11:56:50 [execute:070] WARNING: Failed to execute "
+            "Transaction 'PAYMENT': not enough arguments for format string\n\n",
+            encoding="utf-8",
+        )
+        out = summarize_smoke_log(str(path))
+        assert len(out) == 2, out
+        assert "smallint and integer" in out[0] and out[0].endswith("(x20)"), out
+        assert "PAYMENT" in out[1], out
+
+
+def test_summarize_smoke_log_folds_traceback():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "smoke.log"
+        path.write_text(
+            "Traceback (most recent call last):\n"
+            '  File "tpcc.py", line 10, in <module>\n'
+            "KeyError: 'getItemInfo'\n"
+            "\n",
+            encoding="utf-8",
+        )
+        out = summarize_smoke_log(str(path))
+        assert len(out) == 1, out
+        assert "Traceback" in out[0] and "KeyError" in out[0], out
+
+
+def test_summarize_smoke_log_missing_file():
+    assert summarize_smoke_log("/nonexistent/smoke.log") == []
 
 
 if __name__ == "__main__":

@@ -4,12 +4,12 @@
 # Usage: run_prompt_search.sh <benchmark: tpcc> [dbms=postgres] [model]
 #
 # One mutable prompt, seeded from prompts/basis.txt:
-#   rewrite -> four correctness gates -> PASS twice => freeze; otherwise the
+#   rewrite -> four correctness gates -> PASS + 3/3 confirmations => freeze; otherwise the
 #   failing gates plus the offending diff are fed back and the prompt is
 #   revised by a model. The frozen prompts/selected.txt is generated, never
 #   hand-edited.
 #
-# Env: MAX_ITERS (8), CONFIRM_TEMPERATURE (0.2), VERIFY_SEED_DB
+# Env: MAX_ITERS (8), CONFIRM_RUNS (3), CONFIRM_TEMPERATURE (0.2), VERIFY_SEED_DB
 #      (tpcc_verify_seed), VERIFY_WAREHOUSES (1), VERIFY_DURATION (10),
 #      VERIFY_TIMEOUT (300), RESEED (0), SMOKE_SECS (10).
 set -euo pipefail
@@ -25,7 +25,7 @@ SEARCH_MODEL="${3:-${MODEL:-gemini-3.5-flash-lite}}"
 IMPROVER_MODEL="${IMPROVER_MODEL:-${SEARCH_MODEL}}"
 MAX_ITERS="${MAX_ITERS:-8}"
 CONFIRM_TEMPERATURE="${CONFIRM_TEMPERATURE:-0.2}"
-CONFIRM_TRIES="${CONFIRM_TRIES:-3}"
+CONFIRM_RUNS="${CONFIRM_RUNS:-3}"
 VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_verify_seed}"
 VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-1}"
 VERIFY_DURATION="${VERIFY_DURATION:-10}"
@@ -57,8 +57,8 @@ if ! [[ "${MAX_ITERS}" =~ ^[1-9][0-9]*$ ]]; then
     echo "ERROR: MAX_ITERS must be a positive integer (got '${MAX_ITERS}')." >&2
     exit 2
 fi
-if ! [[ "${CONFIRM_TRIES}" =~ ^[1-9][0-9]*$ ]]; then
-    echo "ERROR: CONFIRM_TRIES must be a positive integer (got '${CONFIRM_TRIES}')." >&2
+if ! [[ "${CONFIRM_RUNS}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "ERROR: CONFIRM_RUNS must be a positive integer (got '${CONFIRM_RUNS}')." >&2
     exit 2
 fi
 for path in "${BASIS_FILE}" "${IMPROVER}" "${REWRITE_DRIVER}" "${VERIFIER}"; do
@@ -154,24 +154,10 @@ tail = ""
 if rewrite_log and os.path.exists(rewrite_log):
     with open(rewrite_log, encoding="utf-8", errors="replace") as handle:
         tail = handle.read()[-2000:]
-smoke_errors = []
-if smoke_log and os.path.exists(smoke_log):
-    seen = set()
-    with open(smoke_log, encoding="utf-8", errors="replace") as handle:
-        for line in handle:
-            if "WARNING:" not in line and "ERROR" not in line and "Traceback" not in line:
-                continue
-            message = line.strip()
-            if message in seen:
-                continue
-            seen.add(message)
-            smoke_errors.append(message)
-            if len(smoke_errors) >= 15:
-                break
 with open(out, "w", encoding="utf-8") as handle:
     json.dump({"rewrite_status": rewrite_status,
                "rewrite_log_tail": tail,
-               "smoke_errors": smoke_errors,
+               "smoke_log": smoke_log or None,
                "verify": verify}, handle, indent=2)
     handle.write("\n")
 PY
@@ -236,7 +222,7 @@ attempt() {
     printf '%s\t%s\n' "${rw}" "${gates}"
 }
 
-echo "----------------->> Prompt repair: ${BENCHMARK} (${DBMS}), model=${SEARCH_MODEL}, improver=${IMPROVER_MODEL}, seed=${VERIFY_SEED_DB}, max_iterations=${MAX_ITERS} <<-----------------"
+echo "----------------->> Prompt repair: ${BENCHMARK} (${DBMS}), model=${SEARCH_MODEL}, improver=${IMPROVER_MODEL}, seed=${VERIFY_SEED_DB}, max_iterations=${MAX_ITERS}, confirm_runs=${CONFIRM_RUNS} <<-----------------"
 echo "Seed prompt: ${BASIS_FILE}"
 
 seen=""
@@ -269,24 +255,34 @@ for ((i = 1; i <= MAX_ITERS; i++)); do
         "${i}" "rewrite" "${rw_status}" "${gate_status}" "${prompt_sha}" "${rewrite_sha}" >> "${ROOT}/${HISTORY}"
 
     if [ "${gate_status}" = "PASS" ]; then
-        # Resample the same prompt before touching it: rewriting is not
-        # deterministic even at temperature 0, so one bad resample must not
-        # discard a prompt that already passed.
-        for ((t = 1; t <= CONFIRM_TRIES; t++)); do
+        # A single PASS can be a lucky sample: rewriting is not deterministic
+        # even at temperature 0. Treat the prompt as the winner only if every
+        # confirmation rewrite also passes.
+        confirm_passes=0
+        first_fail_rel=""
+        for ((t = 1; t <= CONFIRM_RUNS; t++)); do
             confirm_rel="${iter_rel}-confirm-${t}"
             IFS=$'\t' read -r confirm_rw confirm_gates < <(attempt "${ROOT}/${WORK_PROMPT}" "${confirm_rel}" "${CONFIRM_TEMPERATURE}")
-            echo "iteration ${i}: confirmation ${t}/${CONFIRM_TRIES} (temperature ${CONFIRM_TEMPERATURE}): rewrite=${confirm_rw} gates=${confirm_gates}"
+            echo "iteration ${i}: confirmation ${t}/${CONFIRM_RUNS} (temperature ${CONFIRM_TEMPERATURE}): rewrite=${confirm_rw} gates=${confirm_gates}"
             printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
                 "${i}" "confirm-${t}" "${confirm_rw}" "${confirm_gates}" "${prompt_sha}" "" >> "${ROOT}/${HISTORY}"
             if [ "${confirm_gates}" = "PASS" ]; then
-                frozen=1
-                final_iter="${i}"
-                break 2
+                confirm_passes=$((confirm_passes + 1))
+            elif [ -z "${first_fail_rel}" ]; then
+                first_fail_rel="${confirm_rel}"
+                first_fail_rw="${confirm_rw}"
+                first_fail_gates="${confirm_gates}"
             fi
-            iter_rel="${confirm_rel}"
-            rw_status="${confirm_rw}"
-            gate_status="${confirm_gates}"
         done
+        echo "iteration ${i}: confirmation ${confirm_passes}/${CONFIRM_RUNS} passed"
+        if [ "${confirm_passes}" -eq "${CONFIRM_RUNS}" ]; then
+            frozen=1
+            final_iter="${i}"
+            break
+        fi
+        iter_rel="${first_fail_rel}"
+        rw_status="${first_fail_rw}"
+        gate_status="${first_fail_gates}"
     fi
 
     echo "----------------->> iteration ${i}: repairing prompt <<-----------------"
@@ -310,7 +306,7 @@ for ((i = 1; i <= MAX_ITERS; i++)); do
 done
 
 if [ "${frozen}" -ne 1 ]; then
-    echo "ERROR: no prompt passed twice within ${MAX_ITERS} iterations." >&2
+    echo "ERROR: no prompt passed all ${CONFIRM_RUNS} confirmations within ${MAX_ITERS} iterations." >&2
     echo "Last prompt: ${WORK_PROMPT}" >&2
     echo "Scratch: ${SCRATCH}" >&2
     exit 3
@@ -318,12 +314,12 @@ fi
 
 cp "${ROOT}/${WORK_PROMPT}" "${SELECTED_FILE}"
 python3 - "${META_FILE}" "${SELECTED_FILE}" "${ROOT}/${HISTORY}" "${SEARCH_MODEL}" \
-    "${IMPROVER_MODEL}" "${CONFIRM_TEMPERATURE}" "${VERIFY_SEED_DB}" "${VERIFY_WAREHOUSES}" \
-    "${final_iter}" "${ROOT}/${SCRATCH}" <<'PY'
+    "${IMPROVER_MODEL}" "${CONFIRM_TEMPERATURE}" "${CONFIRM_RUNS}" "${VERIFY_SEED_DB}" \
+    "${VERIFY_WAREHOUSES}" "${final_iter}" "${ROOT}/${SCRATCH}" <<'PY'
 import glob, hashlib, json, os, sys
 from datetime import datetime, timezone
 
-meta_path, selected, history, model, improver_model, temperature, seed_db, warehouses, iterations, scratch = sys.argv[1:11]
+meta_path, selected, history, model, improver_model, temperature, confirm_runs, seed_db, warehouses, iterations, scratch = sys.argv[1:12]
 with open(selected, "rb") as handle:
     prompt_bytes = handle.read()
 
@@ -351,6 +347,7 @@ document = {
     "improver_model": improver_model,
     "iterations": int(iterations),
     "confirm_temperature": float(temperature),
+    "confirm_runs": int(confirm_runs),
     "verify_seed_db": seed_db,
     "verify_warehouses": int(warehouses),
     "prompt_file": os.path.relpath(selected),
