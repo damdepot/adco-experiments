@@ -9,7 +9,8 @@
 #   revised by a model. The frozen prompts/selected.txt is generated, never
 #   hand-edited.
 #
-# Env: MAX_ITERS (8), CONFIRM_RUNS (3), CONFIRM_TEMPERATURE (0.2), VERIFY_SEED_DB
+# Env: MAX_ITERS (8), CONFIRM_RUNS (3), CONFIRM_TEMPERATURE (0),
+#      IMPROVER_TEMPERATURE (0.2), VERIFY_SEED_DB
 #      (tpcc_verify_seed), VERIFY_WAREHOUSES (1), VERIFY_DURATION (10),
 #      VERIFY_TIMEOUT (300), RESEED (0), SMOKE_SECS (10).
 set -euo pipefail
@@ -23,8 +24,10 @@ BENCHMARK="${1:-}"
 DBMS="${2:-postgres}"
 SEARCH_MODEL="${3:-${MODEL:-gemini-3.5-flash-lite}}"
 IMPROVER_MODEL="${IMPROVER_MODEL:-${SEARCH_MODEL}}"
+# Only the prompt reviser samples; the rewriter and its confirmations stay at 0.
+IMPROVER_TEMPERATURE="${IMPROVER_TEMPERATURE:-0.2}"
 MAX_ITERS="${MAX_ITERS:-8}"
-CONFIRM_TEMPERATURE="${CONFIRM_TEMPERATURE:-0.2}"
+CONFIRM_TEMPERATURE="${CONFIRM_TEMPERATURE:-0}"
 CONFIRM_RUNS="${CONFIRM_RUNS:-3}"
 VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_verify_seed}"
 VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-1}"
@@ -222,7 +225,7 @@ attempt() {
     printf '%s\t%s\n' "${rw}" "${gates}"
 }
 
-echo "----------------->> Prompt repair: ${BENCHMARK} (${DBMS}), model=${SEARCH_MODEL}, improver=${IMPROVER_MODEL}, seed=${VERIFY_SEED_DB}, max_iterations=${MAX_ITERS}, confirm_runs=${CONFIRM_RUNS} <<-----------------"
+echo "----------------->> Prompt repair: ${BENCHMARK} (${DBMS}), model=${SEARCH_MODEL}@${CONFIRM_TEMPERATURE}, improver=${IMPROVER_MODEL}@${IMPROVER_TEMPERATURE}, seed=${VERIFY_SEED_DB}, max_iterations=${MAX_ITERS}, confirm_runs=${CONFIRM_RUNS} <<-----------------"
 echo "Seed prompt: ${BASIS_FILE}"
 
 seen=""
@@ -298,6 +301,7 @@ for ((i = 1; i <= MAX_ITERS; i++)); do
         --diff "${ROOT}/${iter_rel}/diff.txt" \
         --deny "${DENY_TOKENS}" \
         --model "${IMPROVER_MODEL}" \
+        --temperature "${IMPROVER_TEMPERATURE}" \
         --meta "${ROOT}/${iter_rel}/prompt.meta.json"; then
         echo "ERROR: prompt repair failed at iteration ${i}. Scratch: ${SCRATCH}" >&2
         exit 1
