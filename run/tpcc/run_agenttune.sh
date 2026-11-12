@@ -66,6 +66,28 @@ export RESULTS_DIR="${TPCC_RESULTS}"
 SEED_DB_TPCC="tpcc_seed"
 
 run_agenttune_tpcc_tool() {
+    # baselines/AgentTune/config.ini is shared state: a TPCH run leaves
+    # DB_Name=tpch/benchmark=JOB behind, and setup leaves agenttune/SYSBENCH.
+    # Pin the tpcc values here at launch (cf. run/smallbank/run_agenttune.sh).
+    # benchmark stays SYSBENCH: AgentTune tunes via its sysbench proxy
+    # workload (no tpcc branch exists in its benchmark switch); the tuned
+    # knobs are then measured with the real TPC-C workload.
+    python3 - "${EXP_PATH}/baselines/AgentTune/config.ini" "${AGENTTUNE_ITERATIONS:-}" <<'PY'
+import configparser, sys
+cfg, iterations = sys.argv[1], sys.argv[2]
+c = configparser.ConfigParser()
+c.optionxform = str
+c.read(cfg)
+rec = c['configuration recommender']
+rec['DB_Name'] = 'tpcc'
+rec['benchmark'] = 'SYSBENCH'
+if iterations:
+    rec['iteration'] = iterations
+with open(cfg, 'w') as f:
+    c.write(f)
+print('AgentTune config.ini: DB_Name=%s benchmark=%s iteration=%s'
+      % (rec['DB_Name'], rec['benchmark'], rec.get('iteration')))
+PY
     if ! "$CMDAgentTune" "${DBMS}" tpcc; then
         echo "ERROR: AgentTune tuning failed; skipping post-AgentTune TPCC measurement and CSV." >&2
         return 1

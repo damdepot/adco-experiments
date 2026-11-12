@@ -19,7 +19,7 @@ fi
 bench_timer "tpcc/run_verify" "results/tpcc" "run_verify"
 
 DBMS="${1:-postgres}"
-ARMS_CSV="${2:-baseline,aco,adco,py-dbridge,naive-llm}"
+ARMS_CSV="${2:-baseline,aco,adco,py-dbridge,naive-llm,naive-llm-agenttune,agenttune-naive-llm}"
 # Forgiving CLI: `./run_verify.sh aco` means "verify arm aco", not dbms=aco.
 case "${DBMS}" in
     postgres|mysql) ;;
@@ -79,6 +79,8 @@ arm_spec() {
         adco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} 1 tpcc adco|${ROOT}/out/app_layer/ADCo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/adco/benchmarks/adco.csv" ;;
         py-dbridge) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc|${ROOT}/out/app_layer/Py-DBridge-results/Rewrite/${DBMS}/tpcc-Py-DBridge/drivers/postgresdriver.py|results/tpcc/py-dbridge/benchmarks/py-dbridge.csv" ;;
         naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc|${ROOT}/out/app_layer/NaiveLLM-results/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm/benchmarks/naive-llm.csv" ;;
+        naive-llm-agenttune) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc naive-llm-agenttune out/app_layer/NaiveLLM-results/naive-llm-agenttune|${ROOT}/out/app_layer/NaiveLLM-results/naive-llm-agenttune/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm-agenttune/benchmarks/naive-llm-agenttune.csv" ;;
+        agenttune-naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc agenttune-naive-llm out/app_layer/NaiveLLM-results/agenttune-naive-llm|${ROOT}/out/app_layer/NaiveLLM-results/agenttune-naive-llm/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/agenttune-naive-llm/benchmarks/agenttune-naive-llm.csv" ;;
         *) echo "UNKNOWN" ;;
     esac
 }

@@ -157,7 +157,7 @@ def correctness_value(txn, info, has_data):
 def discover_workloads(results_dir, dbms):
     """Discover available workloads in results_dir for the given dbms."""
     workloads = set()
-    systems = ['baseline', 'adco', 'aco', 'py-dbridge', 'naive-llm']
+    systems = ['baseline', 'adco', 'aco', 'py-dbridge', 'naive-llm', 'naive-llm-agenttune', 'agenttune-naive-llm']
     for workload in ['smallbank', 'tpcc']:
         for sys in systems:
             bench_dir = os.path.join(results_dir, workload, sys, 'benchmarks')
@@ -505,6 +505,8 @@ def main():
         'naive-llm-aggressive': 'Naive-LLM-Aggressive',
         'dco': 'DCo',
         'agenttune': 'AgentTune',
+        'naive-llm-agenttune': 'Naive-LLM + AgentTune',
+        'agenttune-naive-llm': 'AgentTune + Naive-LLM',
         'gptuner': 'GPTuner',
         'ottertune': 'OtterTune'
     }

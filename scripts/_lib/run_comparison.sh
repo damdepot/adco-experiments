@@ -105,7 +105,7 @@ if not candidates:
 # labels follow, alphabetically.
 CANONICAL = [
     "baseline", "py-dbridge", "naive-llm", "ottertune", "gptuner",
-    "agenttune", "aco", "dco", "adco",
+    "agenttune", "naive-llm-agenttune", "agenttune-naive-llm", "aco", "dco", "adco",
 ]
 labels = sorted(
     candidates,
