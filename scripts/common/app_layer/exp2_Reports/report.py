@@ -309,40 +309,42 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
             lines.append("")
     
     base_display = system_display_names.get(base_sys, base_sys.capitalize())
-    header = f"{'Transaction':<20} | {f'{base_display} (txn/s)':<18}"
     for sys in other_systems:
-        sys_name = system_display_names.get(sys, sys.capitalize())
-        header += f" | {sys_name:<14} | Speedup (rate)"
+        for txn in all_txns:
+            if txn.upper() == 'TOTAL':
+                continue
+            b = stats[base_sys].get(txn, {}).get('rate')
+            r = stats[sys].get(txn, {}).get('rate')
+            if b and r:
+                speedups[sys].append(r / b)
+
+    header = f"{'Arm':<20}"
+    for txn in all_txns:
+        header += f"| {txn[:14]:<16}"
+    header += f"| {'Geo Mean':<12}"
     lines.append(header)
     lines.append("-" * len(header))
-    
-    for txn in all_txns:
-        line = f"{txn:<20} | "
-        base_rate = stats[base_sys].get(txn, {}).get('rate')
-        line += f"{f'{base_rate:.2f}':<18}" if base_rate is not None else f"{'N/A':<18}"
-        
-        for sys in other_systems:
-            sys_rate = stats[sys].get(txn, {}).get('rate')
-            if base_rate is not None and sys_rate is not None and base_rate > 0:
-                spd = sys_rate / base_rate
-                if txn.upper() != 'TOTAL':
-                    speedups[sys].append(spd)
-                spd_str = f"{spd:.2f}x"
+
+    for sys in [base_sys] + list(other_systems):
+        name = system_display_names.get(sys, sys.capitalize())
+        line = f"{name[:19]:<20}"
+        for txn in all_txns:
+            rate = stats[sys].get(txn, {}).get('rate')
+            base_rate = stats[base_sys].get(txn, {}).get('rate')
+            if rate is None:
+                cell = "N/A"
+            elif sys == base_sys or not base_rate or base_rate <= 0:
+                cell = f"{rate:.2f}"
             else:
-                spd_str = "N/A"
-            r_str = f"{sys_rate:.2f}" if sys_rate is not None else "N/A"
-            line += f" | {r_str:<14} | {spd_str:<14}"
+                cell = f"{rate:.2f} ({rate / base_rate:.2f}x)"
+            line += f"| {cell:<16}"
+        if sys == base_sys:
+            g_str = "-"
+        else:
+            g_spd = geometric_mean(speedups[sys])
+            g_str = f"{g_spd:.2f}x" if g_spd > 0 else "N/A"
+        line += f"| {g_str:<12}"
         lines.append(line)
-        
-    lines.append("-" * len(header))
-    
-    # Geo Mean of Speedup
-    geo_line = f"{'Geo Mean (Txns)':<20} | {'-':<18}"
-    for sys in other_systems:
-        g_spd = geometric_mean(speedups[sys])
-        g_str = f"{g_spd:.2f}x" if g_spd > 0 else "N/A"
-        geo_line += f" | {'-':<14} | {g_str:<14}"
-    lines.append(geo_line)
     lines.append("")
     
     report_text = "\n".join(lines)
@@ -370,7 +372,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         if verify_statuses:
             md_lines.append("## Correctness\n")
             md_lines.append("| Arm | Runs | PASS | FAIL | SUSPECT | UNVERIFIED | Status |")
-            md_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :--- |")
+            md_lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
             md_lines.extend(correctness_rows(systems, system_display_names, verify_statuses))
             md_lines.append("")
             if verify_warning_lines:
@@ -380,84 +382,73 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
                         md_lines.append(f"> {warning}")
                     md_lines.append("")
 
-        # Table 1: Throughput (Transaction Rate)
+        # Table 1: Throughput (Transaction Rate), arms as rows.
         md_lines.append("## Transaction Rate / Throughput (txn/s)\n")
-        md_header = f"| Transaction | {base_display} (txn/s) |"
-        md_sep = "| :--- | :---: |"
-        for sys in other_systems:
-            sys_name = system_display_names.get(sys, sys.capitalize())
-            md_header += f" {sys_name} (txn/s) | {sys_name} Speedup | {sys_name} Correctness |"
-            md_sep += " :---: | :---: | :---: |"
-        md_lines.append(md_header)
-        md_lines.append(md_sep)
-        
-        for txn in all_txns:
-            is_total = (txn.upper() == 'TOTAL')
-            prefix = "**" if is_total else ""
-            suffix = "**" if is_total else ""
-            
-            base_rate = stats[base_sys].get(txn, {}).get('rate')
-            base_rate_str = f"{base_rate:.2f}" if base_rate is not None else "N/A"
-            row_str = f"| {prefix}{txn}{suffix} | {prefix}{base_rate_str}{suffix} |"
-            
-            for sys in other_systems:
-                sys_rate = stats[sys].get(txn, {}).get('rate')
-                if base_rate is not None and sys_rate is not None and base_rate > 0:
-                    spd = sys_rate / base_rate
-                    spd_str = f"{spd:.2f}x"
+        md_lines.append("| Arm | " + " | ".join(all_txns) + " | Geo Mean | Correctness |")
+        md_lines.append("| :--- | " + " | ".join(":---" for _ in all_txns) + " | :--- | :--- |")
+        for sys in [base_sys] + list(other_systems):
+            name = system_display_names.get(sys, sys.capitalize())
+            cells = []
+            for txn in all_txns:
+                rate = stats[sys].get(txn, {}).get('rate')
+                base_rate = stats[base_sys].get(txn, {}).get('rate')
+                if rate is None:
+                    cell = "N/A"
+                elif sys == base_sys or not base_rate or base_rate <= 0:
+                    cell = f"{rate:.2f}"
                 else:
-                    spd_str = "N/A"
-                r_str = f"{sys_rate:.2f}" if sys_rate is not None else "N/A"
-                c_str = correctness_value(txn, (verify_statuses or {}).get(sys),
-                                          has_data.get(sys, False))
-                row_str += (f" {prefix}{r_str}{suffix} | {prefix}{spd_str}{suffix} | "
-                            f"{prefix}{c_str}{suffix} |")
-            md_lines.append(row_str)
-            
-        # Geo Mean row
-        geo_row = "| **Geo Mean (Txns)** | **-** |"
-        for sys in other_systems:
-            g_spd = geometric_mean(speedups[sys])
-            g_str = f"{g_spd:.2f}x" if g_spd > 0 else "N/A"
-            geo_row += f" **-** | **{g_str}** | **-** |"
-        md_lines.append(geo_row)
+                    cell = f"{rate:.2f} ({rate / base_rate:.2f}x)"
+                if txn.upper() == 'TOTAL' and cell != "N/A":
+                    cell = f"**{cell}**"
+                cells.append(cell)
+            if sys == base_sys:
+                g_str = "-"
+            else:
+                g = geometric_mean(speedups[sys])
+                g_str = f"{g:.2f}x" if g > 0 else "N/A"
+            corr = correctness_value('TOTAL', (verify_statuses or {}).get(sys),
+                                     has_data.get(sys, False))
+            md_lines.append(f"| {name} | " + " | ".join(cells) + f" | {g_str} | {corr} |")
         md_lines.append("\n")
-        
-        # Table 2: Execution Time (ms)
+
+        # Table 2: Execution Time (ms), arms as rows.
         md_lines.append("## Execution Time (ms)\n")
-        md_header_time = f"| Transaction | {base_display} (ms) |"
-        md_sep_time = "| :--- | :---: |"
+        latencies = defaultdict(list)
         for sys in other_systems:
-            sys_name = system_display_names.get(sys, sys.capitalize())
-            md_header_time += f" {sys_name} (ms) | {sys_name} Latency Reduction | {sys_name} Correctness |"
-            md_sep_time += " :---: | :---: | :---: |"
-        md_lines.append(md_header_time)
-        md_lines.append(md_sep_time)
-        
-        for txn in all_txns:
-            is_total = (txn.upper() == 'TOTAL')
-            prefix = "**" if is_total else ""
-            suffix = "**" if is_total else ""
-            
-            base_time = stats[base_sys].get(txn, {}).get('time')
-            base_time_str = f"{base_time:.2f}" if base_time is not None else "N/A"
-            row_str = f"| {prefix}{txn}{suffix} | {prefix}{base_time_str}{suffix} |"
-            
-            for sys in other_systems:
-                sys_time = stats[sys].get(txn, {}).get('time')
-                if base_time is not None and sys_time is not None and sys_time > 0:
-                    spd = base_time / sys_time
-                    spd_str = f"{spd:.2f}x"
+            for txn in all_txns:
+                if txn.upper() == 'TOTAL':
+                    continue
+                b = stats[base_sys].get(txn, {}).get('time')
+                v = stats[sys].get(txn, {}).get('time')
+                if b and v and v > 0:
+                    latencies[sys].append(b / v)
+        md_lines.append("| Arm | " + " | ".join(all_txns) + " | Geo Mean | Correctness |")
+        md_lines.append("| :--- | " + " | ".join(":---" for _ in all_txns) + " | :--- | :--- |")
+        for sys in [base_sys] + list(other_systems):
+            name = system_display_names.get(sys, sys.capitalize())
+            cells = []
+            for txn in all_txns:
+                value = stats[sys].get(txn, {}).get('time')
+                base_value = stats[base_sys].get(txn, {}).get('time')
+                if value is None:
+                    cell = "N/A"
+                elif sys == base_sys or not base_value or value <= 0:
+                    cell = f"{value:.2f}"
                 else:
-                    spd_str = "N/A"
-                t_str = f"{sys_time:.2f}" if sys_time is not None else "N/A"
-                c_str = correctness_value(txn, (verify_statuses or {}).get(sys),
-                                          has_data.get(sys, False))
-                row_str += (f" {prefix}{t_str}{suffix} | {prefix}{spd_str}{suffix} | "
-                            f"{prefix}{c_str}{suffix} |")
-            md_lines.append(row_str)
+                    cell = f"{value:.2f} ({base_value / value:.2f}x)"
+                if txn.upper() == 'TOTAL' and cell != "N/A":
+                    cell = f"**{cell}**"
+                cells.append(cell)
+            if sys == base_sys:
+                g_str = "-"
+            else:
+                g = geometric_mean(latencies[sys])
+                g_str = f"{g:.2f}x" if g > 0 else "N/A"
+            corr = correctness_value('TOTAL', (verify_statuses or {}).get(sys),
+                                     has_data.get(sys, False))
+            md_lines.append(f"| {name} | " + " | ".join(cells) + f" | {g_str} | {corr} |")
         md_lines.append("\n")
-        
+
         # Detailed Raw Data Summary Table
         md_lines.append("## Transaction Breakdown Summary\n")
         md_lines.append("| System | Transaction | Executed | Execution Time (ms) | Transaction Rate (txn/s) |")

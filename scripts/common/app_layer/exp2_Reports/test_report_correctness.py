@@ -164,19 +164,19 @@ def test_rendered_report_has_correctness_table_and_columns():
     assert '| ADCo | 10 (10wh) | 9 | 0 | 1 | 0 | SUSPECT |' in md
     assert '| ACo | 1 (single run) | 1 | 0 | 0 | 0 | PASS |' in md
     assert '| Default | - | 0 | 0 | 0 | 0 | UNVERIFIED |' in md
-    # Both performance tables get a per-arm Correctness column after Speedup /
-    # Latency Reduction, with 'N/A' where the arm has no benchmark data.
-    for section in ('## Transaction Rate / Throughput (txn/s)', '## Execution Time (ms)'):
+    # Performance tables are arm-rows: the first column is the arm, then one
+    # column per transaction, Geo Mean, and a single Correctness column.
+    for section, value_cell in (
+        ('## Transaction Rate / Throughput (txn/s)', '100.00 (1.00x)'),
+        ('## Execution Time (ms)', '1000.00 (1.00x)'),
+    ):
         chunk = md.split(section, 1)[1].split('\n## ', 1)[0]
-        assert '| Naive-LLM Correctness |' in chunk
-        assert '| ADCo Correctness |' in chunk
-        total_rows = [ln for ln in chunk.splitlines() if ln.startswith('| **TOTAL**')]
-        assert total_rows and '**FAIL 1/10**' in total_rows[0]
-        # Non-TOTAL rows stay readable ('-' placeholder); arms with no
-        # benchmark data show N/A instead of a verdict.
-        txn_rows = [ln for ln in chunk.splitlines() if ln.startswith('| NEW_ORDER ')]
-        assert txn_rows and txn_rows[0].endswith('| 1.00x | - |')
-        assert txn_rows[0].count('N/A') == 6
+        assert '| Arm | NEW_ORDER | TOTAL | Geo Mean | Correctness |' in chunk
+        naive_rows = [ln for ln in chunk.splitlines() if ln.startswith('| Naive-LLM |')]
+        assert naive_rows and value_cell in naive_rows[0]
+        assert 'FAIL 1/10' in naive_rows[0]
+        # Arms with no benchmark data show N/A instead of numbers/verdict.
+        assert '| ADCo | N/A | N/A | N/A | N/A |' in chunk
 
     # Failures, warnings and missing results still surface as warning lines
     # (terminal output, as before) with the run detail from the summary.
@@ -189,3 +189,18 @@ def test_rendered_report_has_correctness_table_and_columns():
 def report_names():
     return {'baseline': 'Default', 'adco': 'ADCo', 'aco': 'ACo',
             'naive-llm': 'Naive-LLM'}
+
+
+if __name__ == '__main__':
+    failed = 0
+    for name in sorted(globals()):
+        func = globals()[name]
+        if name.startswith('test_') and callable(func):
+            try:
+                func()
+                print(f'PASS {name}')
+            except AssertionError as exc:
+                failed += 1
+                print(f'FAIL {name}: {exc}')
+    print(f'{failed} failure(s)')
+    raise SystemExit(1 if failed else 0)

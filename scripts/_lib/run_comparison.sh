@@ -169,33 +169,11 @@ base = data[ref]
 def disp(label):
     return 'default' if label == 'baseline' else label
 
-print(f"OLTP txn/s vs {disp(ref)} (higher better)")
-print(f"Source: {results_dir}")
-print()
-
-header = f"{'TRANSACTION':<12}"
-for label in present:
-    header += f"|{disp(label)[:13]:^13}"
-print(header)
-
-for txn in order:
-    line = f"{txn[:12]:<12}"
-    for label in present:
-        rates = data[label]
-        if txn not in rates:
-            line += f"|{'-':^13}"
-        elif label == ref:
-            line += f"|{rates[txn]:>13.1f}"
-        else:
-            b = base.get(txn, 0.0)
-            pct = (rates[txn] - b) / b * 100 if b > 0 else 0.0
-            line += f"|{f'{rates[txn]:.1f} ({pct:+.0f}%)':>13}"
-    print(line)
-
 # Geometric mean of per-transaction speedups vs ref (TOTAL excluded).
 geo = {}
 for label in present:
     if label == ref:
+        geo[label] = None
         continue
     vals = []
     for txn in order:
@@ -213,14 +191,36 @@ for label in present:
     else:
         geo[label] = 0.0
 
-gline = f"{'Geo Mean Spd':<12}"
+print(f"OLTP txn/s vs {disp(ref)} (higher better)")
+print(f"Source: {results_dir}")
+print()
+
+header = f"{'ARM':<14}"
+for txn in order:
+    header += f"|{txn[:12]:<14}"
+header += f"|{'Geo Mean':<12}"
+print(header)
+print("-" * len(header))
+
 for label in present:
+    line = f"{disp(label)[:13]:<14}"
+    for txn in order:
+        rates = data[label]
+        if txn not in rates:
+            line += f"|{'-':^14}"
+        elif label == ref:
+            line += f"|{rates[txn]:<14.1f}"
+        else:
+            b = base.get(txn, 0.0)
+            pct = (rates[txn] - b) / b * 100 if b > 0 else 0.0
+            line += f"|{f'{rates[txn]:.1f} ({pct:+.0f}%)':<14}"
     if label == ref:
-        gline += f"|{'-':^13}"
+        g = "-"
     else:
-        g = geo.get(label, 0.0)
-        gline += f"|{f'{g:.2f}x' if g > 0 else 'N/A':>13}"
-print(gline)
+        gg = geo.get(label, 0.0)
+        g = f"{gg:.2f}x" if gg > 0 else "N/A"
+    line += f"|{g:<12}"
+    print(line)
 
 print()
 print(f"Note: higher is better; percentages are relative to {disp(ref)}.")
