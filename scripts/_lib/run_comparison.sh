@@ -197,8 +197,8 @@ print()
 
 header = f"{'ARM':<14}"
 for txn in order:
-    header += f"|{txn[:12]:<14}"
-header += f"|{'Geo Mean':<12}"
+    header += f"|{txn[:12]:>14}"
+header += f"|{'Geo Mean':>12}"
 print(header)
 print("-" * len(header))
 
@@ -209,17 +209,17 @@ for label in present:
         if txn not in rates:
             line += f"|{'-':^14}"
         elif label == ref:
-            line += f"|{rates[txn]:<14.1f}"
+            line += f"|{rates[txn]:>14.1f}"
         else:
             b = base.get(txn, 0.0)
             pct = (rates[txn] - b) / b * 100 if b > 0 else 0.0
-            line += f"|{f'{rates[txn]:.1f} ({pct:+.0f}%)':<14}"
+            line += f"|{f'{rates[txn]:.1f} ({pct:+.0f}%)':>14}"
     if label == ref:
         g = "-"
     else:
         gg = geo.get(label, 0.0)
         g = f"{gg:.2f}x" if gg > 0 else "N/A"
-    line += f"|{g:<12}"
+    line += f"|{g:>12}"
     print(line)
 
 print()

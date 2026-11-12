@@ -320,8 +320,8 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
 
     header = f"{'Arm':<20}"
     for txn in all_txns:
-        header += f"| {txn[:14]:<16}"
-    header += f"| {'Geo Mean':<12}"
+        header += f"| {txn[:14]:>16}"
+    header += f"| {'Geo Mean':>12}"
     lines.append(header)
     lines.append("-" * len(header))
 
@@ -337,13 +337,13 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
                 cell = f"{rate:.2f}"
             else:
                 cell = f"{rate:.2f} ({rate / base_rate:.2f}x)"
-            line += f"| {cell:<16}"
+            line += f"| {cell:>16}"
         if sys == base_sys:
             g_str = "-"
         else:
             g_spd = geometric_mean(speedups[sys])
             g_str = f"{g_spd:.2f}x" if g_spd > 0 else "N/A"
-        line += f"| {g_str:<12}"
+        line += f"| {g_str:>12}"
         lines.append(line)
     lines.append("")
     
@@ -372,7 +372,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         if verify_statuses:
             md_lines.append("## Correctness\n")
             md_lines.append("| Arm | Runs | PASS | FAIL | SUSPECT | UNVERIFIED | Status |")
-            md_lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
+            md_lines.append("| :--- | ---: | ---: | ---: | ---: | ---: | :--- |")
             md_lines.extend(correctness_rows(systems, system_display_names, verify_statuses))
             md_lines.append("")
             if verify_warning_lines:
@@ -385,7 +385,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
         # Table 1: Throughput (Transaction Rate), arms as rows.
         md_lines.append("## Transaction Rate / Throughput (txn/s)\n")
         md_lines.append("| Arm | " + " | ".join(all_txns) + " | Geo Mean | Correctness |")
-        md_lines.append("| :--- | " + " | ".join(":---" for _ in all_txns) + " | :--- | :--- |")
+        md_lines.append("| :--- | " + " | ".join("---:" for _ in all_txns) + " | ---: | :--- |")
         for sys in [base_sys] + list(other_systems):
             name = system_display_names.get(sys, sys.capitalize())
             cells = []
@@ -423,7 +423,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
                 if b and v and v > 0:
                     latencies[sys].append(b / v)
         md_lines.append("| Arm | " + " | ".join(all_txns) + " | Geo Mean | Correctness |")
-        md_lines.append("| :--- | " + " | ".join(":---" for _ in all_txns) + " | :--- | :--- |")
+        md_lines.append("| :--- | " + " | ".join("---:" for _ in all_txns) + " | ---: | :--- |")
         for sys in [base_sys] + list(other_systems):
             name = system_display_names.get(sys, sys.capitalize())
             cells = []

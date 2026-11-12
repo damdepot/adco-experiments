@@ -70,7 +70,7 @@ def text_report(docs):
 
     def line(values):
         return "  ".join(
-            str(v).ljust(widths[i])
+            str(v).ljust(widths[i]) if i == 0 or i >= 5 else str(v).rjust(widths[i])
             for i, v in enumerate(values)
         ).rstrip()
 
@@ -133,7 +133,7 @@ def markdown_report(docs):
              "**SUSPECT** warnings only, **UNVERIFIED** no verdict.", "",
              "## Summary", "",
              "| Arm | Runs | Pass | Fail | Other | Rate | Status | Failed runs |",
-             "| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |"]
+             "| :--- | ---: | ---: | ---: | ---: | ---: | :--- | :--- |"]
     for doc in docs:
         passed, failed, warn, unverified = counts(doc)
         total = int(doc.get("runs_completed") or 0)
