@@ -373,6 +373,12 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
             md_lines.append("| :--- | :---: | :---: | :---: | :---: | :---: | :--- |")
             md_lines.extend(correctness_rows(systems, system_display_names, verify_statuses))
             md_lines.append("")
+            if verify_warning_lines:
+                warnings = verify_warning_lines(verify_statuses, system_display_names)
+                if warnings:
+                    for warning in warnings:
+                        md_lines.append(f"> {warning}")
+                    md_lines.append("")
 
         # Table 1: Throughput (Transaction Rate)
         md_lines.append("## Transaction Rate / Throughput (txn/s)\n")

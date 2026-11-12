@@ -175,6 +175,12 @@ tree, record. Default runs: `naive-llm 10`, `aco 10`, `adco 10`, `py-dbridge 1`.
   loop continues. It skips the DB restart and settle/VACUUM
   (`RESTORE_RESTART=0`, `BENCH_SKIP_SETTLE=1`).
 
-The reporter prefers `results/tpcc/robustness/<arm>/latest.json`; without it,
+For a robustness-only report across every sweep (table, failed runs, configs):
+
+```bash
+./run/tpcc/run_robustness_report.sh   # -> reports/tpcc/robustness.md
+```
+
+The performance reporter prefers `results/tpcc/robustness/<arm>/latest.json`; without it,
 it falls back to this arm's single `verify_<arm>.json` and shows `1-run PASS`.
 The summary shows run counts and the failed checks; WARN is shown as SUSPECT.
