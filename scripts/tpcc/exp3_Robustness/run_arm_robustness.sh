@@ -48,12 +48,6 @@ if ! [[ "${RUNS}" =~ ^[1-9][0-9]*$ ]]; then
     exit 2
 fi
 
-PROMPT_FILE="${ROOT}/baselines/NaiveLLM/prompts/selected.txt"
-if [ "${ARM}" = "naive-llm" ] && [ ! -f "${PROMPT_FILE}" ]; then
-    echo "ERROR: missing generated prompt ${PROMPT_FILE}" >&2
-    echo "Run ./run/tpcc/run_prompt_search.sh first (an empty file is valid)." >&2
-    exit 1
-fi
 if [ "${ARM}" = "naive-llm" ] && [ ! -x "${ROOT}/baselines/NaiveLLM/venv/bin/python" ]; then
     echo "ERROR: NaiveLLM venv missing; run ./run/setup/app-setup-baselines.sh" >&2
     exit 1
@@ -110,10 +104,6 @@ mkdir -p "${OUT_TS}"
     printf 'arm\t%s\n' "${ARM}"
     printf 'model\t%s\n' "${MODEL_ARG}"
     printf 'tree_name\t%s\n' "${TREE_NAME}"
-    if [ "${ARM}" = "naive-llm" ]; then
-        printf 'prompt_file\t%s\n' "baselines/NaiveLLM/prompts/selected.txt"
-        printf 'prompt_sha256\t%s\n' "$(sha256sum "${PROMPT_FILE}" 2>/dev/null | awk '{print $1}' || shasum -a 256 "${PROMPT_FILE}" | awk '{print $1}')"
-    fi
     printf 'runs\t%s\n' "${RUNS}"
     printf 'verify_seed_db\t%s\n' "${VERIFY_SEED_DB}"
     printf 'verify_warehouses\t%s\n' "${VERIFY_WAREHOUSES}"
@@ -160,7 +150,7 @@ generate_tree() {
     local rel_run="$1" abs_run="$2" out_dir="" src="" rc=0 rc_gen=0
     case "${ARM}" in
         naive-llm)
-            NAIVE_REWRITE_ROOT="${rel_run}" PROMPT_FILE="${PROMPT_FILE}" \
+            NAIVE_REWRITE_ROOT="${rel_run}" \
                 timeout --kill-after=5 "${GEN_TIMEOUT}" \
                 bash "./scripts/common/app_layer/exp1_Baselines/runExperiment1-NaiveLLM.sh" \
                     workload/apps/tpcc "${DBMS}" tpcc "${MODEL_ARG}" \
@@ -311,8 +301,6 @@ summary = {
     "timestamp": cfg.get("timestamp", ""),
     "model": cfg.get("model", ""),
     "tree_name": cfg.get("tree_name", ""),
-    "prompt_file": cfg.get("prompt_file", ""),
-    "prompt_sha256": cfg.get("prompt_sha256", ""),
     "runs_completed": len(runs),
     "counts": counts,
     "status": status,

@@ -7,8 +7,7 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 
 ARM="${ARM:-naive-llm}"
 NAIVE_REWRITE_ROOT="${NAIVE_REWRITE_ROOT:-out/app_layer/NaiveLLM-results}"
-PROMPT_FILE="${PROMPT_FILE:-}"
-export ARM NAIVE_REWRITE_ROOT PROMPT_FILE
+export ARM NAIVE_REWRITE_ROOT
 
 # Single-writer: never Restart the DB under a concurrent run.
 bench_lock "${ROOT}"

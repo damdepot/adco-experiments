@@ -101,7 +101,7 @@ for path in all_csvs():
 if not candidates:
     sys.stderr.write(f"ERROR: no result CSVs found in {results_dir}.\n")
     sys.exit(1)
-# Canonical column order (matches run_reports.sh --systems); unrecognised
+# Canonical column order (matches the report's --systems); unrecognised
 # labels follow, alphabetically.
 CANONICAL = [
     "baseline", "py-dbridge", "naive-llm", "ottertune", "gptuner",

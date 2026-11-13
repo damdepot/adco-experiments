@@ -14,7 +14,6 @@ def main() -> None:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--db", default="postgres")
     parser.add_argument("--model", default="gemini-3.5-flash-lite")
-    parser.add_argument("--prompt-file", default=None)
     parser.add_argument("--temperature", type=float, default=0.0)
     args = parser.parse_args()
 
@@ -29,19 +28,6 @@ def main() -> None:
     if not source_dir.is_dir():
         print(f"ERROR: source-dir is not a directory: {source_dir}", file=sys.stderr)
         sys.exit(1)
-
-    guidance = None
-    if args.prompt_file:
-        try:
-            guidance = Path(args.prompt_file).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError) as exc:
-            print(
-                f"ERROR: cannot read prompt-file: {args.prompt_file}: {exc}",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        if not guidance.strip():
-            guidance = None
 
     shutil.rmtree(output_dir, ignore_errors=True)
     shutil.copytree(
@@ -65,7 +51,7 @@ def main() -> None:
     originals: dict[str, bytes] = {
         rel: (output_dir / rel).read_bytes() for rel in rewrite_files
     }
-    prompt = build_prompt(output_dir, rewrite_files, context_files, guidance)
+    prompt = build_prompt(output_dir, rewrite_files, context_files)
     (output_dir.parent / "llm_prompt.txt").write_text(prompt, encoding="utf-8")
 
     try:

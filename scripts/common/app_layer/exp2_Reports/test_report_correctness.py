@@ -34,7 +34,7 @@ def _write(path, doc):
 def _summary(**kw):
     doc = {
         "arm": "naive-llm", "workload": "tpcc", "timestamp": "2026-11-10T00:00:00",
-        "model": "m", "prompt_file": "p.txt", "prompt_sha256": "abc",
+        "model": "m",
         "runs_requested": 10, "runs_completed": 10,
         "counts": {"pass": 9, "fail": 1, "warn": 0, "unverified": 0},
         "status": "FAIL", "incorrect_rate": 0.1, "wilson_ci95": [0.02, 0.40],

@@ -1,6 +1,0 @@
-- Remove N+1 queries and per-row lookups; fetch each needed row once with set-based access.
-- Push filtering, aggregation and joins into SQL; select only the columns the caller needs.
-- Batch writes (executemany, multi-row INSERT, COPY) while keeping the exact write set and row-write count.
-- Reuse connections, cursors and prepared statements; cache read-only lookups within a transaction.
-- Preserve observable behavior, transaction boundaries, ordering, null/type semantics and the public interface.
-- Do not add files or dependencies, and do not change the database schema.

@@ -39,14 +39,7 @@ if [ -z "${STACK_ARM}" ] || [ -z "${NAIVE_REWRITE_ROOT}" ]; then
     exit 2
 fi
 
-# Same default as run/tpcc/run_naive-llm.sh; an empty file means unguided.
-PROMPT_FILE="${PROMPT_FILE:-${EXP_PATH}/baselines/NaiveLLM/prompts/selected.txt}"
-if [ ! -f "${PROMPT_FILE}" ]; then
-    echo "ERROR: missing selected prompt ${PROMPT_FILE}" >&2
-    echo "Run ./run/tpcc/run_prompt_search.sh first (an empty file is valid)." >&2
-    exit 1
-fi
-export MODEL PROMPT_FILE
+export MODEL
 
 if [ ! -x "${EXP_PATH}/baselines/AgentTune/venv/bin/python" ]; then
     echo "ERROR: missing ${EXP_PATH}/baselines/AgentTune/venv/bin/python." >&2

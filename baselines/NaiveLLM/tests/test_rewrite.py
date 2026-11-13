@@ -6,8 +6,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.rewrite import TASK, RULES, build_prompt, parse_response, safe_target, select_files
 
-PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
-
 
 def _sample_output_dir(tmp: str) -> Path:
     d = Path(tmp)
@@ -18,9 +16,9 @@ def _sample_output_dir(tmp: str) -> Path:
     return d
 
 
-def _build(d: Path, guidance=None) -> str:
+def _build(d: Path) -> str:
     rewrite, context = select_files(d, "postgres")
-    return build_prompt(d, rewrite, context, guidance)
+    return build_prompt(d, rewrite, context)
 
 
 def test_parse_response():
@@ -67,47 +65,9 @@ def test_default_prompt_unchanged():
         assert prompt.count("### FILE:") == 1, prompt
 
 
-def test_guidance_inserted_before_rules():
-    guidance = "- Batch all per-row lookups into one set-based query.\n- Keep behavior identical."
-    with tempfile.TemporaryDirectory() as tmp:
-        d = _sample_output_dir(tmp)
-        prompt = _build(d, guidance)
-        task_end = prompt.index(TASK.splitlines()[-1])
-        assert prompt.index(guidance) > task_end, prompt
-        assert prompt.index(guidance) < prompt.index("Rules:"), prompt
-        assert f"{guidance}\n\nRules:" in prompt, prompt
-        assert prompt.count("### FILE:") == 1, prompt
-        assert prompt.count("### FILE: <relative path>") == 1, prompt
-
-
-def test_empty_guidance_like_none():
-    with tempfile.TemporaryDirectory() as tmp:
-        d = _sample_output_dir(tmp)
-        plain = _build(d)
-        assert _build(d, "") == plain
-        assert _build(d, "   \n\t\n") == plain
-        assert _build(d, None) == plain
-
-
-def test_prompt_bank_files():
-    files = sorted(PROMPTS_DIR.glob("*.txt"))
-    assert files, f"no prompt files in {PROMPTS_DIR}"
-    for path in files:
-        text = path.read_text(encoding="utf-8")
-        # selected*.txt are generated outputs and may legitimately be empty.
-        if not path.name.startswith("selected"):
-            assert text.strip(), path
-            assert "- " in text, path
-        assert "### FILE:" not in text, path
-        assert "```" not in text, path
-
-
 if __name__ == "__main__":
     test_parse_response()
     test_safe_target()
     test_select_files()
     test_default_prompt_unchanged()
-    test_guidance_inserted_before_rules()
-    test_empty_guidance_like_none()
-    test_prompt_bank_files()
     print("ok")

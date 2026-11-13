@@ -118,8 +118,6 @@ def text_report(docs):
                   f"model {doc.get('model') or '-'}"]
         if doc.get("tree_name"):
             pieces.append(f"tree {doc['tree_name']}")
-        if doc.get("prompt_sha256"):
-            pieces.append(f"prompt {doc['prompt_sha256'][:12]}")
         pieces.append(f"at {doc.get('timestamp') or '-'}")
         out.append(f"  {display(doc)}: " + ", ".join(pieces))
     return "\n".join(out)
@@ -176,8 +174,6 @@ def markdown_report(docs):
                   f"model `{doc.get('model') or '-'}`"]
         if doc.get("tree_name"):
             pieces.append(f"tree `{doc['tree_name']}`")
-        if doc.get("prompt_sha256"):
-            pieces.append(f"prompt `{doc['prompt_sha256'][:12]}`")
         pieces.append(f"timestamp `{doc.get('timestamp') or '-'}`")
         lines.append(f"- **{display(doc)}**: " + ", ".join(pieces))
     lines.append("")

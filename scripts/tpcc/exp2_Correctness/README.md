@@ -4,9 +4,6 @@ Answers one question about each app-layer rewrite arm
 (`baseline, aco, adco, py-dbridge, naive-llm`): **is the rewritten code
 correct, or just fast?** A rewrite that drops writes, weakens isolation, or
 skips work looks faster while corrupting data — these checks catch that.
-`naive-llm` is a single arm that now rewrites with the generated prompt
-(`baselines/NaiveLLM/prompts/selected.txt`, produced by the repair loop that
-uses these checks as its fitness).
 
 ## Files
 
@@ -103,7 +100,7 @@ VERIFY_DURATION=30 ./run/tpcc/run_verify.sh     # smoke seconds per arm (default
 
 Statuses land in `results/tpcc/verify_<arm>.json` (plus
 `verify_<arm>.smoke.log`) and surface as a `## Correctness` section with
-SUSPECT/UNVERIFIED warnings in the `run_reports.sh` output. Arms with no
+SUSPECT/UNVERIFIED warnings in the `run_report_performance.sh` output. Arms with no
 rewrite dir get `UNVERIFIED` and are skipped. Requires the `tpcc_seed`
 snapshot and a healthy `adcoexp-db` container.
 
@@ -161,7 +158,7 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
 
 Each iteration: generate a fresh tree with the arm's own pipeline, verify that
 tree, record. Default runs: `naive-llm 10`, `aco 10`, `adco 10`, `py-dbridge 1`.
-- `naive-llm`: one selected-prompt rewrite.
+- `naive-llm`: one unguided rewrite.
 - `aco` / `adco`: `runExperiment0.sh ACo|ADCo` (ADCo includes its tuner); the
   sandbox is deleted first so repeated runs are independent.
 - `py-dbridge`: one deterministic transpile.
@@ -178,7 +175,7 @@ tree, record. Default runs: `naive-llm 10`, `aco 10`, `adco 10`, `py-dbridge 1`.
 For a robustness-only report across every sweep (table, failed runs, configs):
 
 ```bash
-./run/tpcc/run_robustness_report.sh   # -> reports/tpcc/robustness.md
+./run/tpcc/run_report_robustness.sh   # -> reports/tpcc/robustness.md
 ```
 
 The performance reporter prefers `results/tpcc/robustness/<arm>/latest.json`; without it,

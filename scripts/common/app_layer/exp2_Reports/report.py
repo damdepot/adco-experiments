@@ -499,7 +499,6 @@ def main():
         'py-dbridge': 'Py-DBridge',
         'pydbridge': 'Py-DBridge',
         'naive-llm': 'Naive-LLM',
-        'naive-llm-aggressive': 'Naive-LLM-Aggressive',
         'dco': 'DCo',
         'agenttune': 'AgentTune',
         'naive-llm-agenttune': 'Naive-LLM + AgentTune',

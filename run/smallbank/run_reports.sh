@@ -11,7 +11,7 @@ mkdir -p "${ROOT}/reports/smallbank"
 # DBMS override passthrough: "$1" if given, else postgres (matches each
 # run_report.sh's "${2:-postgres}" default).
 python3 "${ROOT}/scripts/common/app_layer/exp2_Reports/report.py" \
-    --systems baseline,py-dbridge,naive-llm,naive-llm-aggressive,ottertune,gptuner,agenttune,aco,dco,adco \
+    --systems baseline,py-dbridge,naive-llm,ottertune,gptuner,agenttune,aco,dco,adco \
     --workload smallbank \
     --dbms "${1:-postgres}" \
     --results-dir "${ROOT}/results" \
