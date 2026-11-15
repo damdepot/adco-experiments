@@ -27,6 +27,9 @@ output_path="${exp_path}/${rewrite_root}/Rewrite/${dbms}/${benchmark}-NaiveLLM"
 mkdir -p "$(dirname "${output_path}")"
 
 llm_model="${4:-${MODEL:-gemini-3.5-flash-lite}}"
+# TEMP is the short spelling used by the robustness wrappers; TEMPERATURE wins.
+TEMPERATURE="${TEMPERATURE:-${TEMP:-}}"
+export TEMPERATURE
 
 cd "${exp_path}/baselines/NaiveLLM"
 if [ -f venv/bin/activate ]; then
@@ -37,6 +40,7 @@ else
     exit 1
 fi
 
+echo "LLM: model=${llm_model} temperature=${TEMPERATURE:-0.0}"
 python -m src.cli --source-dir "${src_dir}" --output-dir "${output_path}" --db "${dbms}" --model "${llm_model}" ${TEMPERATURE:+--temperature "$TEMPERATURE"}
 
 # Smoke: run the rewritten app before the paid measurement reps. Executors log

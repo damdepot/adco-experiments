@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import py_compile
 import shutil
@@ -77,6 +78,10 @@ def main() -> None:
 
     parsed = parse_response(text)
     (output_dir.parent / "llm_response.txt").write_text(text, encoding="utf-8")
+    (output_dir.parent / "llm_meta.json").write_text(
+        json.dumps({"model": args.model, "temperature": args.temperature}, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
     changed = 0
     restored = 0
