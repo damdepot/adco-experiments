@@ -1,5 +1,5 @@
 #!/bin/bash
-# Thin wrapper: [runs=10] [dbms=postgres] [model]
+# Thin wrapper: [runs=10] [dbms=postgres] [model]; TEMP=<float> sets rewrite temperature
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

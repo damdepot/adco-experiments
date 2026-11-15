@@ -128,7 +128,9 @@ the robustness harness.
 | `VERIFY_SKIP_SEED_ASSERT=1` | no | caller asserted the seed; skip `bench_verify_arm`'s check |
 | `VERIFY_SEED_DB` | no | seed to restore from (default `tpcc_seed`) |
 | `VERIFY_WAREHOUSES` | no | warehouse scale of the verify seed (default `TPCC_WAREHOUSES`) |
-| `VERIFY_DURATION` | no | verifier smoke seconds (default 20) |
+| `VERIFY_DURATION` | no | verifier smoke seconds (default 20; full-scale passes `TPCC_DURATION`) |
+| `VERIFY_CLIENTS` | no | verifier smoke clients (default 1; full-scale passes `TPCC_CLIENTS`) |
+| `VERIFY_WARMUP` | no | verifier smoke warmup seconds (default 0; full-scale passes `TPCC_WARMUP`) |
 | `BENCH_SKIP_SETTLE=1` | no | skip settle/autovacuum/VACUUM in verification |
 
 Any arm name maps to that tree, so the name is just the label on the verdict.

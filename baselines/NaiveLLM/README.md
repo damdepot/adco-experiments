@@ -109,6 +109,23 @@ deadlocks, or on >5% Smallbank errors), then measures.
 
 Each run is: generate a fresh tree with the arm's pipeline → verify that tree →
 record. No run 0, no measured-artifact check, no separate performance seed.
+Set `TEMP=0.5` to sample the rewrite at a non-zero temperature (default 0):
+
+```bash
+TEMP=0.5 ./run/tpcc/run_naive-llm-robustness.sh 3
+```
+
+Full-scale counterparts verify on the performance seed and load
+(`TPCC_WAREHOUSES`, `TPCC_CLIENTS`, `TPCC_DURATION`, `TPCC_WARMUP` from `.env`),
+default to 1 run, and record under `results/tpcc/robustness-full-scale/<arm>/`:
+
+```bash
+./run/tpcc/run_naive-llm-robustness-full-scale.sh
+./run/tpcc/run_aco-robustness-full-scale.sh
+./run/tpcc/run_adco-robustness-full-scale.sh
+./run/tpcc/run_py-dbridge-robustness-full-scale.sh
+```
+
 Default runs: naive-llm 10, aco 10, adco 10, py-dbridge 1.
 
 | Path | Contents |

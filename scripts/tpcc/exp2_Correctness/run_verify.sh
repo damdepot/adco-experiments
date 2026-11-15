@@ -55,7 +55,9 @@ export PGOPTIONS="${PGOPTIONS:--c statement_timeout=300000 -c lock_timeout=60000
 # Tiny-scale smoke on the existing seed (same scale as full runs; reseeding at a
 # smaller scale would destroy the shared seed). Warmup off, one rep.
 export VERIFY_DURATION="${VERIFY_DURATION:-20}"
-export TPCC_CLIENTS=1 TPCC_DURATION="${VERIFY_DURATION:-20}" REPS=1 TPCC_WARMUP=0 PHASE=execute
+VERIFY_CLIENTS="${VERIFY_CLIENTS:-1}"
+VERIFY_WARMUP="${VERIFY_WARMUP:-0}"
+export TPCC_CLIENTS="${VERIFY_CLIENTS}" TPCC_DURATION="${VERIFY_DURATION:-20}" REPS=1 TPCC_WARMUP="${VERIFY_WARMUP}" PHASE=execute
 
 # A caller holding the benchmark lock (search/robustness orchestrators) has
 # already ensured and asserted the seed; skip the redundant Docker/psql probe.
@@ -71,17 +73,17 @@ fi
 # With VERIFY_REWRITE_ROOT set, any arm name maps to that Naive-LLM-style tree.
 arm_spec() {
     if [ -n "${VERIFY_REWRITE_ROOT:-}" ]; then
-        echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${VERIFY_WAREHOUSES} 1 tpcc ${1} ${VERIFY_REWRITE_ROOT}|${ROOT}/${VERIFY_REWRITE_ROOT}/Rewrite/${DBMS}/${TREE_NAME}/drivers/postgresdriver.py|${VERIFY_CSV}"
+        echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${VERIFY_WAREHOUSES} ${VERIFY_CLIENTS} tpcc ${1} ${VERIFY_REWRITE_ROOT}|${ROOT}/${VERIFY_REWRITE_ROOT}/Rewrite/${DBMS}/${TREE_NAME}/drivers/postgresdriver.py|${VERIFY_CSV}"
         return 0
     fi
     case "$1" in
         baseline) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-App.sh|${DBMS}|${BASELINE_DRIVER}|results/tpcc/baseline/benchmarks/runExperiment1-tpcc-${DBMS}" ;;
-        aco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} 1 tpcc aco|${ROOT}/out/app_layer/ACo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/aco/benchmarks/aco.csv" ;;
-        adco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} 1 tpcc adco|${ROOT}/out/app_layer/ADCo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/adco/benchmarks/adco.csv" ;;
-        py-dbridge) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc|${ROOT}/out/app_layer/Py-DBridge-results/Rewrite/${DBMS}/tpcc-Py-DBridge/drivers/postgresdriver.py|results/tpcc/py-dbridge/benchmarks/py-dbridge.csv" ;;
-        naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc|${ROOT}/out/app_layer/NaiveLLM-results/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm/benchmarks/naive-llm.csv" ;;
-        naive-llm-agenttune) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc naive-llm-agenttune out/app_layer/NaiveLLM-results/naive-llm-agenttune|${ROOT}/out/app_layer/NaiveLLM-results/naive-llm-agenttune/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm-agenttune/benchmarks/naive-llm-agenttune.csv" ;;
-        agenttune-naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} 1 tpcc agenttune-naive-llm out/app_layer/NaiveLLM-results/agenttune-naive-llm|${ROOT}/out/app_layer/NaiveLLM-results/agenttune-naive-llm/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/agenttune-naive-llm/benchmarks/agenttune-naive-llm.csv" ;;
+        aco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc aco|${ROOT}/out/app_layer/ACo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/aco/benchmarks/aco.csv" ;;
+        adco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc adco|${ROOT}/out/app_layer/ADCo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/adco/benchmarks/adco.csv" ;;
+        py-dbridge) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh|${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc|${ROOT}/out/app_layer/Py-DBridge-results/Rewrite/${DBMS}/tpcc-Py-DBridge/drivers/postgresdriver.py|results/tpcc/py-dbridge/benchmarks/py-dbridge.csv" ;;
+        naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc|${ROOT}/out/app_layer/NaiveLLM-results/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm/benchmarks/naive-llm.csv" ;;
+        naive-llm-agenttune) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc naive-llm-agenttune out/app_layer/NaiveLLM-results/naive-llm-agenttune|${ROOT}/out/app_layer/NaiveLLM-results/naive-llm-agenttune/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm-agenttune/benchmarks/naive-llm-agenttune.csv" ;;
+        agenttune-naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc agenttune-naive-llm out/app_layer/NaiveLLM-results/agenttune-naive-llm|${ROOT}/out/app_layer/NaiveLLM-results/agenttune-naive-llm/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/agenttune-naive-llm/benchmarks/agenttune-naive-llm.csv" ;;
         *) echo "UNKNOWN" ;;
     esac
 }
@@ -193,7 +195,7 @@ verify_one_arm() {
         arm_tree="$(cd "$(dirname "${driver}")/.." && pwd)"
         (cd "${arm_tree}" && timeout "${PROBE_TIMEOUT:-120}" "${VENV_PY}" "${PROBE}" --dbms "${DBMS}" --config "${DBCONFIG}" >"${probe_arm}" 2>"${tmp}/probe_arm.err") || echo "WARNING: rewrite read probe failed for '${arm}'." >&2
     fi
-    echo "----------------->> ${arm}: smoke (${VERIFY_DURATION:-20}s, 1 client) <<-----------------"
+    echo "----------------->> ${arm}: smoke (${VERIFY_DURATION:-20}s, ${VERIFY_CLIENTS} client(s)) <<-----------------"
     # shellcheck disable=SC2086
     timeout "$(( ${VERIFY_DURATION:-20} + 240 ))" ./"${runner}" ${rargs} >"${tmp}/smoke.log" 2>&1 || echo "WARNING: smoke run failed for '${arm}' (see ${out})." >&2
     smoke_csv="${csv}"

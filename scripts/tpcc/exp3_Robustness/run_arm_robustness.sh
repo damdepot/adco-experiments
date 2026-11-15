@@ -28,18 +28,41 @@ case "${ARM}" in
         exit 2
         ;;
 esac
+FULL_SCALE="${FULL_SCALE:-0}"
+if [ "${FULL_SCALE}" = "1" ]; then
+    DEFAULT_RUNS=1
+fi
 RUNS="${2:-${DEFAULT_RUNS}}"
 MODEL_ARG="${4:-${MODEL:-gemini-3.5-flash-lite}}"
+# Sampling temperature for the rewrite (naive-llm only); unset = CLI default 0.
+TEMP="${TEMP:-}"
+if [ -n "${TEMP}" ] && ! [[ "${TEMP}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+    echo "ERROR: TEMP must be a non-negative number (got '${TEMP}')." >&2
+    exit 2
+fi
 VERBOSE="${VERBOSE:-0}"
-VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_verify_seed}"
-VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-1}"
-VERIFY_DURATION="${VERIFY_DURATION:-10}"
 SMOKE_SECS="${SMOKE_SECS:-10}"
-VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-300}"
 GEN_TIMEOUT="${GEN_TIMEOUT:-1800}"
-REPORT_DIR="${ROBUSTNESS_REPORT_DIR:-results/tpcc/robustness/${ARM}}"
+if [ "${FULL_SCALE}" = "1" ]; then
+    MODE_DIR="robustness-full-scale"
+    VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_seed}"
+    VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-${TPCC_WAREHOUSES}}"
+    VERIFY_DURATION="${VERIFY_DURATION:-${TPCC_DURATION}}"
+    VERIFY_CLIENTS="${VERIFY_CLIENTS:-${TPCC_CLIENTS}}"
+    VERIFY_WARMUP="${VERIFY_WARMUP:-${TPCC_WARMUP}}"
+    VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-1800}"
+else
+    MODE_DIR="robustness"
+    VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_verify_seed}"
+    VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-1}"
+    VERIFY_DURATION="${VERIFY_DURATION:-10}"
+    VERIFY_CLIENTS="${VERIFY_CLIENTS:-1}"
+    VERIFY_WARMUP="${VERIFY_WARMUP:-0}"
+    VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-300}"
+fi
+REPORT_DIR="${ROBUSTNESS_REPORT_DIR:-results/tpcc/${MODE_DIR}/${ARM}}"
 
-if [ "${VERIFY_SEED_DB}" = "tpcc_seed" ]; then
+if [ "${VERIFY_SEED_DB}" = "tpcc_seed" ] && [ "${FULL_SCALE}" != "1" ]; then
     echo "ERROR: the robustness sweep must use the verify seed (e.g. tpcc_verify_seed), not the performance seed 'tpcc_seed'." >&2
     exit 2
 fi
@@ -94,7 +117,7 @@ unset _seed_exists
 
 # --- loop ------------------------------------------------------------------
 STAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
-OUT_TS="out/app_layer/robustness/${ARM}/${STAMP}"
+OUT_TS="out/app_layer/${MODE_DIR}/${ARM}/${STAMP}"
 REPORT_JSON="${REPORT_DIR}/latest.json"
 RECORDS="${OUT_TS}/runs.tsv"
 mkdir -p "${OUT_TS}"
@@ -103,11 +126,15 @@ mkdir -p "${OUT_TS}"
     printf 'timestamp\t%s\n' "${STAMP}"
     printf 'arm\t%s\n' "${ARM}"
     printf 'model\t%s\n' "${MODEL_ARG}"
+    printf 'temperature\t%s\n' "${TEMP:-0.0}"
     printf 'tree_name\t%s\n' "${TREE_NAME}"
     printf 'runs\t%s\n' "${RUNS}"
     printf 'verify_seed_db\t%s\n' "${VERIFY_SEED_DB}"
     printf 'verify_warehouses\t%s\n' "${VERIFY_WAREHOUSES}"
+    printf 'verify_clients\t%s\n' "${VERIFY_CLIENTS}"
+    printf 'verify_warmup\t%s\n' "${VERIFY_WARMUP}"
     printf 'verify_duration\t%s\n' "${VERIFY_DURATION}"
+    printf 'full_scale\t%s\n' "${FULL_SCALE}"
 } >"${OUT_TS}/config.tsv"
 
 verify_tree() {
@@ -120,6 +147,8 @@ verify_tree() {
         VERIFY_SEED_DB="${VERIFY_SEED_DB}" \
         VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES}" \
         VERIFY_DURATION="${VERIFY_DURATION}" \
+        VERIFY_CLIENTS="${VERIFY_CLIENTS}" \
+        VERIFY_WARMUP="${VERIFY_WARMUP}" \
         RESTORE_RESTART=0 \
         BENCH_SKIP_SETTLE=1 \
         VERIFY_REWRITE_ROOT="${rewrite_root}" \
@@ -150,7 +179,7 @@ generate_tree() {
     local rel_run="$1" abs_run="$2" out_dir="" src="" rc=0 rc_gen=0
     case "${ARM}" in
         naive-llm)
-            NAIVE_REWRITE_ROOT="${rel_run}" \
+            TEMPERATURE="${TEMP}" NAIVE_REWRITE_ROOT="${rel_run}" \
                 timeout --kill-after=5 "${GEN_TIMEOUT}" \
                 bash "./scripts/common/app_layer/exp1_Baselines/runExperiment1-NaiveLLM.sh" \
                     workload/apps/tpcc "${DBMS}" tpcc "${MODEL_ARG}" \
@@ -300,6 +329,7 @@ summary = {
     "workload": "tpcc",
     "timestamp": cfg.get("timestamp", ""),
     "model": cfg.get("model", ""),
+    "temperature": cfg.get("temperature", ""),
     "tree_name": cfg.get("tree_name", ""),
     "runs_completed": len(runs),
     "counts": counts,
@@ -307,7 +337,10 @@ summary = {
     "failures": failures,
     "verify_seed_db": cfg.get("verify_seed_db", ""),
     "verify_warehouses": int(cfg.get("verify_warehouses") or 0),
+    "verify_clients": int(cfg.get("verify_clients") or 0),
+    "verify_warmup": int(cfg.get("verify_warmup") or 0),
     "verify_duration": int(cfg.get("verify_duration") or 0),
+    "full_scale": cfg.get("full_scale") == "1",
     "runs": runs,
 }
 with open(os.path.join(ts_dir, "summary.json"), "w") as f:
