@@ -126,6 +126,9 @@ default to 1 run, and record under `results/tpcc/robustness-full-scale/<arm>/`:
 ./run/tpcc/run_py-dbridge-robustness-full-scale.sh
 ```
 
+List every recorded sweep (timestamp, benchmark, model, temperature, success
+rate) with `./run/tpcc/run_log_naive-llm-robustness.sh`.
+
 Default runs: naive-llm 10, aco 10, adco 10, py-dbridge 1.
 
 | Path | Contents |
