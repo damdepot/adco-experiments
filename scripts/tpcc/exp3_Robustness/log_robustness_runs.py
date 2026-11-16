@@ -2,10 +2,12 @@
 """List every robustness sweep recorded for an arm, one row per sweep.
 
 Reads out/app_layer/robustness/<arm>/<timestamp>/summary.json and prints the
-key fields: benchmark, model, temperature and success rate. Older summaries
-predate temperature logging and show 'n/r'.
+key fields: benchmark, model, temperature, success rate and the median TOTAL
+TPS of the sweep's verify smokes. Older summaries predate temperature logging
+and show 'n/r'.
 """
 
+import csv
 import glob
 import json
 import os
@@ -16,6 +18,35 @@ ARM = sys.argv[1] if len(sys.argv) > 1 else "naive-llm"
 BASE = os.path.join(ROOT, "out", "app_layer", "robustness", ARM)
 
 
+def total_tps(path):
+    try:
+        with open(path, newline="", encoding="utf-8") as handle:
+            for row in csv.reader(handle):
+                if len(row) >= 4 and row[0].strip().upper() == "TOTAL":
+                    return float(row[3])
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def sweep_tps(sweep_dir, passed_runs):
+    values = []
+    for path in glob.glob(os.path.join(sweep_dir, "r*", "verify.smoke.csv")):
+        run = os.path.basename(os.path.dirname(path))[1:]
+        if passed_runs is not None and int(run) not in passed_runs:
+            continue
+        value = total_tps(path)
+        if value is not None:
+            values.append(value)
+    if not values:
+        return None
+    values.sort()
+    middle = len(values) // 2
+    if len(values) % 2:
+        return values[middle]
+    return (values[middle - 1] + values[middle]) / 2.0
+
+
 def rows():
     for path in sorted(glob.glob(os.path.join(BASE, "*", "summary.json"))):
         try:
@@ -23,18 +54,24 @@ def rows():
                 doc = json.load(handle)
         except (OSError, ValueError):
             continue
+        sweep_dir = os.path.dirname(path)
         counts = doc.get("counts") or {}
         total = sum(int(counts.get(k) or 0) for k in ("pass", "fail", "warn", "unverified"))
         total = total or int(doc.get("runs_completed") or 0)
         passed = int(counts.get("pass") or 0)
         rate = f"{passed}/{total} ({100.0 * passed / total:.0f}%)" if total else "0/0 (-)"
         temperature = doc.get("temperature")
+        details = doc.get("runs") or []
+        passed_runs = {int(r["run"]) for r in details
+                       if r.get("verify_status") == "PASS"} if details else None
+        tps = sweep_tps(sweep_dir, passed_runs)
         yield (
-            doc.get("timestamp") or os.path.basename(os.path.dirname(path)),
+            doc.get("timestamp") or os.path.basename(sweep_dir),
             doc.get("workload") or "-",
             doc.get("model") or "-",
             "n/r" if temperature in (None, "") else str(temperature),
             rate,
+            "-" if tps is None else f"{tps:.1f}",
             doc.get("status") or "-",
         )
 
@@ -44,7 +81,7 @@ def main():
     if not data:
         print(f"No robustness summaries under {os.path.relpath(BASE, ROOT)}/.")
         return 1
-    header = ("Timestamp", "Benchmark", "Model", "Temp", "Success rate", "Status")
+    header = ("Timestamp", "Benchmark", "Model", "Temp", "Success rate", "TPS (median)", "Status")
     widths = [max(len(str(row[i])) for row in data + [header]) for i in range(len(header))]
     print(f"{ARM} robustness runs")
     print(f"Source: {os.path.relpath(BASE, ROOT)}/")
@@ -55,6 +92,9 @@ def main():
         cells = [str(row[i]).ljust(widths[i]) if i < 3 else str(row[i]).rjust(widths[i])
                  for i in range(len(row))]
         print("  ".join(cells).rstrip())
+    print()
+    print("TPS: median TOTAL rate from PASS runs' verify smokes (10 s, 1 client).")
+    print("     Failed runs are excluded; this is not a benchmark number.")
     return 0
 
 

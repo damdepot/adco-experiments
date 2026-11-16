@@ -530,9 +530,13 @@ bench_verify_arm() {
     fi
     echo "-------------------<< Verify: restoring '${db}' from '${seed}' >>-------------------"
     bench_restore "${db}" "${seed}"
-    echo "-------------------<< Verify: resetting knobs >>-------------------"
-    restore_defaults
-    bench_assert_fresh_knobs
+    if [ "${VERIFY_KEEP_KNOBS:-0}" = "1" ]; then
+        echo "-------------------<< Verify: keeping tuned knobs >>-------------------"
+    else
+        echo "-------------------<< Verify: resetting knobs >>-------------------"
+        restore_defaults
+        bench_assert_fresh_knobs
+    fi
     echo "-------------------<< Verify: checking row scale >>-------------------"
     bench_assert_rows "${db}" "warehouse" "${warehouses}"
     echo "-------------------<< Verify: arm '${arm}' on pristine '${db}' (${warehouses} warehouses) >>-------------------"

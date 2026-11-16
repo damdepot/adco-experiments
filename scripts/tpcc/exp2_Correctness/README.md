@@ -153,17 +153,24 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
 ./run/tpcc/run_aco-robustness.sh         [runs=10] [dbms=postgres] [model]
 ./run/tpcc/run_adco-robustness.sh        [runs=10] [dbms=postgres] [model]
 ./run/tpcc/run_py-dbridge-robustness.sh  [runs=1]  [dbms=postgres] [model]
+./run/tpcc/run_naive-llm-agenttune-robustness.sh  [runs=10]
+./run/tpcc/run_agenttune-naive-llm-robustness.sh  [runs=10]
 
 # generic form
 ./run/tpcc/run_robustness.sh <arm> [runs] [dbms=postgres] [model]
 ```
 
 Each iteration: generate a fresh tree with the arm's own pipeline, verify that
-tree, record. Default runs: `naive-llm 10`, `aco 10`, `adco 10`, `py-dbridge 1`.
+tree, record. Default runs: `naive-llm 10`, `naive-llm-agenttune 10`,
+`agenttune-naive-llm 10`, `aco 10`, `adco 10`, `py-dbridge 1`.
 - `naive-llm`: one unguided rewrite.
 - `aco` / `adco`: `runExperiment0.sh ACo|ADCo` (ADCo includes its tuner); the
   sandbox is deleted first so repeated runs are independent.
 - `py-dbridge`: one deterministic transpile.
+- `naive-llm-agenttune` / `agenttune-naive-llm`: the rewrite phase of the
+  stacked arm. AgentTune runs once per sweep (same order the arm uses) and the
+  verifier keeps those knobs (`VERIFY_KEEP_KNOBS=1`) instead of resetting to
+  defaults; the tuned config is snapshotted under the run directory.
 - Uses `tpcc_verify_seed` at `VERIFY_WAREHOUSES` (default 1), created once and
   reused; `RESEED=1` rebuilds it. The performance `tpcc_seed` is not touched.
 - Writes `results/tpcc/robustness/<arm>/latest.json` plus timestamped

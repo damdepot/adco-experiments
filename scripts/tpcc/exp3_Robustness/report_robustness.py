@@ -17,8 +17,10 @@ RESULTS = os.path.join(ROOT, "results", "tpcc", "robustness")
 OUT_DIR = os.path.join(ROOT, "reports", "tpcc")
 OUT_FILE = os.path.join(OUT_DIR, "robustness.md")
 
-ORDER = ["naive-llm", "aco", "adco", "py-dbridge"]
-DISPLAY = {"naive-llm": "Naive-LLM", "aco": "ACo", "adco": "ADCo", "py-dbridge": "Py-DBridge"}
+ORDER = ["naive-llm", "naive-llm-agenttune", "agenttune-naive-llm", "aco", "adco", "py-dbridge"]
+DISPLAY = {"naive-llm": "Naive-LLM", "naive-llm-agenttune": "Naive-LLM + AgentTune",
+           "agenttune-naive-llm": "AgentTune + Naive-LLM", "aco": "ACo", "adco": "ADCo",
+           "py-dbridge": "Py-DBridge"}
 SYMBOL = {"PASS": "✓", "FAIL": "✗", "WARN": "!", "UNVERIFIED": "?"}
 
 

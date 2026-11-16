@@ -132,7 +132,8 @@ default to 1 run, and record under `results/tpcc/robustness-full-scale/<arm>/`:
 ```
 
 List every recorded sweep (timestamp, benchmark, model, temperature, success
-rate) with `./run/tpcc/run_log_naive-llm-robustness.sh`.
+rate, median smoke TPS of the passing runs) with
+`./run/tpcc/run_log_naive-llm-robustness.sh`.
 
 Default runs: naive-llm 10, naive-llm-agenttune 10, agenttune-naive-llm 10,
 aco 10, adco 10, py-dbridge 1.
