@@ -105,6 +105,9 @@ deadlocks, or on >5% Smallbank errors), then measures.
 ./run/tpcc/run_aco-robustness.sh
 ./run/tpcc/run_adco-robustness.sh
 ./run/tpcc/run_py-dbridge-robustness.sh
+# stacked arms tune once, then verify N rewrites under the tuned knobs:
+./run/tpcc/run_naive-llm-agenttune-robustness.sh   [runs=10]
+./run/tpcc/run_agenttune-naive-llm-robustness.sh   [runs=10]
 ```
 
 Each run is: generate a fresh tree with the arm's pipeline → verify that tree →
@@ -124,12 +127,20 @@ default to 1 run, and record under `results/tpcc/robustness-full-scale/<arm>/`:
 ./run/tpcc/run_aco-robustness-full-scale.sh
 ./run/tpcc/run_adco-robustness-full-scale.sh
 ./run/tpcc/run_py-dbridge-robustness-full-scale.sh
+./run/tpcc/run_naive-llm-agenttune-robustness-full-scale.sh
+./run/tpcc/run_agenttune-naive-llm-robustness-full-scale.sh
 ```
 
 List every recorded sweep (timestamp, benchmark, model, temperature, success
 rate) with `./run/tpcc/run_log_naive-llm-robustness.sh`.
 
-Default runs: naive-llm 10, aco 10, adco 10, py-dbridge 1.
+Default runs: naive-llm 10, naive-llm-agenttune 10, agenttune-naive-llm 10,
+aco 10, adco 10, py-dbridge 1.
+
+The two stacked arms run AgentTune once per sweep, snapshot the tuned
+`postgresql.auto.conf` under `<ts>/tuned/`, then verify every rewrite with those
+knobs (`VERIFY_KEEP_KNOBS=1` skips the verifier's knob reset). Tuning output is
+`<ts>/tune.log`; default knobs are restored when the sweep ends.
 
 | Path | Contents |
 |------|----------|
