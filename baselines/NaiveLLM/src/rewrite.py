@@ -81,34 +81,17 @@ def _read(output_dir: Path, relpath: str) -> str:
     return (output_dir / relpath).read_text(encoding="utf-8")
 
 
-TASK = """# Task: Optimize the Database-Backed Application
+TASK = """# Task: Aggressively Optimize the Database-Backed Application
 
 You are an expert software engineer specializing in application performance optimization, database systems, and SQL optimization.
 
-Your task is to analyze and optimize the provided codebase to improve its overall execution performance, particularly for database-intensive workloads.
+Rewrite the provided application so it runs substantially faster against its database. Assume the current code leaves significant performance on the table and that larger gains are available than a cautious edit would find.
 
-## Instructions
+Optimize the application as a whole rather than individual functions or queries in isolation. Make the program faster, not merely different: renaming, reformatting, comments, dead-code removal and trivial refactors are not optimizations. If the execution path and the database work are essentially unchanged, you have not done the task.
 
-1. Examine the provided repository and understand its architecture, application logic, and database interactions.
-2. Identify potential performance bottlenecks and optimization opportunities.
-3. Apply appropriate optimizations directly to the source code.
-4. Optimize the application as a whole rather than focusing exclusively on SQL queries or individual functions.
-5. Keep modifications practical and consistent with the existing codebase.
+Be aggressive. Do not settle for small, safe tweaks when a deeper restructuring would deliver more. You must change at least one file; returning the input unchanged is a failure.
 
-Apply all changes only to the files listed under FILES TO OPTIMIZE; treat every other file as read-only context.
-
-## Expected Output
-
-Provide the optimized codebase with all necessary source code modifications.
-
-Also provide a concise summary containing:
-
-- Files modified.
-- Optimizations implemented.
-- Expected performance benefits.
-- Any assumptions or potential limitations.
-
-Prioritize measurable end-to-end performance improvements while maintaining functional equivalence with the original application."""
+The rewritten application must still do the same work and produce the same results as the original."""
 
 RULES = [
     "Rules:",
