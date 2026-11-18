@@ -58,10 +58,10 @@ bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 echo '-------------------<< ADCo (unified single run) >>-------------------'
 echo '-------------------<< Generating ADCo (ACo + DCo) for TPCC >>-------------------'
 if $CMDADCoApp ADCo ${model} postgres tpcc; then
+    REVERIFY=1 VERIFY_KEEP_KNOBS=1 ./run/tpcc/run_verify.sh adco
     echo '-------------------<< Running ADCo TPCC workload >>-------------------'
     measure_prep
     PHASE=execute $CMDRunTPCC ${model} postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc adco
-    REVERIFY=1 ./run/tpcc/run_verify.sh adco
 else
     echo 'WARNING: ADCo TPCC generation failed; skipping its measurement.' >&2
 fi

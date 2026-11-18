@@ -26,9 +26,10 @@ CMDDocker=./scripts/_lib/docker.sh
 db_container="adcoexp-db"
 db_service="pgdb"
 
-# Restart (NOT restore: Py-DBridge is rewrite-only, data identical), then cold
+# Restore (scrubs verify's smoke writes; rewrite is files on disk, unaffected), then cold
 # buffers + settled data before measure; execute uses existing data.
 measure_prep() {
+    bench_restore "tpcc" "${SEED_DB_TPCC}"
     "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
     "${CMDDocker}" WaitFor "${db_container}"
     bench_settle
@@ -54,10 +55,10 @@ echo '-------------------<< Generating rewrite app >>-------------------'
 workload_path="workload/apps/tpcc"
 source_file="drivers/postgresdriver.py"
 if $CMDPyDBridge ${workload_path} ${source_file} postgres tpcc; then
+    REVERIFY=1 ./run/tpcc/run_verify.sh py-dbridge
     echo '-------------------<< Running the TPCC workload >>-------------------'
     measure_prep
     PHASE=execute $CMDRunTPCC postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc
-    REVERIFY=1 ./run/tpcc/run_verify.sh py-dbridge
 else
     echo 'WARNING: Py-DBridge TPCC rewrite failed; skipping its measurement.' >&2
 fi

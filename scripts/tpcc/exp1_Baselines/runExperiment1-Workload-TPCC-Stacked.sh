@@ -215,6 +215,6 @@ else
     phase_naive
 fi
 
+REVERIFY=1 VERIFY_KEEP_KNOBS=1 "${EXP_PATH}/run/tpcc/run_verify.sh" "${STACK_ARM}"
 measure_prep
 PHASE=execute "$CMDRUNTPCC" postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc "${STACK_ARM}" "${NAIVE_REWRITE_ROOT}"
-REVERIFY=1 "${EXP_PATH}/run/tpcc/run_verify.sh" "${STACK_ARM}"
