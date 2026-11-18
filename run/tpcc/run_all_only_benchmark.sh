@@ -133,7 +133,7 @@ measure_arm() {
     case "${arm}" in
         baseline)
             export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
-            results="results/tpcc/baseline/benchmarks"
+            results="${ROOT}/results/tpcc/baseline/benchmarks"
             mkdir -p "${results}"; export RESULTS_DIR="${results}"
             bench_arm_from_seed baseline baseline tpcc tpcc_seed
             legacy_sync "${results}" baseline tpcc "" ;;
@@ -146,7 +146,7 @@ measure_arm() {
     esac
     case "${arm}" in
         agenttune|gptuner|ottertune)
-            results="results/tpcc/${arm}/benchmarks"
+            results="${ROOT}/results/tpcc/${arm}/benchmarks"
             mkdir -p "${results}"; export RESULTS_DIR="${results}"
             bench_knobs_apply "results/tpcc/${arm}/state" "${arm}"
             bench_arm_from_seed "${arm}" baseline tpcc tpcc_seed
@@ -170,7 +170,7 @@ measure_arm() {
             PHASE=execute scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc "${arm}" "out/app_layer/NaiveLLM-results/${arm}" ;;
         dco)
             export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-Db-ADCo.sh"
-            results="results/tpcc/dco/benchmarks"
+            results="${ROOT}/results/tpcc/dco/benchmarks"
             mkdir -p "${results}"; export RESULTS_DIR="${results}"
             bench_knobs_apply "results/tpcc/dco/state" "dco"
             bench_restore tpcc tpcc_seed
