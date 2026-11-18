@@ -11,10 +11,9 @@ MODEL="${MODEL:-gemini-3.5-flash-lite}"
 # shellcheck disable=SC1090
 source "${LIB}"
 
-# clean adco results ONCE at top
-rm -rf results/tpcc/adco
+# results CSVs are overwritten by the workload script; state must survive
+mkdir -p results/tpcc/adco
 mkdir -p results/tpcc/adco/benchmarks
-rm -rf out/app_layer/ADCo-results
 mkdir -p out/app_layer/ADCo-results
 
 # Single-writer: never Restart the DB under a concurrent run.
@@ -41,6 +40,9 @@ measure_prep() {
 
 # ── TPC-C (single unified ADCo run: rewrite+tune, app arm measured) ─────
 SEED_DB_TPCC="tpcc_seed"
+STATE_DIR="${EXP_PATH}/results/tpcc/adco/state"
+mkdir -p "${STATE_DIR}"
+REWRITE_DRIVER="out/app_layer/ADCo-results/Rewrite/postgres/tpcc-${model}/drivers/postgresdriver.py"
 export BENCH_REP_DB="tpcc" BENCH_REP_SEED="${SEED_DB_TPCC}"
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
@@ -57,12 +59,27 @@ bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 ### **********
 echo '-------------------<< ADCo (unified single run) >>-------------------'
 echo '-------------------<< Generating ADCo (ACo + DCo) for TPCC >>-------------------'
-if $CMDADCoApp ADCo ${model} postgres tpcc; then
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/adco.done" "${STATE_DIR}/adco.auto.conf" "${STATE_DIR}/adco.knobs.txt"
+    rm -rf out/app_layer/ADCo-results
+fi
+ADCO_OK=0
+if bench_knobs_reuse "${STATE_DIR}" "adco" && [ -f "${REWRITE_DRIVER}" ]; then
+    echo "Reusing cached ADCo knobs + rewrite (FORCE=1 to regenerate)."
+    ADCO_OK=1
+else
+    rm -rf out/app_layer/ADCo-results
+    if $CMDADCoApp ADCo ${model} postgres tpcc; then
+        bench_knobs_save "${STATE_DIR}" "adco"
+        ADCO_OK=1
+    else
+        echo 'WARNING: ADCo TPCC generation failed; skipping its measurement.' >&2
+    fi
+fi
+if [ "${ADCO_OK}" = "1" ]; then
     REVERIFY=1 VERIFY_KEEP_KNOBS=1 ./run/tpcc/run_verify.sh adco
     echo '-------------------<< Running ADCo TPCC workload >>-------------------'
     measure_prep
     PHASE=execute $CMDRunTPCC ${model} postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc adco
-else
-    echo 'WARNING: ADCo TPCC generation failed; skipping its measurement.' >&2
 fi
 

@@ -42,12 +42,15 @@ mkdir -p "${TPCC_RESULTS}"
 export RESULTS_DIR="${TPCC_RESULTS}"
 SEED_DB_TPCC="tpcc_seed"
 export BENCH_REP_DB="tpcc" BENCH_REP_SEED="${SEED_DB_TPCC}"
+STATE_DIR="${EXP_PATH}/results/tpcc/dco/state"
+mkdir -p "${STATE_DIR}"
 
 run_dco_tpcc_tool() {
     if ! "$CMDADCo" DCo "${MODEL}" "${DBMS}" tpcc; then
         echo "ERROR: DCo tuning failed; skipping post-DCo TPCC measurement and CSV." >&2
         return 1
     fi
+    bench_knobs_save "${STATE_DIR}" "dco"
 }
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
@@ -55,11 +58,18 @@ bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 bench_assert_seed "${SEED_DB_TPCC}"
 
 echo "----------------->> DCo tpcc <<-----------------"
-bench_restore "tpcc" "${SEED_DB_TPCC}"
-restore_defaults
-bench_assert_fresh_knobs
-bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
-run_dco_tpcc_tool
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/dco.done" "${STATE_DIR}/dco.auto.conf" "${STATE_DIR}/dco.knobs.txt"
+fi
+if bench_knobs_reuse "${STATE_DIR}" "dco"; then
+    echo "Reusing cached DCo knobs (FORCE=1 to retune)."
+else
+    bench_restore "tpcc" "${SEED_DB_TPCC}"
+    restore_defaults
+    bench_assert_fresh_knobs
+    bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
+    run_dco_tpcc_tool
+fi
 bench_restore "tpcc" "${SEED_DB_TPCC}"
 "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
 "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
