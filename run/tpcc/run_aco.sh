@@ -44,6 +44,7 @@ if $CMDADCo ACo ${model} postgres tpcc; then
     "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
     bench_settle
     PHASE=execute $CMDRunTPCC ${model} postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc aco
+    REVERIFY=1 ./run/tpcc/run_verify.sh aco
 else
     echo 'WARNING: ACo TPCC rewrite failed; skipping its measurement.' >&2
 fi

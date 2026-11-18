@@ -57,6 +57,7 @@ if $CMDPyDBridge ${workload_path} ${source_file} postgres tpcc; then
     echo '-------------------<< Running the TPCC workload >>-------------------'
     measure_prep
     PHASE=execute $CMDRunTPCC postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc
+    REVERIFY=1 ./run/tpcc/run_verify.sh py-dbridge
 else
     echo 'WARNING: Py-DBridge TPCC rewrite failed; skipping its measurement.' >&2
 fi

@@ -68,6 +68,7 @@ if $CMDNaive workload/apps/tpcc postgres tpcc ${model}; then
     echo '-------------------<< Running the TPCC workload >>-------------------'
     measure_prep
     PHASE=execute $CMDRunTPCC postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc "${ARM}"
+    REVERIFY=1 ./run/tpcc/run_verify.sh "${ARM}"
 else
     echo 'WARNING: Naive-LLM TPCC rewrite failed; skipping its measurement.' >&2
 fi
