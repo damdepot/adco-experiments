@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Verify TPC-C app-layer rewrite arms (aco, adco, py-dbridge, naive-llm + baseline).
-# Tiny single-client smoke per arm on the pristine seed, then static + smoke +
+# Tiny single-client smoke per arm on the verify seed (tpcc_verify_seed at
+# VERIFY_WAREHOUSES, default 1), then static + smoke +
 # TPC-C invariant checks via scripts/common/app_layer/exp2_Reports/tpcc_correctness.py.
 # Writes results/tpcc/verify_<arm>.json (consumed by report.py). Never deletes
 # real results: per-arm benchmark dirs are moved aside during the smoke run.
+# Full-scale callers (e.g. exp3_Robustness full-scale mode) override both
+# VERIFY_SEED_DB and VERIFY_WAREHOUSES explicitly.
 # VERIFY_REWRITE_ROOT=<repo-relative tree>: verify that tree under any arm name
 # (used by the prompt-search winner gate); VERIFY_OUTPUT overrides the JSON path.
 set -euo pipefail
@@ -37,8 +40,8 @@ esac
 model="${MODEL:-gemini-3.5-flash-lite}"
 SEED_DB_TPCC="tpcc_seed"
 DB="tpcc"
-VERIFY_SEED_DB="${VERIFY_SEED_DB:-$SEED_DB_TPCC}"
-VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-$TPCC_WAREHOUSES}"
+VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_verify_seed}"
+VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-1}"
 echo "----------------->> Verify seed/scale: seed='${VERIFY_SEED_DB}' warehouses='${VERIFY_WAREHOUSES}' <<-----------------"
 CHECKER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/tpcc_correctness.py"
 BASELINE_DRIVER="${ROOT}/workload/apps/tpcc/drivers/postgresdriver.py"
@@ -57,11 +60,15 @@ export PGOPTIONS="${PGOPTIONS:--c statement_timeout=300000 -c lock_timeout=60000
 export VERIFY_DURATION="${VERIFY_DURATION:-20}"
 VERIFY_CLIENTS="${VERIFY_CLIENTS:-1}"
 VERIFY_WARMUP="${VERIFY_WARMUP:-0}"
-export TPCC_CLIENTS="${VERIFY_CLIENTS}" TPCC_DURATION="${VERIFY_DURATION:-20}" REPS=1 TPCC_WARMUP="${VERIFY_WARMUP}" PHASE=execute
+export TPCC_CLIENTS="${VERIFY_CLIENTS}" TPCC_DURATION="${VERIFY_DURATION:-20}" REPS=1 TPCC_WARMUP="${VERIFY_WARMUP}" PHASE=execute TPCC_WAREHOUSES="${VERIFY_WAREHOUSES}"
 
 # A caller holding the benchmark lock (search/robustness orchestrators) has
-# already ensured and asserted the seed; skip the redundant Docker/psql probe.
-if [ "${VERIFY_SKIP_SEED:-0}" != "1" ] && [ "${BENCH_LOCK_HELD:-0}" != "1" ]; then
+# already ensured the PERF seed only; the verify seed may still be missing, and
+# the in-runner gates now run under a parent lock. Ensure the verify seed
+# unless it is the perf seed the parent already ensured.
+if [ "${VERIFY_SKIP_SEED:-0}" = "1" ]; then
+    echo "----------------->> Seed tpcc: skipped (VERIFY_SKIP_SEED=1) <<-----------------"
+elif [ "${BENCH_LOCK_HELD:-0}" != "1" ] || [ "${VERIFY_SEED_DB}" != "${SEED_DB_TPCC}" ]; then
     echo "----------------->> Seed tpcc (reuse snapshot) <<-----------------"
     bench_ensure_seed "${DB}" "${VERIFY_SEED_DB}"
     bench_assert_seed "${VERIFY_SEED_DB}"
@@ -78,12 +85,12 @@ arm_spec() {
     fi
     case "$1" in
         baseline) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-App.sh|${DBMS}|${BASELINE_DRIVER}|results/tpcc/baseline/benchmarks/runExperiment1-tpcc-${DBMS}" ;;
-        aco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc aco|${ROOT}/out/app_layer/ACo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/aco/benchmarks/aco.csv" ;;
-        adco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc adco|${ROOT}/out/app_layer/ADCo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/adco/benchmarks/adco.csv" ;;
-        py-dbridge) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh|${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc|${ROOT}/out/app_layer/Py-DBridge-results/Rewrite/${DBMS}/tpcc-Py-DBridge/drivers/postgresdriver.py|results/tpcc/py-dbridge/benchmarks/py-dbridge.csv" ;;
-        naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc|${ROOT}/out/app_layer/NaiveLLM-results/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm/benchmarks/naive-llm.csv" ;;
-        naive-llm-agenttune) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc naive-llm-agenttune out/app_layer/NaiveLLM-results/naive-llm-agenttune|${ROOT}/out/app_layer/NaiveLLM-results/naive-llm-agenttune/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm-agenttune/benchmarks/naive-llm-agenttune.csv" ;;
-        agenttune-naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${TPCC_WAREHOUSES} ${VERIFY_CLIENTS} tpcc agenttune-naive-llm out/app_layer/NaiveLLM-results/agenttune-naive-llm|${ROOT}/out/app_layer/NaiveLLM-results/agenttune-naive-llm/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/agenttune-naive-llm/benchmarks/agenttune-naive-llm.csv" ;;
+        aco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${VERIFY_WAREHOUSES} ${VERIFY_CLIENTS} tpcc aco|${ROOT}/out/app_layer/ACo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/aco/benchmarks/aco.csv" ;;
+        adco) echo "scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh|${model} ${DBMS} ${VERIFY_WAREHOUSES} ${VERIFY_CLIENTS} tpcc adco|${ROOT}/out/app_layer/ADCo-results/Rewrite/${DBMS}/tpcc-${model}/drivers/postgresdriver.py|results/tpcc/adco/benchmarks/adco.csv" ;;
+        py-dbridge) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh|${DBMS} ${VERIFY_WAREHOUSES} ${VERIFY_CLIENTS} tpcc|${ROOT}/out/app_layer/Py-DBridge-results/Rewrite/${DBMS}/tpcc-Py-DBridge/drivers/postgresdriver.py|results/tpcc/py-dbridge/benchmarks/py-dbridge.csv" ;;
+        naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${VERIFY_WAREHOUSES} ${VERIFY_CLIENTS} tpcc|${ROOT}/out/app_layer/NaiveLLM-results/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm/benchmarks/naive-llm.csv" ;;
+        naive-llm-agenttune) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${VERIFY_WAREHOUSES} ${VERIFY_CLIENTS} tpcc naive-llm-agenttune out/app_layer/NaiveLLM-results/naive-llm-agenttune|${ROOT}/out/app_layer/NaiveLLM-results/naive-llm-agenttune/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/naive-llm-agenttune/benchmarks/naive-llm-agenttune.csv" ;;
+        agenttune-naive-llm) echo "scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-NaiveLLM.sh|${DBMS} ${VERIFY_WAREHOUSES} ${VERIFY_CLIENTS} tpcc agenttune-naive-llm out/app_layer/NaiveLLM-results/agenttune-naive-llm|${ROOT}/out/app_layer/NaiveLLM-results/agenttune-naive-llm/Rewrite/${DBMS}/tpcc-NaiveLLM/drivers/postgresdriver.py|results/tpcc/agenttune-naive-llm/benchmarks/agenttune-naive-llm.csv" ;;
         *) echo "UNKNOWN" ;;
     esac
 }

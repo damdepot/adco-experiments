@@ -101,8 +101,8 @@ VERIFY_DURATION=30 ./run/tpcc/run_verify.sh     # smoke seconds per arm (default
 Statuses land in `results/tpcc/verify_<arm>.json` (plus
 `verify_<arm>.smoke.log`) and surface as a `## Correctness` section with
 SUSPECT/UNVERIFIED warnings in the `run_report_performance.sh` output. Arms with no
-rewrite dir get `UNVERIFIED` and are skipped. Requires the `tpcc_seed`
-snapshot and a healthy `adcoexp-db` container.
+rewrite dir get `UNVERIFIED` and are skipped. Requires the `tpcc_verify_seed`
+snapshot (default 1 warehouse) and a healthy `adcoexp-db` container.
 
 > Rerun policy: CC10/CC12 value checks can false-alarm on rare shared-stack
 > behavior (remote-lastname payments read one customer's row but post to
@@ -126,8 +126,8 @@ the robustness harness.
 | `REVERIFY=1` | no | ignore a fresh verdict and re-run |
 | `VERIFY_SKIP_SEED=1` | no | caller ensured the seed; skip the top-level ensure |
 | `VERIFY_SKIP_SEED_ASSERT=1` | no | caller asserted the seed; skip `bench_verify_arm`'s check |
-| `VERIFY_SEED_DB` | no | seed to restore from (default `tpcc_seed`) |
-| `VERIFY_WAREHOUSES` | no | warehouse scale of the verify seed (default `TPCC_WAREHOUSES`) |
+| `VERIFY_SEED_DB` | no | seed to restore from (default `tpcc_verify_seed`; full-scale callers pass `tpcc_seed`) |
+| `VERIFY_WAREHOUSES` | no | warehouse scale of the verify seed (default 1; full-scale callers pass `TPCC_WAREHOUSES`) |
 | `VERIFY_DURATION` | no | verifier smoke seconds (default 20; full-scale passes `TPCC_DURATION`) |
 | `VERIFY_CLIENTS` | no | verifier smoke clients (default 1; full-scale passes `TPCC_CLIENTS`) |
 | `VERIFY_WARMUP` | no | verifier smoke warmup seconds (default 0; full-scale passes `TPCC_WARMUP`) |
