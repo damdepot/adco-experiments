@@ -230,10 +230,7 @@ print()
 
 header = f"{'ARM':<14}"
 for txn in order:
-    header += f"|{('TOTAL (P50)' if txn.upper() == 'TOTAL' else txn[:12]):>14}"
-header += f"|{'TOTAL (P5)':>14}"
-header += f"|{'TOTAL (P95)':>14}"
-header += f"|{'IQR':>14}"
+    header += f"|{txn[:12]:>14}"
 header += f"|{'Geo Mean':>12}"
 print(header)
 print("-" * len(header))
@@ -250,24 +247,38 @@ for label in present:
             b = base.get(txn, 0.0)
             pct = (rates[txn] - b) / b * 100 if b > 0 else 0.0
             line += f"|{f'{rates[txn]:.1f} ({pct:+.0f}%)':>14}"
-    for spreads in (p5, p95):
-        v = spreads.get(label)
-        if v is None:
-            line += f"|{'-':>14}"
-        elif label == ref:
-            line += f"|{v:>14.1f}"
-        else:
-            b = spreads.get(ref)
-            pct = (v - b) / b * 100 if b and b > 0 else 0.0
-            line += f"|{f'{v:.1f} ({pct:+.0f}%)':>14}"
-    v = iqr.get(label)
-    line += f"|{v:>14.1f}" if v is not None else f"|{'-':>14}"
     if label == ref:
         g = "-"
     else:
         gg = geo.get(label, 0.0)
         g = f"{gg:.2f}x" if gg > 0 else "N/A"
     line += f"|{g:>12}"
+    print(line)
+
+print()
+hist = f"{'ARM':<14}"
+for col in ("TOTAL (P50)", "TOTAL (P5)", "TOTAL (P95)", "IQR"):
+    hist += f"|{col:>14}"
+print(hist)
+print("-" * len(hist))
+
+for label in present:
+    line = f"{disp(label)[:13]:<14}"
+    p50 = data[label].get('TOTAL')
+    for v, base_v in (
+        (p50, data[ref].get('TOTAL')),
+        (p5.get(label), p5.get(ref)),
+        (p95.get(label), p95.get(ref)),
+    ):
+        if v is None:
+            line += f"|{'-':>14}"
+        elif label == ref:
+            line += f"|{v:>14.1f}"
+        else:
+            pct = (v - base_v) / base_v * 100 if base_v and base_v > 0 else 0.0
+            line += f"|{f'{v:.1f} ({pct:+.0f}%)':>14}"
+    v = iqr.get(label)
+    line += f"|{v:>14.1f}" if v is not None else f"|{'-':>14}"
     print(line)
 
 print()
