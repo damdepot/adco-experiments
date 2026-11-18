@@ -13,7 +13,6 @@ bench_timer "tpcc/run_aco" "results/tpcc/aco" "aco"
 # Clean results and output directories (aco ONLY)
 rm -rf results/tpcc/aco
 mkdir -p results/tpcc/aco/benchmarks
-rm -rf out/app_layer/ACo-results
 mkdir -p out/app_layer/ACo-results
 
 # Define variables and command paths
@@ -21,6 +20,7 @@ CMDADCo=./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh
 CMDRunTPCC=./scripts/tpcc/exp0_ADCo/runExperiment0-Workload-TPCC-App-ADCo.sh
 
 model="${MODEL:-gemini-3.5-flash-lite}"
+REWRITE_DRIVER="out/app_layer/ACo-results/Rewrite/postgres/tpcc-${model}/drivers/postgresdriver.py"
 
 SEED_DB_TPCC="tpcc_seed"
 export BENCH_REP_DB="tpcc" BENCH_REP_SEED="${SEED_DB_TPCC}"
@@ -37,7 +37,22 @@ restore_defaults
 bench_assert_fresh_knobs
 bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 echo '-------------------<< Generating ACo rewrite for TPCC >>-------------------'
-if $CMDADCo ACo ${model} postgres tpcc; then
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -rf out/app_layer/ACo-results
+fi
+ACO_OK=0
+if [ "${FORCE:-0}" != "1" ] && [ -f "${REWRITE_DRIVER}" ]; then
+    echo "Reusing cached ACo rewrite (FORCE=1 to regenerate)."
+    ACO_OK=1
+else
+    rm -rf out/app_layer/ACo-results
+    if $CMDADCo ACo ${model} postgres tpcc; then
+        ACO_OK=1
+    else
+        echo 'WARNING: ACo TPCC rewrite failed; skipping its measurement.' >&2
+    fi
+fi
+if [ "${ACO_OK}" = "1" ]; then
     BENCH_LOCK_HELD=1 REVERIFY=1 ./run/tpcc/run_verify.sh aco
     echo '-------------------<< Running ACo TPCC workload >>-------------------'
     bench_restore "tpcc" "${SEED_DB_TPCC}"
@@ -45,6 +60,4 @@ if $CMDADCo ACo ${model} postgres tpcc; then
     "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
     bench_settle
     PHASE=execute $CMDRunTPCC ${model} postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc aco
-else
-    echo 'WARNING: ACo TPCC rewrite failed; skipping its measurement.' >&2
 fi
