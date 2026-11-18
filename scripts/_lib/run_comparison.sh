@@ -9,9 +9,11 @@
 # (canonical column order, unrecognised labels last), falling back to
 # run-stamped <label>_<RUN_ID>[_rN].csv (latest run wins). runExperiment*
 # logs/aliases stay ignored. For every
-# label the txn/s of column 4 is the median across reps, per transaction
-# type, and printed alongside the percentage change relative to the first
-# present label. Higher is better.
+# label the txn/s of column 4 is the median (p50) across reps, per
+# transaction type, and printed alongside the percentage change relative to
+# the first present label. TOTAL columns follow the txn columns: p50, p5,
+# p95 (nearest-rank percentiles of the TOTAL rate across reps) and IQR
+# (nearest-rank Q3 - Q1 spread). Higher is better.
 #
 # Usage:
 #   scripts/_lib/run_comparison.sh
@@ -124,6 +126,31 @@ def _median(xs):
     return (s[n // 2 - 1] + s[n // 2]) / 2.0
 
 
+def _p5(xs):
+    s = sorted(xs)
+    n = len(s)
+    k = max(0, (5 * n + 99) // 100 - 1)
+    return s[k]
+
+
+def _p95(xs):
+    s = sorted(xs)
+    n = len(s)
+    k = max(0, (95 * n + 99) // 100 - 1)
+    return s[k]
+
+
+def _iqr(xs):
+    s = sorted(xs)
+    n = len(s)
+    q1 = max(0, (25 * n + 99) // 100 - 1)
+    q3 = max(0, (75 * n + 99) // 100 - 1)
+    return s[q3] - s[q1]
+
+
+p5 = {}
+p95 = {}
+iqr = {}
 for label in labels:
     files = rep_files(label)
     if not files:
@@ -133,6 +160,7 @@ for label in labels:
         data[label] = None
         continue
     vals = {}
+    totals = {}
     for path in files:
         with open(path, newline="") as fh:
             reader = csv.reader(fh)
@@ -148,9 +176,14 @@ for label in labels:
                 except ValueError:
                     continue
                 vals.setdefault(txn, []).append(rate)
+                if txn.upper() == "TOTAL":
+                    totals.setdefault(label, []).append(rate)
                 if txn not in order:
                     order.append(txn)
     data[label] = {t: _median(vals[t]) for t in vals} if vals else None
+    p5[label] = _p5(totals[label]) if totals.get(label) else None
+    p95[label] = _p95(totals[label]) if totals.get(label) else None
+    iqr[label] = _iqr(totals[label]) if totals.get(label) else None
     if data[label] is None:
         sys.stderr.write(
             f"WARNING: no parseable rows in {label} (skipping '{label}')\n"
@@ -197,7 +230,10 @@ print()
 
 header = f"{'ARM':<14}"
 for txn in order:
-    header += f"|{txn[:12]:>14}"
+    header += f"|{('TOTAL (P50)' if txn.upper() == 'TOTAL' else txn[:12]):>14}"
+header += f"|{'TOTAL (P5)':>14}"
+header += f"|{'TOTAL (P95)':>14}"
+header += f"|{'IQR':>14}"
 header += f"|{'Geo Mean':>12}"
 print(header)
 print("-" * len(header))
@@ -214,6 +250,18 @@ for label in present:
             b = base.get(txn, 0.0)
             pct = (rates[txn] - b) / b * 100 if b > 0 else 0.0
             line += f"|{f'{rates[txn]:.1f} ({pct:+.0f}%)':>14}"
+    for spreads in (p5, p95):
+        v = spreads.get(label)
+        if v is None:
+            line += f"|{'-':>14}"
+        elif label == ref:
+            line += f"|{v:>14.1f}"
+        else:
+            b = spreads.get(ref)
+            pct = (v - b) / b * 100 if b and b > 0 else 0.0
+            line += f"|{f'{v:.1f} ({pct:+.0f}%)':>14}"
+    v = iqr.get(label)
+    line += f"|{v:>14.1f}" if v is not None else f"|{'-':>14}"
     if label == ref:
         g = "-"
     else:
@@ -224,4 +272,5 @@ for label in present:
 
 print()
 print(f"Note: higher is better; percentages are relative to {disp(ref)}.")
+print("p50 = median TOTAL txn/s across reps; p5/p95 = nearest-rank 5th/95th percentile; IQR = nearest-rank Q3 - Q1 (spread, lower = more stable); 1 rep → all equal.")
 PY

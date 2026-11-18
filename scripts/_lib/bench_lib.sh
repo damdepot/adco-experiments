@@ -546,7 +546,8 @@ bench_knobs_reuse() {
         return 1
     fi
     if bench_knob_cache_hit "${state_dir}" "${name}"; then
-        bench_knobs_apply "${state_dir}" "${name}"
+        # A failed verify must fall through to retune; never measure with unproven knobs.
+        bench_knobs_apply "${state_dir}" "${name}" || return 1
         return 0
     fi
     return 1

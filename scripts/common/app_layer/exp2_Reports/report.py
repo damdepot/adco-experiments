@@ -40,6 +40,14 @@ def calculate_mean(values):
         return None
     return sum(values) / len(values)
 
+def calculate_percentile(values, q):
+    if not values:
+        return None
+    sorted_values = sorted(values)
+    n = len(sorted_values)
+    k = max(0, (int(round(q * 100)) * n + 99) // 100 - 1)
+    return sorted_values[k]
+
 def geometric_mean(values):
     valid = [v for v in values if v is not None and v > 0]
     if not valid:
@@ -272,8 +280,13 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
             rate_vals = data[sys][txn]['transaction_rate']
             time_vals = data[sys][txn]['execution_time']
             exec_vals = data[sys][txn]['executed']
+            q1 = calculate_percentile(rate_vals, 0.25)
+            q3 = calculate_percentile(rate_vals, 0.75)
             stats[sys][txn] = {
                 'rate': calculate_median(rate_vals),
+                'p5_rate': calculate_percentile(rate_vals, 0.05),
+                'p95_rate': calculate_percentile(rate_vals, 0.95),
+                'iqr_rate': (q3 - q1) if q1 is not None and q3 is not None else None,
                 'time': calculate_median(time_vals),
                 'executed': calculate_median(exec_vals)
             }
@@ -320,7 +333,10 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
 
     header = f"{'Arm':<20}"
     for txn in all_txns:
-        header += f"| {txn[:14]:>16}"
+        header += f"| {('TOTAL (P50)' if txn.upper() == 'TOTAL' else txn[:14]):>16}"
+    header += f"| {'TOTAL (P5)':>12}"
+    header += f"| {'TOTAL (P95)':>12}"
+    header += f"| {'IQR':>12}"
     header += f"| {'Geo Mean':>12}"
     lines.append(header)
     lines.append("-" * len(header))
@@ -338,6 +354,12 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
             else:
                 cell = f"{rate:.2f} ({rate / base_rate:.2f}x)"
             line += f"| {cell:>16}"
+        p5 = stats[sys].get('TOTAL', {}).get('p5_rate')
+        line += f"| {f'{p5:.2f}' if p5 is not None else '-':>12}"
+        p95 = stats[sys].get('TOTAL', {}).get('p95_rate')
+        line += f"| {f'{p95:.2f}' if p95 is not None else '-':>12}"
+        iqr = stats[sys].get('TOTAL', {}).get('iqr_rate')
+        line += f"| {f'{iqr:.2f}' if iqr is not None else '-':>12}"
         if sys == base_sys:
             g_str = "-"
         else:
@@ -384,8 +406,9 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
 
         # Table 1: Throughput (Transaction Rate), arms as rows.
         md_lines.append("## Transaction Rate / Throughput (txn/s)\n")
-        md_lines.append("| Arm | " + " | ".join(all_txns) + " | Geo Mean | Correctness |")
-        md_lines.append("| :--- | " + " | ".join("---:" for _ in all_txns) + " | ---: | :--- |")
+        hdr_cells = ["TOTAL (P50)" if t.upper() == "TOTAL" else t for t in all_txns]
+        md_lines.append("| Arm | " + " | ".join(hdr_cells) + " | TOTAL (P5) | TOTAL (P95) | IQR | Geo Mean | Correctness |")
+        md_lines.append("| :--- | " + " | ".join("---:" for _ in all_txns) + " | ---: | ---: | ---: | ---: | :--- |")
         for sys in [base_sys] + list(other_systems):
             name = system_display_names.get(sys, sys.capitalize())
             cells = []
@@ -401,6 +424,12 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
                 if txn.upper() == 'TOTAL' and cell != "N/A":
                     cell = f"**{cell}**"
                 cells.append(cell)
+            p5 = stats[sys].get('TOTAL', {}).get('p5_rate')
+            cells.append(f"**{p5:.2f}**" if p5 is not None else "-")
+            p95 = stats[sys].get('TOTAL', {}).get('p95_rate')
+            cells.append(f"**{p95:.2f}**" if p95 is not None else "-")
+            iqr = stats[sys].get('TOTAL', {}).get('iqr_rate')
+            cells.append(f"**{iqr:.2f}**" if iqr is not None else "-")
             if sys == base_sys:
                 g_str = "-"
             else:
