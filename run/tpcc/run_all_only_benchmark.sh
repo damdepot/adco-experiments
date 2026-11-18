@@ -135,6 +135,9 @@ measure_arm() {
             export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
             results="${ROOT}/results/tpcc/baseline/benchmarks"
             mkdir -p "${results}"; export RESULTS_DIR="${results}"
+            restore_defaults
+            bench_assert_fresh_knobs
+            bench_assert_rows tpcc_seed warehouse "${TPCC_WAREHOUSES}"
             bench_arm_from_seed baseline baseline tpcc tpcc_seed
             legacy_sync "${results}" baseline tpcc "" ;;
         agenttune)
