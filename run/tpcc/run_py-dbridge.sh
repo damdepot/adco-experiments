@@ -55,7 +55,7 @@ echo '-------------------<< Generating rewrite app >>-------------------'
 workload_path="workload/apps/tpcc"
 source_file="drivers/postgresdriver.py"
 if $CMDPyDBridge ${workload_path} ${source_file} postgres tpcc; then
-    REVERIFY=1 ./run/tpcc/run_verify.sh py-dbridge
+    BENCH_LOCK_HELD=1 REVERIFY=1 ./run/tpcc/run_verify.sh py-dbridge
     echo '-------------------<< Running the TPCC workload >>-------------------'
     measure_prep
     PHASE=execute $CMDRunTPCC postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc

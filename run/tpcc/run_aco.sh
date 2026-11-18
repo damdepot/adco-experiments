@@ -38,7 +38,7 @@ bench_assert_fresh_knobs
 bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 echo '-------------------<< Generating ACo rewrite for TPCC >>-------------------'
 if $CMDADCo ACo ${model} postgres tpcc; then
-    REVERIFY=1 ./run/tpcc/run_verify.sh aco
+    BENCH_LOCK_HELD=1 REVERIFY=1 ./run/tpcc/run_verify.sh aco
     echo '-------------------<< Running ACo TPCC workload >>-------------------'
     bench_restore "tpcc" "${SEED_DB_TPCC}"
     "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"

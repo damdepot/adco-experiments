@@ -336,6 +336,9 @@ bench_lock() {
         # would fail and leave a stale lock dir behind).
         trap "rmdir \"${root}/.bench.lock.dir\" 2>/dev/null || true" EXIT
     fi
+    # Protocol: children that inherit this env skip re-locking (see run_verify.sh
+    # guard); a second *separate* run has no such parent export so still fails fast.
+    export BENCH_LOCK_HELD=1
 }
 
 # bench_timer <label> <results-dir> <name>: record this script's run metadata

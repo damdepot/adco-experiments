@@ -77,7 +77,7 @@ else
     fi
 fi
 if [ "${ADCO_OK}" = "1" ]; then
-    REVERIFY=1 VERIFY_KEEP_KNOBS=1 ./run/tpcc/run_verify.sh adco
+    BENCH_LOCK_HELD=1 REVERIFY=1 VERIFY_KEEP_KNOBS=1 ./run/tpcc/run_verify.sh adco
     echo '-------------------<< Running ADCo TPCC workload >>-------------------'
     measure_prep
     PHASE=execute $CMDRunTPCC ${model} postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc adco
