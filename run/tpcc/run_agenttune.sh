@@ -64,6 +64,8 @@ TPCC_RESULTS="${TPCC_TOOL_BASE}"
 mkdir -p "${TPCC_RESULTS}"
 export RESULTS_DIR="${TPCC_RESULTS}"
 SEED_DB_TPCC="tpcc_seed"
+STATE_DIR="${EXP_PATH}/results/tpcc/agenttune/state"
+mkdir -p "${STATE_DIR}"
 
 run_agenttune_tpcc_tool() {
     # baselines/AgentTune/config.ini is shared state: a TPCH run leaves
@@ -92,6 +94,7 @@ PY
         echo "ERROR: AgentTune tuning failed; skipping post-AgentTune TPCC measurement and CSV." >&2
         return 1
     fi
+    bench_knobs_save "${STATE_DIR}" "agenttune"
 }
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
@@ -100,7 +103,15 @@ bench_assert_seed "${SEED_DB_TPCC}"
 bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${TPCC_WAREHOUSES}"
 
 echo "----------------->> AgentTune tpcc <<-----------------"
-bench_arm_from_seed "agenttune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_agenttune_tpcc_tool
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/agenttune.done" "${STATE_DIR}/agenttune.auto.conf" "${STATE_DIR}/agenttune.knobs.txt"
+fi
+if bench_knobs_reuse "${STATE_DIR}" "agenttune"; then
+    echo "Reusing cached AgentTune knobs (FORCE=1 to retune)."
+    bench_arm_from_seed "agenttune" "baseline" "tpcc" "${SEED_DB_TPCC}"
+else
+    bench_arm_from_seed "agenttune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_agenttune_tpcc_tool
+fi
 legacy_sync "${TPCC_RESULTS}" "agenttune" "tpcc"
 
 

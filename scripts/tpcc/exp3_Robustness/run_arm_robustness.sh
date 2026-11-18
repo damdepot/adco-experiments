@@ -310,20 +310,39 @@ for ((i = 1; i <= RUNS; i++)); do
     changed=""; restored=""
     parsed="$(sed -nE 's/.*files changed: ([0-9]+), restored: ([0-9]+).*/\1 \2/p' "${abs_run}/rewrite.log" | tail -1 || true)"
     [ -n "${parsed}" ] && read -r changed restored <<<"${parsed}"
-    rw_status="ok"; [ "${rc}" -ne 0 ] && rw_status="failed"
+
     sha=""
+    rw_status="ok"
+    rw_check=""
     if [ -f "${ROOT}/${tree_rel}/drivers/postgresdriver.py" ]; then
         sha="$(cat "${ROOT}/${tree_rel}/drivers/postgresdriver.py" "${ROOT}/${tree_rel}/tpcc.py" 2>/dev/null | sha256sum | awk '{print $1}')"
+    fi
+    if [ "${rc}" -ne 0 ]; then
+        rw_status="failed"; rw_check="generation failed"
+    elif [ ! -f "${ROOT}/${tree_rel}/drivers/postgresdriver.py" ]; then
+        rw_status="missing"; rw_check="no rewrite tree"
+    else
+        rw_rc=0
+        python3 "${ROOT}/scripts/tpcc/exp3_Robustness/check_rewrite.py" \
+            "${ROOT}/${tree_rel}" "${ROOT}/workload/apps/tpcc" || rw_rc=$?
+        case "${rw_rc}" in
+            0) rw_check="substantive" ;;
+            1) rw_status="unchanged"; rw_check="no substantive change" ;;
+            2) rw_status="cosmetic"; rw_check="cosmetic only" ;;
+            *) rw_status="missing"; rw_check="no comparable file" ;;
+        esac
+    fi
+
+    if [ "${rw_status}" = "ok" ]; then
         verify_tree "${ARM}-r${idx}" "${rel_run}" "${rel_run}"
         echo "run ${i}/${RUNS}: $(verify_status_of "${ROOT}/${rel_run}/verify.json") (${gen_seconds}s)"
     else
-        echo "WARNING: run ${i}: no ${ARM} tree (generation exit ${rc})" >&2
-        echo "run ${i}/${RUNS}: UNVERIFIED (${gen_seconds}s)"
-        rw_status="missing"
+        [ "${rw_status}" = "missing" ] && echo "WARNING: run ${i}: no ${ARM} tree (generation exit ${rc})" >&2
+        echo "run ${i}/${RUNS}: FAIL (rewrite: ${rw_check}) (${gen_seconds}s)"
     fi
 
-    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-        "${i}" "${sha}" "${rw_status}" "${changed}" "${restored}" "${rel_run}/verify.json" "${gen_seconds}" \
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+        "${i}" "${sha}" "${rw_status}" "${changed}" "${restored}" "${rel_run}/verify.json" "${gen_seconds}" "${rw_check}" \
         >>"${RECORDS}"
 done
 
@@ -365,15 +384,21 @@ cfg = kv(os.path.join(ts_dir, "config.tsv"))
 runs = []
 with open(os.path.join(ts_dir, "runs.tsv")) as f:
     for line in f:
-        parts = (line.rstrip("\n").split("\t") + [""] * 7)[:7]
-        run, sha, rw, changed, restored, vjson, seconds = parts
-        status, failures = failed_checks(vjson) if vjson else ("UNVERIFIED", ["no rewrite tree"])
-        runs.append({"run": int(run), "verify_status": status, "rewrite_status": rw,
+        parts = (line.rstrip("\n").split("\t") + [""] * 8)[:8]
+        run, sha, rw, changed, restored, vjson, seconds, rw_check = parts
+        if rw != "ok":
+            status, failures = "FAIL", ["rewrite: " + (rw_check or rw)]
+        elif vjson:
+            status, failures = failed_checks(vjson)
+        else:
+            status, failures = "UNVERIFIED", ["no rewrite tree"]
+        runs.append({"run": int(run), "status": status, "verify_status": status,
+                     "rewrite_status": rw, "rewrite_check": rw_check or None,
                      "changed": changed or None, "restored": restored or None,
                      "sha256": sha or None, "generation_seconds": int(seconds) if seconds else None,
                      "failed_checks": failures, "verify_json": vjson or None})
 
-counts = {k: sum(1 for r in runs if r["verify_status"] == v) for k, v in
+counts = {k: sum(1 for r in runs if r["status"] == v) for k, v in
           (("pass", "PASS"), ("fail", "FAIL"), ("warn", "WARN"), ("unverified", "UNVERIFIED"))}
 if counts["fail"]:
     status = "FAIL"
@@ -383,9 +408,9 @@ elif counts["pass"]:
     status = "PASS"
 else:
     status = "UNVERIFIED"
-failures = [{"run": r["run"], "status": r["verify_status"],
+failures = [{"run": r["run"], "status": r["status"],
              "failed_checks": r["failed_checks"]}
-            for r in runs if r["verify_status"] in ("FAIL", "WARN", "UNVERIFIED")]
+            for r in runs if r["status"] in ("FAIL", "WARN", "UNVERIFIED")]
 
 summary = {
     "arm": arm,

@@ -492,6 +492,63 @@ bench_assert_rows() {
     fi
 }
 
+# Generic tuner-knob cache so any tuner arm can save/reuse knobs.
+# FORCE=1 forces a full retune (reuse returns 1; caller retunes).
+bench_knob_cache_hit() {
+    local state_dir="${1:-}"
+    local name="${2:-tuned}"
+    [ -n "${state_dir}" ] && [ -f "${state_dir}/${name}.done" ] \
+        && [ -f "${state_dir}/${name}.auto.conf" ] \
+        && [ -f "${state_dir}/${name}.knobs.txt" ]
+}
+
+bench_knobs_save() {
+    local state_dir="${1:-}"
+    local name="${2:-tuned}"
+    local pgdata
+    mkdir -p "${state_dir}"
+    pgdata="$(docker exec "${BENCH_DB_CONTAINER}" printenv PGDATA)"
+    docker exec -u postgres "${BENCH_DB_CONTAINER}" cat "${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf" > "${state_dir}/${name}.auto.conf"
+    python3 "${BENCH_ROOT}/tools/check_knobs.py" > "${state_dir}/${name}.knobs.txt"
+    touch "${state_dir}/${name}.done"
+}
+
+bench_knobs_apply() {
+    local state_dir="${1:-}"
+    local name="${2:-tuned}"
+    local pgdata applied
+    pgdata="$(docker exec "${BENCH_DB_CONTAINER}" printenv PGDATA)"
+    if grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' "${state_dir}/${name}.auto.conf"; then
+        docker exec -i -u postgres "${BENCH_DB_CONTAINER}" sh -c "cat > '${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf'" < "${state_dir}/${name}.auto.conf"
+        "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
+        "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
+    else
+        restore_defaults
+    fi
+    applied="$(mktemp)"
+    python3 "${BENCH_ROOT}/tools/check_knobs.py" > "${applied}"
+    if ! diff -q "${state_dir}/${name}.knobs.txt" "${applied}" >/dev/null; then
+        echo "ERROR: re-applied knobs (${name}) differ from the saved snapshot:" >&2
+        diff -u "${state_dir}/${name}.knobs.txt" "${applied}" >&2 || true
+        rm -f "${applied}"
+        return 1
+    fi
+    rm -f "${applied}"
+}
+
+bench_knobs_reuse() {
+    local state_dir="${1:-}"
+    local name="${2:-tuned}"
+    if [ "${FORCE:-0}" = "1" ]; then
+        return 1
+    fi
+    if bench_knob_cache_hit "${state_dir}" "${name}"; then
+        bench_knobs_apply "${state_dir}" "${name}"
+        return 0
+    fi
+    return 1
+}
+
 # Restore query-layer data and enforce the same seed/knob/row guardrails used
 # by the app-layer arms. bench_fresh_db <db> <seed> [table] [expected_rows].
 bench_fresh_db() {

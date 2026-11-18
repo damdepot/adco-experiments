@@ -161,7 +161,9 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
 ```
 
 Each iteration: generate a fresh tree with the arm's own pipeline, verify that
-tree, record. Default runs: `naive-llm 10`, `naive-llm-agenttune 10`,
+tree, record. A run whose rewrite failed, is missing, is unchanged, or is
+cosmetic only (same AST, e.g. comments/formatting) is recorded as `FAIL` and is
+not verified; `exp3_Robustness/check_rewrite.py` does the comparison. Default runs: `naive-llm 10`, `naive-llm-agenttune 10`,
 `agenttune-naive-llm 10`, `aco 10`, `adco 10`, `py-dbridge 1`.
 - `naive-llm`: one unguided rewrite.
 - `aco` / `adco`: `runExperiment0.sh ACo|ADCo` (ADCo includes its tuner); the

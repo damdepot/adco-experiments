@@ -65,12 +65,15 @@ TPCC_RESULTS="${TPCC_TOOL_BASE}"
 mkdir -p "${TPCC_RESULTS}"
 export RESULTS_DIR="${TPCC_RESULTS}"
 SEED_DB_TPCC="tpcc_seed"
+STATE_DIR="${EXP_PATH}/results/tpcc/ottertune/state"
+mkdir -p "${STATE_DIR}"
 
 run_ottertune_tpcc_tool() {
     if ! "$CMOtterTune" "${DBMS}" tpcc "${OTTERTUNE_ITERATIONS}" "${OTTERTUNE_WARMUP}"; then
         echo "ERROR: OtterTune tuning failed; skipping post-OtterTune TPCC measurement and CSV." >&2
         return 1
     fi
+    bench_knobs_save "${STATE_DIR}" "ottertune"
 }
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
@@ -79,6 +82,14 @@ bench_assert_seed "${SEED_DB_TPCC}"
 bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${TPCC_WAREHOUSES}"
 
 echo "----------------->> OtterTune tpcc <<-----------------"
-bench_arm_from_seed "ottertune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_ottertune_tpcc_tool
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/ottertune.done" "${STATE_DIR}/ottertune.auto.conf" "${STATE_DIR}/ottertune.knobs.txt"
+fi
+if bench_knobs_reuse "${STATE_DIR}" "ottertune"; then
+    echo "Reusing cached OtterTune knobs (FORCE=1 to retune)."
+    bench_arm_from_seed "ottertune" "baseline" "tpcc" "${SEED_DB_TPCC}"
+else
+    bench_arm_from_seed "ottertune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_ottertune_tpcc_tool
+fi
 legacy_sync "${TPCC_RESULTS}" "ottertune" "tpcc"
 

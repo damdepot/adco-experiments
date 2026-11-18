@@ -65,12 +65,15 @@ TPCC_RESULTS="${TPCC_TOOL_BASE}"
 mkdir -p "${TPCC_RESULTS}"
 export RESULTS_DIR="${TPCC_RESULTS}"
 SEED_DB_TPCC="tpcc_seed"
+STATE_DIR="${EXP_PATH}/results/tpcc/gptuner/state"
+mkdir -p "${STATE_DIR}"
 
 run_gptuner_tpcc_tool() {
     if ! "$CMGPTuner" "${DBMS}" tpcc "${TARGET_MEMORY_GB}" "${TARGET_CPU_CORES}"; then
         echo "ERROR: GPTuner tuning failed; skipping post-GPTuner TPCC measurement and CSV." >&2
         return 1
     fi
+    bench_knobs_save "${STATE_DIR}" "gptuner"
 }
 
 echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
@@ -79,7 +82,15 @@ bench_assert_seed "${SEED_DB_TPCC}"
 bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${TPCC_WAREHOUSES}"
 
 echo "----------------->> GPTuner tpcc <<-----------------"
-bench_arm_from_seed "gptuner" "baseline" "tpcc" "${SEED_DB_TPCC}" run_gptuner_tpcc_tool
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/gptuner.done" "${STATE_DIR}/gptuner.auto.conf" "${STATE_DIR}/gptuner.knobs.txt"
+fi
+if bench_knobs_reuse "${STATE_DIR}" "gptuner"; then
+    echo "Reusing cached GPTuner knobs (FORCE=1 to retune)."
+    bench_arm_from_seed "gptuner" "baseline" "tpcc" "${SEED_DB_TPCC}"
+else
+    bench_arm_from_seed "gptuner" "baseline" "tpcc" "${SEED_DB_TPCC}" run_gptuner_tpcc_tool
+fi
 legacy_sync "${TPCC_RESULTS}" "gptuner" "tpcc"
 
 

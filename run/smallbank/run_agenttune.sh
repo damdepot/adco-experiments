@@ -64,6 +64,8 @@ SMALLBANK_RESULTS="${SMALLBANK_TOOL_BASE}"
 mkdir -p "${SMALLBANK_RESULTS}"
 export RESULTS_DIR="${SMALLBANK_RESULTS}"
 SEED_DB_SMALLBANK="smallbank_seed"
+STATE_DIR="${EXP_PATH}/results/smallbank/agenttune/state"
+mkdir -p "${STATE_DIR}"
 
 run_agenttune_smallbank_tool() {
     # baselines/AgentTune/config.ini is shared state: a TPCH run leaves
@@ -90,6 +92,7 @@ PY
         echo "ERROR: AgentTune tuning failed; skipping post-AgentTune SmallBank measurement and CSV." >&2
         return 1
     fi
+    bench_knobs_save "${STATE_DIR}" "agenttune"
 }
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
@@ -98,7 +101,15 @@ bench_assert_seed "${SEED_DB_SMALLBANK}"
 bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${SMALLBANK_ACCOUNTS}"
 
 echo "----------------->> AgentTune smallbank <<-----------------"
-bench_arm_from_seed "agenttune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_agenttune_smallbank_tool
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/agenttune.done" "${STATE_DIR}/agenttune.auto.conf" "${STATE_DIR}/agenttune.knobs.txt"
+fi
+if bench_knobs_reuse "${STATE_DIR}" "agenttune"; then
+    echo "Reusing cached AgentTune knobs (FORCE=1 to retune)."
+    bench_arm_from_seed "agenttune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
+else
+    bench_arm_from_seed "agenttune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_agenttune_smallbank_tool
+fi
 legacy_sync "${SMALLBANK_RESULTS}" "agenttune" "smallbank"
 
 

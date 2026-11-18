@@ -7,10 +7,9 @@
 #   naive-first:     rewrite, then tune
 #   agenttune-first: tune, then rewrite
 #
-# A retry after a failed arm skips the phases already done (markers + validated
-# artifacts in results/tpcc/<arm>/state) and runs only the missing ones.
-# Force a full re-run: rm -rf results/tpcc/<arm>/state (and optionally the
-# rewrite root).
+# The Naive-LLM rewrite always re-runs; only AgentTune tuning is cached/skipped
+# (markers + validated artifacts in results/tpcc/<arm>/state).
+# FORCE=1 clears both for a full re-run.
 #
 # Env: STACK_ORDER, STACK_ARM (results dir + CSV tag), NAIVE_REWRITE_ROOT.
 # Optional: AGENTTUNE_ITERATIONS pins config.ini's iteration count.
@@ -54,6 +53,11 @@ bench_timer "tpcc/run_${STACK_ARM}" "results/tpcc/${STACK_ARM}" "${STACK_ARM}"
 mkdir -p "results/tpcc/${STACK_ARM}/benchmarks"
 STATE_DIR="${EXP_PATH}/results/tpcc/${STACK_ARM}/state"
 mkdir -p "${STATE_DIR}"
+if [ "${FORCE:-0}" = "1" ]; then
+    echo "FORCE=1: clearing ${STATE_DIR} and ${EXP_PATH}/${NAIVE_REWRITE_ROOT} for full re-run."
+    rm -rf "${STATE_DIR}" "${EXP_PATH}/${NAIVE_REWRITE_ROOT}"
+    mkdir -p "${STATE_DIR}"
+fi
 export ARM="${STACK_ARM}" NAIVE_REWRITE_ROOT
 export BENCH_RESULTS_DIR="${EXP_PATH}/results/tpcc/${STACK_ARM}/benchmarks"
 
@@ -72,15 +76,6 @@ export BENCH_REP_DB="tpcc" BENCH_REP_SEED="${SEED_DB_TPCC}"
 AGENTTUNE_ITERATIONS="${AGENTTUNE_ITERATIONS:-}"
 
 # A marker alone is not proof: the phase's artifact must still be there.
-phase_naive_done() {
-    if [ -f "${STATE_DIR}/naive.done" ] \
-        && [ -f "${EXP_PATH}/${NAIVE_REWRITE_ROOT}/Rewrite/postgres/tpcc-NaiveLLM/tpcc.py" ]; then
-        return 0
-    fi
-    rm -f "${STATE_DIR}/naive.done"
-    return 1
-}
-
 phase_agenttune_done() {
     # An empty auto.conf is a valid outcome (no candidate beat the defaults);
     # the markers are the proof that tuning + snapshotting completed.
@@ -180,11 +175,7 @@ echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
 bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
 bench_assert_seed "${SEED_DB_TPCC}"
 
-NAIVE_DONE=0
 AGENTTUNE_DONE=0
-if phase_naive_done; then
-    NAIVE_DONE=1
-fi
 if phase_agenttune_done; then
     AGENTTUNE_DONE=1
 fi
@@ -201,17 +192,12 @@ else
 fi
 bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 
-if [ "${NAIVE_DONE}" = "1" ]; then
-    echo "Resume: skipping Naive-LLM (already done)"
-fi
 if [ "${AGENTTUNE_DONE}" = "1" ]; then
     echo "Resume: skipping AgentTune (already done)"
 fi
 
 if [ "${STACK_ORDER}" = "naive-first" ]; then
-    if [ "${NAIVE_DONE}" = "0" ]; then
-        phase_naive
-    fi
+    phase_naive
     if [ "${AGENTTUNE_DONE}" = "0" ]; then
         phase_agenttune
     fi
@@ -221,14 +207,12 @@ else
         phase_agenttune
         TUNED_NOW=1
     fi
-    if [ "${NAIVE_DONE}" = "0" ]; then
-        # AgentTune's SYSBENCH path ends with DROP SCHEMA public CASCADE;
-        # restore the data but keep the tuned knobs.
-        if [ "${TUNED_NOW}" = "1" ]; then
-            bench_restore "tpcc" "${SEED_DB_TPCC}"
-        fi
-        phase_naive
+    # AgentTune's SYSBENCH path ends with DROP SCHEMA public CASCADE;
+    # restore the data but keep the tuned knobs.
+    if [ "${TUNED_NOW}" = "1" ]; then
+        bench_restore "tpcc" "${SEED_DB_TPCC}"
     fi
+    phase_naive
 fi
 
 measure_prep

@@ -64,12 +64,15 @@ SMALLBANK_RESULTS="${SMALLBANK_TOOL_BASE}"
 mkdir -p "${SMALLBANK_RESULTS}"
 export RESULTS_DIR="${SMALLBANK_RESULTS}"
 SEED_DB_SMALLBANK="smallbank_seed"
+STATE_DIR="${EXP_PATH}/results/smallbank/ottertune/state"
+mkdir -p "${STATE_DIR}"
 
 run_ottertune_smallbank_tool() {
     if ! "$CMOtterTune" "${DBMS}" smallbank "${OTTERTUNE_ITERATIONS}" "${OTTERTUNE_WARMUP}"; then
         echo "ERROR: OtterTune tuning failed; skipping post-OtterTune SmallBank measurement and CSV." >&2
         return 1
     fi
+    bench_knobs_save "${STATE_DIR}" "ottertune"
 }
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
@@ -78,6 +81,14 @@ bench_assert_seed "${SEED_DB_SMALLBANK}"
 bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${SMALLBANK_ACCOUNTS}"
 
 echo "----------------->> OtterTune smallbank <<-----------------"
-bench_arm_from_seed "ottertune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_ottertune_smallbank_tool
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/ottertune.done" "${STATE_DIR}/ottertune.auto.conf" "${STATE_DIR}/ottertune.knobs.txt"
+fi
+if bench_knobs_reuse "${STATE_DIR}" "ottertune"; then
+    echo "Reusing cached OtterTune knobs (FORCE=1 to retune)."
+    bench_arm_from_seed "ottertune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
+else
+    bench_arm_from_seed "ottertune" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_ottertune_smallbank_tool
+fi
 legacy_sync "${SMALLBANK_RESULTS}" "ottertune" "smallbank"
 

@@ -65,12 +65,15 @@ SMALLBANK_RESULTS="${SMALLBANK_TOOL_BASE}"
 mkdir -p "${SMALLBANK_RESULTS}"
 export RESULTS_DIR="${SMALLBANK_RESULTS}"
 SEED_DB_SMALLBANK="smallbank_seed"
+STATE_DIR="${EXP_PATH}/results/smallbank/gptuner/state"
+mkdir -p "${STATE_DIR}"
 
 run_gptuner_smallbank_tool() {
     if ! "$CMGPTuner" "${DBMS}" smallbank "${TARGET_MEMORY_GB}" "${TARGET_CPU_CORES}"; then
         echo "ERROR: GPTuner tuning failed; skipping post-GPTuner SmallBank measurement and CSV." >&2
         return 1
     fi
+    bench_knobs_save "${STATE_DIR}" "gptuner"
 }
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
@@ -79,7 +82,15 @@ bench_assert_seed "${SEED_DB_SMALLBANK}"
 bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${SMALLBANK_ACCOUNTS}"
 
 echo "----------------->> GPTuner smallbank <<-----------------"
-bench_arm_from_seed "gptuner" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_gptuner_smallbank_tool
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/gptuner.done" "${STATE_DIR}/gptuner.auto.conf" "${STATE_DIR}/gptuner.knobs.txt"
+fi
+if bench_knobs_reuse "${STATE_DIR}" "gptuner"; then
+    echo "Reusing cached GPTuner knobs (FORCE=1 to retune)."
+    bench_arm_from_seed "gptuner" "baseline" "smallbank" "${SEED_DB_SMALLBANK}"
+else
+    bench_arm_from_seed "gptuner" "baseline" "smallbank" "${SEED_DB_SMALLBANK}" run_gptuner_smallbank_tool
+fi
 legacy_sync "${SMALLBANK_RESULTS}" "gptuner" "smallbank"
 
 

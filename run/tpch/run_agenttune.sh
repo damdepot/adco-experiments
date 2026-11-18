@@ -11,9 +11,28 @@ bench_timer "tpch/run_agenttune" "results/tpch/agenttune" "agenttune"
 cd "${ROOT}"
 bench_snapshot_seed tpch tpch_seed ./run/setup/tpch-prepare-postgres-remote.sh
 
-# clean agenttune results
-rm -rf results/tpch/agenttune
-mkdir -p results/tpch/agenttune/benchmarks
+# Fresh DB first: reuse must apply cached knobs on top of defaults
+# (bench_fresh_db resets knobs), so it runs before the reuse check.
+bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
+python3 "${ROOT}/tools/check_knobs.py"
+
+STATE_DIR="${ROOT}/results/tpch/agenttune/state"
+mkdir -p "${STATE_DIR}"
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/agenttune.done" "${STATE_DIR}/agenttune.auto.conf" "${STATE_DIR}/agenttune.knobs.txt"
+fi
+
+# clean agenttune results (skipped on reuse so STATE_DIR survives)
+if bench_knobs_reuse "${STATE_DIR}" "agenttune"; then
+    echo "Reusing cached AgentTune knobs (FORCE=1 to retune)."
+    mkdir -p results/tpch/agenttune/benchmarks
+    SKIP_TUNE=1
+else
+    rm -rf results/tpch/agenttune
+    mkdir -p results/tpch/agenttune/benchmarks
+    mkdir -p "${STATE_DIR}"
+    SKIP_TUNE=0
+fi
 
 rm -rf out/query_layer/AgentTune-results
 mkdir -p out/query_layer/AgentTune-results
@@ -61,16 +80,21 @@ PY
     $CMDAgentTune postgres tpch
 }
 
-bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
-python3 "${ROOT}/tools/check_knobs.py"
-if run_agenttune_tune; then
+if [ "${SKIP_TUNE}" = "1" ]; then
+    TUNE_OK=1
+elif run_agenttune_tune; then
+    bench_knobs_save "${STATE_DIR}" "agenttune"
+    TUNE_OK=1
+else
+    echo 'WARNING: AgentTune tuning failed; skipping its workload measurement.' >&2
+    TUNE_OK=0
+fi
+if [ "${TUNE_OK}" = "1" ]; then
     echo '-------------------<< Restarting DB after AgentTune tuning >>-------------------'
     $CMDDocker Restart ${db_container}
     $CMDDocker WaitFor ${db_container}
     echo '-------------------<< Running workload for TPCH dataset (AgentTune tuned knobs) >>-------------------'
     $CMDMeasure tpch PostgreSQL agenttune ${model}
-else
-    echo 'WARNING: AgentTune tuning failed; skipping its workload measurement.' >&2
 fi
 $CMDDocker Restart ${db_container}
 $CMDDocker WaitFor ${db_container}
