@@ -119,11 +119,14 @@ for arm in "${ARMS[@]}"; do
         fi
     fi
 
-    verify="-"
+    verify=""
     verify_file="${RESULTS_BASE}/verify_${arm}.json"
     if [ -f "${verify_file}" ]; then
         verify="$(sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([A-Z]*\)".*/\1/p' "${verify_file}" | head -n 1)"
-        [ -n "${verify}" ] || verify="-"
+    fi
+    if [ -z "${verify}" ]; then
+        # A rewrite arm with no verdict is 'none'; others are never verified.
+        if [ -n "${rewrite}" ]; then verify="none"; else verify="-"; fi
     fi
 
     missing=""
@@ -142,15 +145,23 @@ for arm in "${ARMS[@]}"; do
             status="MISSING"
             n_missing=$((n_missing + 1))
         fi
-    elif [ -n "${knobs_dir}" ] && [ "${knobs_count}" -eq 0 ]; then
-        status="warn: 0 knobs"
-    elif [ "${reps}" -eq 0 ]; then
-        status="warn: no results"
-    elif [ -n "${rewrite}" ] && { [ "${verify}" = "UNVERIFIED" ] || [ "${verify}" = "-" ]; }; then
-        status="warn: verify UNVERIFIED"
     else
-        status="ok"
-        n_ok=$((n_ok + 1))
+        warnings=""
+        if [ -n "${knobs_dir}" ] && [ "${knobs_count}" -eq 0 ]; then
+            warnings="0 knobs"
+        fi
+        if [ "${reps}" -eq 0 ]; then
+            warnings="${warnings:+${warnings}; }no results"
+        fi
+        if [ -n "${rewrite}" ] && [ "${verify}" != "PASS" ]; then
+            warnings="${warnings:+${warnings}; }verify ${verify}"
+        fi
+        if [ -n "${warnings}" ]; then
+            status="warn: ${warnings}"
+        else
+            status="ok"
+            n_ok=$((n_ok + 1))
+        fi
     fi
 
     printf '%-22s | %-15s | %9s | %4s | %-10s | %s\n' \
