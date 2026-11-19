@@ -12,8 +12,8 @@
 # label the txn/s of column 4 is the median (p50) across reps, per
 # transaction type, and printed alongside the percentage change relative to
 # the first present label. TOTAL columns follow the txn columns: p50, p5,
-# p95, p25, p75, min, max (nearest-rank percentiles / extremes of the TOTAL
-# rate across reps) and IQR (nearest-rank Q3 - Q1 spread). Higher is better.
+# p25, p75, min, max (nearest-rank percentiles / extremes of the TOTAL rate
+# across reps) and IQR (nearest-rank Q3 - Q1 spread). Higher is better.
 #
 # Usage:
 #   scripts/_lib/run_comparison.sh
@@ -147,13 +147,6 @@ def _p75(xs):
     return s[k]
 
 
-def _p95(xs):
-    s = sorted(xs)
-    n = len(s)
-    k = max(0, (95 * n + 99) // 100 - 1)
-    return s[k]
-
-
 def _iqr(xs):
     s = sorted(xs)
     n = len(s)
@@ -165,7 +158,6 @@ def _iqr(xs):
 p5 = {}
 p25 = {}
 p75 = {}
-p95 = {}
 minv = {}
 maxv = {}
 iqr = {}
@@ -202,7 +194,6 @@ for label in labels:
     p5[label] = _p5(totals[label]) if totals.get(label) else None
     p25[label] = _p25(totals[label]) if totals.get(label) else None
     p75[label] = _p75(totals[label]) if totals.get(label) else None
-    p95[label] = _p95(totals[label]) if totals.get(label) else None
     minv[label] = min(totals[label]) if totals.get(label) else None
     maxv[label] = max(totals[label]) if totals.get(label) else None
     iqr[label] = _iqr(totals[label]) if totals.get(label) else None
@@ -279,8 +270,8 @@ for label in present:
 
 print()
 hist = f"{'ARM':<14}"
-for col in ("TOTAL (P50)", "TOTAL (P5)", "TOTAL (P95)", "TOTAL (P25)",
-            "TOTAL (P75)", "TOTAL (MIN)", "TOTAL (MAX)", "IQR"):
+for col in ("TOTAL (P50)", "TOTAL (P5)", "TOTAL (P25)", "TOTAL (P75)",
+            "TOTAL (MIN)", "TOTAL (MAX)", "IQR"):
     hist += f"|{col:>14}"
 print(hist)
 print("-" * len(hist))
@@ -291,7 +282,6 @@ for label in present:
     for v, base_v in (
         (p50, data[ref].get('TOTAL')),
         (p5.get(label), p5.get(ref)),
-        (p95.get(label), p95.get(ref)),
         (p25.get(label), p25.get(ref)),
         (p75.get(label), p75.get(ref)),
         (minv.get(label), minv.get(ref)),
@@ -310,5 +300,5 @@ for label in present:
 
 print()
 print(f"Note: higher is better; percentages are relative to {disp(ref)}.")
-print("p50 = median TOTAL txn/s across reps; p5/p25/p75/p95 = nearest-rank percentiles; min/max = smallest/largest rep; IQR = nearest-rank Q3 - Q1 (spread, lower = more stable); 1 rep → all equal.")
+print("p50 = median TOTAL txn/s across reps; p5/p25/p75 = nearest-rank percentiles; min/max = smallest/largest rep; IQR = nearest-rank Q3 - Q1 (spread, lower = more stable); 1 rep → all equal.")
 PY
