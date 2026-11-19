@@ -8,6 +8,9 @@
 # Never takes bench_lock and never writes: safe to run during or after a run.
 # Exit 1 if any arm is MISSING or STALE; warnings alone do not fail.
 #
+# Knob requirement (inlined, not sourced from bench_lib): <arm>.done +
+# <arm>.auto.conf under <arm>/state/ (knobs.txt optional).
+#
 # Overrides (for inspecting copies of results/ and out/):
 #   RESULTS_BASE  default <root>/results/tpcc
 #   OUT_BASE      default <root>/out  (rewrite trees live under app_layer/;
@@ -19,7 +22,6 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-source "${ROOT}/scripts/_lib/bench_lib.sh"
 
 RESULTS_BASE="${RESULTS_BASE:-${ROOT}/results/tpcc}"
 OUT_BASE="${OUT_BASE:-${ROOT}/out}"
@@ -99,7 +101,8 @@ for arm in "${ARMS[@]}"; do
     knobs_count=""
     knobs_hit=0
     if [ -n "${knobs_dir}" ]; then
-        if bench_knob_cache_hit "${knobs_dir}" "${knobs_name}"; then
+        # auto.conf is authoritative; the knobs.txt snapshot is optional metadata.
+        if [ -f "${knobs_dir}/${knobs_name}.done" ] && [ -f "${knobs_dir}/${knobs_name}.auto.conf" ]; then
             knobs_hit=1
             knobs_count="$(grep -cE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' \
                 "${knobs_dir}/${knobs_name}.auto.conf" || true)"
