@@ -22,5 +22,5 @@ CMDBaseline=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Baseline.
 #***************
 echo '-------------------<< Running the baseline experiments for Stats-Lite dataset >>-------------------'
 bench_fresh_db stats stats_seed users "${STATS_USERS_ROWS:-40325}"
-python3 "${ROOT}/tools/check_knobs.py"
+bench_print_knobs
 $CMDBaseline stats PostgreSQL 1

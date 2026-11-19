@@ -60,7 +60,7 @@ bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 echo '-------------------<< ADCo (unified single run) >>-------------------'
 echo '-------------------<< Generating ADCo (ACo + DCo) for TPCC >>-------------------'
 if [ "${FORCE:-0}" = "1" ]; then
-    rm -f "${STATE_DIR}/adco.done" "${STATE_DIR}/adco.auto.conf" "${STATE_DIR}/adco.knobs.txt"
+    rm -f "${STATE_DIR}/adco.done" "${STATE_DIR}/adco.auto.conf"
     rm -rf out/app_layer/ADCo-results
 fi
 ADCO_OK=0

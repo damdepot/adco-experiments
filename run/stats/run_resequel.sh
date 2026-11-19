@@ -50,5 +50,5 @@ $CMDReSequel Verify stats PostgreSQL 1 ${model} PostgreSQL
 #********************
 echo '-------------------<< Running workload for Stats-Lite dataset >>-------------------'
 bench_fresh_db stats stats_seed users "${STATS_USERS_ROWS:-40325}"
-python3 "${ROOT}/tools/check_knobs.py"
+bench_print_knobs
 $CMDRunWorkload stats PostgreSQL ${model}

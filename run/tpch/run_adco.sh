@@ -37,9 +37,9 @@ adco_pipeline() {
     echo '-------------------<< Compiling TPCH dataset (ADCo) >>-------------------'
     $CMDADCo Compile tpch PostgreSQL 1 ${model} adco
     echo '-------------------<< Generating ADCo unified queries for TPCH dataset >>-------------------'
-    python3 "${ROOT}/tools/check_knobs.py" || return 1
+    bench_print_knobs || return 1
     $CMDADCo Rewrite tpch PostgreSQL 1 ${model} adco || return 1
-    python3 "${ROOT}/tools/check_knobs.py" || return 1
+    bench_print_knobs || return 1
     $CMDDocker Restart ${db_container}
     echo '-------------------<< Decompiling rewrite queries for TPCH dataset (ADCo) >>-------------------'
     $CMDADCo Decompile tpch PostgreSQL 1 ${model} adco

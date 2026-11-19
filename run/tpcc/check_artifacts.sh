@@ -9,7 +9,7 @@
 # Exit 1 if any arm is MISSING or STALE; warnings alone do not fail.
 #
 # Knob requirement (inlined, not sourced from bench_lib): <arm>.done +
-# <arm>.auto.conf under <arm>/state/ (knobs.txt optional).
+# <arm>.auto.conf under <arm>/state/. Legacy knobs.txt files are ignored.
 #
 # Overrides (for inspecting copies of results/ and out/):
 #   RESULTS_BASE  default <root>/results/tpcc
@@ -101,7 +101,7 @@ for arm in "${ARMS[@]}"; do
     knobs_count=""
     knobs_hit=0
     if [ -n "${knobs_dir}" ]; then
-        # auto.conf is authoritative; the knobs.txt snapshot is optional metadata.
+        # auto.conf is authoritative; legacy knobs.txt snapshots are ignored.
         if [ -f "${knobs_dir}/${knobs_name}.done" ] && [ -f "${knobs_dir}/${knobs_name}.auto.conf" ]; then
             knobs_hit=1
             knobs_count="$(grep -cE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' \

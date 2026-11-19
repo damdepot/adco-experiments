@@ -59,7 +59,7 @@ bench_assert_seed "${SEED_DB_TPCC}"
 
 echo "----------------->> DCo tpcc <<-----------------"
 if [ "${FORCE:-0}" = "1" ]; then
-    rm -f "${STATE_DIR}/dco.done" "${STATE_DIR}/dco.auto.conf" "${STATE_DIR}/dco.knobs.txt"
+    rm -f "${STATE_DIR}/dco.done" "${STATE_DIR}/dco.auto.conf"
 fi
 if bench_knobs_reuse "${STATE_DIR}" "dco"; then
     echo "Reusing cached DCo knobs (FORCE=1 to retune)."

@@ -20,7 +20,7 @@ bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
 STATE_DIR="${ROOT}/results/tpch/gptuner/state"
 mkdir -p "${STATE_DIR}"
 if [ "${FORCE:-0}" = "1" ]; then
-    rm -f "${STATE_DIR}/gptuner.done" "${STATE_DIR}/gptuner.auto.conf" "${STATE_DIR}/gptuner.knobs.txt"
+    rm -f "${STATE_DIR}/gptuner.done" "${STATE_DIR}/gptuner.auto.conf"
 fi
 
 # clean original results (skipped on reuse so STATE_DIR survives)
@@ -55,7 +55,7 @@ db_container="adcoexp-db"
 ### *************************
 gptuner_tune() {
     echo '-------------------<< Tuning TPCH knobs (GPTuner) >>-------------------'
-    python3 "${ROOT}/tools/check_knobs.py"
+    bench_print_knobs
     "$CMGPTuner" "${DBMS}" tpch "${TARGET_MEMORY_GB}" "${TARGET_CPU_CORES}"
 }
 
@@ -72,7 +72,7 @@ if [ "${TUNE_OK}" = "1" ]; then
     echo '-------------------<< Running workload for TPCH dataset (GPTuner) >>-------------------'
     $CMDDocker Restart ${db_container}
     $CMDDocker WaitFor ${db_container}
-    python3 "${ROOT}/tools/check_knobs.py"
+    bench_print_knobs
     $CMDMeasure tpch PostgreSQL gptuner ${model}
 fi
 $CMDDocker Restart ${db_container}

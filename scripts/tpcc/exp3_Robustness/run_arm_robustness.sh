@@ -171,9 +171,7 @@ PY
         cat "${_pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf" \
         >"${OUT_TS}/tuned/postgresql.auto.conf"
     unset _pgdata
-    TUNED_OVERRIDES="$(psql -d postgres -tA \
-        -c "SELECT count(*) FROM pg_settings WHERE sourcefile LIKE '%postgresql.auto.conf'" \
-        2>/dev/null || true)"
+    TUNED_OVERRIDES="$(bench_knob_override_count)"
     echo "Tuned knobs: ${TUNED_OVERRIDES:-0} overrides in ${TUNE_SECONDS}s"
 fi
 

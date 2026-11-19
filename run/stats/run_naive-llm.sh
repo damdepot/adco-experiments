@@ -45,7 +45,7 @@ naive_pipeline() {
 if naive_pipeline; then
     echo '-------------------<< Running workload for Stats dataset (Naive-LLM) >>-------------------'
     bench_fresh_db stats stats_seed users "${STATS_USERS_ROWS:-40325}"
-    python3 "${ROOT}/tools/check_knobs.py"
+    bench_print_knobs
     $CMDRunWorkload stats PostgreSQL ${model} naive-llm
 else
     echo 'WARNING: Naive-LLM rewrite pipeline failed; skipping its workload measurement.' >&2

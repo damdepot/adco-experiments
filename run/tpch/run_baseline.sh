@@ -22,5 +22,5 @@ CMDBaseline=./scripts/common/query_layer/exp2_Baselines/runExperiment2-Baseline.
 #***************
 echo '-------------------<< Running the baseline experiments for TPCH dataset >>-------------------'
 bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
-python3 "${ROOT}/tools/check_knobs.py"
+bench_print_knobs
 $CMDBaseline tpch PostgreSQL 1

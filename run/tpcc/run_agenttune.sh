@@ -104,7 +104,7 @@ bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${TPCC_WAREHOUSES}"
 
 echo "----------------->> AgentTune tpcc <<-----------------"
 if [ "${FORCE:-0}" = "1" ]; then
-    rm -f "${STATE_DIR}/agenttune.done" "${STATE_DIR}/agenttune.auto.conf" "${STATE_DIR}/agenttune.knobs.txt"
+    rm -f "${STATE_DIR}/agenttune.done" "${STATE_DIR}/agenttune.auto.conf"
 fi
 if bench_knobs_reuse "${STATE_DIR}" "agenttune"; then
     echo "Reusing cached AgentTune knobs (FORCE=1 to retune)."

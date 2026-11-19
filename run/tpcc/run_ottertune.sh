@@ -83,7 +83,7 @@ bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${TPCC_WAREHOUSES}"
 
 echo "----------------->> OtterTune tpcc <<-----------------"
 if [ "${FORCE:-0}" = "1" ]; then
-    rm -f "${STATE_DIR}/ottertune.done" "${STATE_DIR}/ottertune.auto.conf" "${STATE_DIR}/ottertune.knobs.txt"
+    rm -f "${STATE_DIR}/ottertune.done" "${STATE_DIR}/ottertune.auto.conf"
 fi
 if bench_knobs_reuse "${STATE_DIR}" "ottertune"; then
     echo "Reusing cached OtterTune knobs (FORCE=1 to retune)."

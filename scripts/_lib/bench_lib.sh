@@ -470,13 +470,10 @@ bench_assert_seed() {
 }
 
 bench_assert_fresh_knobs() {
-    # Tuner pollution lands in postgresql.auto.conf, which always sets
-    # sourcefile (PG17 reports auto.conf entries as source='configuration
-    # file'). The 7 permanent source='override' rows with NULL sourcefile
-    # (file-location GUCs + image-level transaction_* defaults) are
-    # environmental constants, present even on a fresh container — ignored.
+    # Tuner pollution lands in postgresql.auto.conf, so count its assignments
+    # file-side: no psql, works while the server is still starting.
     local n
-    n="$(psql -d postgres -tA -c "SELECT count(*) FROM pg_settings WHERE sourcefile LIKE '%postgresql.auto.conf'" 2>/dev/null || true)"
+    n="$(bench_knob_override_count)"
     if [ "${n}" != "0" ]; then
         echo "ERROR: stale knobs from a previous arm persist (auto.conf override count=${n}); re-run (reset failed)." >&2
         exit 1
@@ -497,8 +494,7 @@ bench_assert_rows() {
 
 # Generic tuner-knob cache so any tuner arm can save/reuse knobs.
 # FORCE=1 forces a full retune (reuse returns 1; caller retunes).
-# <name>.auto.conf is the authoritative artifact; <name>.knobs.txt is an
-# optional psql-backed snapshot used only to cross-check an apply.
+# <name>.auto.conf is the authoritative (and only) knob artifact.
 bench_knob_cache_hit() {
     local state_dir="${1:-}"
     local name="${2:-tuned}"
@@ -506,19 +502,48 @@ bench_knob_cache_hit() {
         && [ -f "${state_dir}/${name}.auto.conf" ]
 }
 
-# Best-effort knob snapshot. Writes the file only on success, so a DB that is
-# still in recovery leaves any existing snapshot untouched and never aborts.
-_bench_knobs_snapshot() {
-    local state_dir="$1"
-    local name="$2"
-    local tmp
+# Read the container's postgresql.auto.conf into $1. The single file-based
+# read behind the knob inspectors below: no psql, so it works while the server
+# is still starting. Returns docker's exit status.
+_bench_knobs_read_auto_conf() {
+    local pgdata
+    pgdata="$(docker exec "${BENCH_DB_CONTAINER}" printenv PGDATA 2>/dev/null || true)"
+    docker exec -u postgres "${BENCH_DB_CONTAINER}" cat "${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf" > "$1"
+}
+
+# Count overrides in the container's postgresql.auto.conf (no psql needed).
+# Always succeeds: prints 0 when the file cannot be read.
+bench_knob_override_count() {
+    local tmp n
     tmp="$(mktemp)"
-    if python3 "${BENCH_ROOT}/tools/check_knobs.py" > "${tmp}"; then
-        mv "${tmp}" "${state_dir}/${name}.knobs.txt"
+    if ! _bench_knobs_read_auto_conf "${tmp}" 2>/dev/null; then
+        rm -f "${tmp}"
+        echo 0
         return 0
     fi
+    n="$(grep -cE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' "${tmp}" 2>/dev/null || true)"
     rm -f "${tmp}"
-    return 1
+    echo "${n:-0}"
+}
+
+# Print a human-readable list of those overrides (raw auto.conf values, no
+# psql / unit resolution). Returns 1 if the file cannot be read.
+bench_print_knobs() {
+    local tmp lines n
+    tmp="$(mktemp)"
+    if ! _bench_knobs_read_auto_conf "${tmp}" 2>/dev/null; then
+        rm -f "${tmp}"
+        echo "ERROR: could not read postgresql.auto.conf from '${BENCH_DB_CONTAINER}'." >&2
+        return 1
+    fi
+    lines="$(grep -E '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' "${tmp}" 2>/dev/null || true)"
+    rm -f "${tmp}"
+    if [ -z "${lines}" ]; then
+        echo "No updated knobs detected."
+        return 0
+    fi
+    n="$(printf '%s\n' "${lines}" | wc -l | tr -d ' ')"
+    printf '%s updated knobs detected. They are - \n\n%s\n' "${n}" "${lines}"
 }
 
 bench_knobs_save() {
@@ -533,46 +558,32 @@ bench_knobs_save() {
         return 1
     fi
     mv "${tmp}" "${state_dir}/${name}.auto.conf"
-    if ! _bench_knobs_snapshot "${state_dir}" "${name}"; then
-        echo "WARNING: knob snapshot unavailable (DB not ready); auto.conf saved as the authoritative artifact." >&2
-    fi
     touch "${state_dir}/${name}.done"
+    # A tuner that applied nothing measures the default config; say so loudly
+    # instead of letting a 0-override arm look like a successful tune.
+    if ! grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' "${state_dir}/${name}.auto.conf"; then
+        echo "WARNING: tuner '${name}' saved 0 knob overrides; this arm measures the default config." >&2
+    fi
 }
 
 bench_knobs_apply() {
     local state_dir="${1:-}"
     local name="${2:-tuned}"
-    local pgdata applied saved snapshot verify rc=0
+    local pgdata applied saved rc=0
     pgdata="$(docker exec "${BENCH_DB_CONTAINER}" printenv PGDATA)"
     saved="${state_dir}/${name}.auto.conf"
-    snapshot="${state_dir}/${name}.knobs.txt"
     if grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' "${saved}"; then
         docker exec -i -u postgres "${BENCH_DB_CONTAINER}" sh -c "cat > '${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf'" < "${saved}"
         "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
         "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
     else
         restore_defaults
+        echo "WARNING: cached knobs for '${name}' have 0 overrides; this arm measures the default config." >&2
     fi
+    # DB-independent check: Restart + WaitFor proved Postgres accepted the
+    # file, so read it back and compare bytes with what we saved.
     applied="$(mktemp)"
-    verify="file"
-    if [ -s "${snapshot}" ] && [[ "$(head -n 1 "${snapshot}")" != ERROR* ]]; then
-        # Snapshot is usable; a failing psql on this run also drops to read-back.
-        if python3 "${BENCH_ROOT}/tools/check_knobs.py" > "${applied}"; then
-            verify="snapshot"
-        fi
-    fi
-    if [ "${verify}" = "snapshot" ]; then
-        if ! diff -q "${snapshot}" "${applied}" >/dev/null; then
-            echo "ERROR: re-applied knobs (${name}) differ from the saved snapshot:" >&2
-            diff -u "${snapshot}" "${applied}" >&2 || true
-            rc=1
-        fi
-        rm -f "${applied}"
-        return "${rc}"
-    fi
-    # No usable snapshot (DB was not ready when saved): compare the applied
-    # file with the saved one, which needs no live tuple visibility.
-    docker exec -u postgres "${BENCH_DB_CONTAINER}" cat "${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf" > "${applied}"
+    _bench_knobs_read_auto_conf "${applied}"
     if ! diff -q "${saved}" "${applied}" >/dev/null; then
         echo "ERROR: re-applied knobs (${name}) differ from the saved auto.conf:" >&2
         diff -u "${saved}" "${applied}" >&2 || true

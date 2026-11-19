@@ -50,5 +50,5 @@ $CMDReSequel Verify tpch PostgreSQL "${TPCH_SCALE:-1}" ${model} PostgreSQL
 #********************
 echo '-------------------<< Running workload for TPCH dataset >>-------------------'
 bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
-python3 "${ROOT}/tools/check_knobs.py"
+bench_print_knobs
 $CMDRunWorkload tpch PostgreSQL ${model}

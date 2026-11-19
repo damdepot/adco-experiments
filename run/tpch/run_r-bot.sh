@@ -40,5 +40,5 @@ $CMDRunRBotVerify tpch PostgreSQL ${model}
 #**************************
 echo "-------------------<< Running TPCH R-Bot workload >>-------------------"
 bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
-python3 "${ROOT}/tools/check_knobs.py"
+bench_print_knobs
 $CMDRunWorkload tpch PostgreSQL ${model}

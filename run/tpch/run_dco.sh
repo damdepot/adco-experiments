@@ -77,9 +77,9 @@ EOF
 dco_pipeline() {
     echo '-------------------<< Tuning knobs for TPCH dataset (DCo) >>-------------------'
     ensure_tpch_app_shim || return 1
-    python3 "${ROOT}/tools/check_knobs.py" || return 1
+    bench_print_knobs || return 1
     CPU_CORES="${CPU_CORES}" MEMORY_GB="${MEMORY_GB}" $CMDTune DCo ${model} postgres tpch || return 1
-    python3 "${ROOT}/tools/check_knobs.py" || return 1
+    bench_print_knobs || return 1
 }
 
 # Fresh data + default knobs BEFORE tuning; never bench_fresh_db/restore_defaults

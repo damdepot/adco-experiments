@@ -83,7 +83,7 @@ bench_assert_rows "${SEED_DB_SMALLBANK}" "accounts" "${SMALLBANK_ACCOUNTS}"
 
 echo "----------------->> GPTuner smallbank <<-----------------"
 if [ "${FORCE:-0}" = "1" ]; then
-    rm -f "${STATE_DIR}/gptuner.done" "${STATE_DIR}/gptuner.auto.conf" "${STATE_DIR}/gptuner.knobs.txt"
+    rm -f "${STATE_DIR}/gptuner.done" "${STATE_DIR}/gptuner.auto.conf"
 fi
 if bench_knobs_reuse "${STATE_DIR}" "gptuner"; then
     echo "Reusing cached GPTuner knobs (FORCE=1 to retune)."

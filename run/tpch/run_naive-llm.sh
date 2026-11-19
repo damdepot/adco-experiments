@@ -45,7 +45,7 @@ naive_pipeline() {
 if naive_pipeline; then
     echo '-------------------<< Running workload for TPCH dataset (Naive-LLM) >>-------------------'
     bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
-    python3 "${ROOT}/tools/check_knobs.py"
+    bench_print_knobs
     $CMDRunWorkload tpch PostgreSQL ${model} naive-llm
 else
     echo 'WARNING: Naive-LLM rewrite pipeline failed; skipping its workload measurement.' >&2

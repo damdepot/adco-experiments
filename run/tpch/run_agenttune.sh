@@ -14,12 +14,12 @@ bench_snapshot_seed tpch tpch_seed ./run/setup/tpch-prepare-postgres-remote.sh
 # Fresh DB first: reuse must apply cached knobs on top of defaults
 # (bench_fresh_db resets knobs), so it runs before the reuse check.
 bench_fresh_db tpch tpch_seed lineitem "${TPCH_LINEITEM_ROWS:-6001215}"
-python3 "${ROOT}/tools/check_knobs.py"
+bench_print_knobs
 
 STATE_DIR="${ROOT}/results/tpch/agenttune/state"
 mkdir -p "${STATE_DIR}"
 if [ "${FORCE:-0}" = "1" ]; then
-    rm -f "${STATE_DIR}/agenttune.done" "${STATE_DIR}/agenttune.auto.conf" "${STATE_DIR}/agenttune.knobs.txt"
+    rm -f "${STATE_DIR}/agenttune.done" "${STATE_DIR}/agenttune.auto.conf"
 fi
 
 # clean agenttune results (skipped on reuse so STATE_DIR survives)

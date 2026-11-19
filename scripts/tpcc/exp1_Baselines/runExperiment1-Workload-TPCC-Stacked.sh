@@ -80,8 +80,7 @@ phase_agenttune_done() {
     # An empty auto.conf is a valid outcome (no candidate beat the defaults);
     # the markers are the proof that tuning + snapshotting completed.
     if [ -f "${STATE_DIR}/agenttune.done" ] \
-        && [ -f "${STATE_DIR}/agenttune.auto.conf" ] \
-        && [ -f "${STATE_DIR}/agenttune.knobs.txt" ]; then
+        && [ -f "${STATE_DIR}/agenttune.auto.conf" ]; then
         return 0
     fi
     rm -f "${STATE_DIR}/agenttune.done"
@@ -93,13 +92,12 @@ phase_agenttune_done() {
 capture_tuned_config() {
     local pgdata
     pgdata="$(docker exec "${BENCH_DB_CONTAINER}" printenv PGDATA)"
+    # auto.conf is the only knob artifact; the run log is derived from it on demand.
     docker exec -u postgres "${BENCH_DB_CONTAINER}" cat "${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf" > "${STATE_DIR}/agenttune.auto.conf"
-    # Readable snapshot of the tuned values + units for the run log.
-    python3 "${EXP_PATH}/tools/check_knobs.py" > "${STATE_DIR}/agenttune.knobs.txt"
 }
 
 apply_tuned_config() {
-    local pgdata
+    local pgdata applied
     pgdata="$(docker exec "${BENCH_DB_CONTAINER}" printenv PGDATA)"
     if grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' "${STATE_DIR}/agenttune.auto.conf"; then
         docker exec -i -u postgres "${BENCH_DB_CONTAINER}" sh -c "cat > '${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf'" < "${STATE_DIR}/agenttune.auto.conf"
@@ -109,13 +107,16 @@ apply_tuned_config() {
         # No overrides were tuned: the arm's config is the DB defaults.
         restore_defaults
     fi
-    # Prove the restore landed: the applied knobs must match the snapshot.
-    python3 "${EXP_PATH}/tools/check_knobs.py" > "${STATE_DIR}/agenttune.knobs.applied.txt"
-    if ! diff -q "${STATE_DIR}/agenttune.knobs.txt" "${STATE_DIR}/agenttune.knobs.applied.txt" >/dev/null; then
+    # Prove the restore landed: the container's file must match the snapshot.
+    applied="$(mktemp)"
+    docker exec -u postgres "${BENCH_DB_CONTAINER}" cat "${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf" > "${applied}"
+    if ! diff -q "${STATE_DIR}/agenttune.auto.conf" "${applied}" >/dev/null; then
         echo "ERROR: re-applied AgentTune knobs differ from the saved snapshot:" >&2
-        diff -u "${STATE_DIR}/agenttune.knobs.txt" "${STATE_DIR}/agenttune.knobs.applied.txt" >&2 || true
+        diff -u "${STATE_DIR}/agenttune.auto.conf" "${applied}" >&2 || true
+        rm -f "${applied}"
         exit 1
     fi
+    rm -f "${applied}"
 }
 
 phase_naive() {
@@ -184,7 +185,14 @@ if [ "${AGENTTUNE_DONE}" = "1" ]; then
     echo "Resume: re-applying saved AgentTune config"
     bench_restore "tpcc" "${SEED_DB_TPCC}"
     apply_tuned_config
-    cat "${STATE_DIR}/agenttune.knobs.txt"
+    # Log the applied knobs from the saved snapshot (no psql: server may recover).
+    KNOB_LINES="$(grep -E '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' "${STATE_DIR}/agenttune.auto.conf" || true)"
+    if [ -n "${KNOB_LINES}" ]; then
+        printf '%s updated knobs detected. They are - \n\n' "$(printf '%s\n' "${KNOB_LINES}" | wc -l | tr -d ' ')"
+        printf '%s\n' "${KNOB_LINES}"
+    else
+        echo "No updated knobs detected."
+    fi
 else
     bench_restore "tpcc" "${SEED_DB_TPCC}"
     restore_defaults

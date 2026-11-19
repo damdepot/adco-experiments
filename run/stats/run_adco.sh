@@ -37,9 +37,9 @@ adco_pipeline() {
     echo '-------------------<< Compiling Stats-Lite dataset (ADCo) >>-------------------'
     $CMDADCo Compile stats PostgreSQL 1 ${model} adco
     echo '-------------------<< Generating ADCo unified queries for Stats-Lite dataset >>-------------------'
-    python3 "${ROOT}/tools/check_knobs.py" || return 1
+    bench_print_knobs || return 1
     $CMDADCo Rewrite stats PostgreSQL 1 ${model} adco || return 1
-    python3 "${ROOT}/tools/check_knobs.py" || return 1
+    bench_print_knobs || return 1
     $CMDDocker Restart ${db_container}
     echo '-------------------<< Decompiling rewrite queries for Stats-Lite dataset (ADCo) >>-------------------'
     $CMDADCo Decompile stats PostgreSQL 1 ${model} adco
