@@ -497,46 +497,89 @@ bench_assert_rows() {
 
 # Generic tuner-knob cache so any tuner arm can save/reuse knobs.
 # FORCE=1 forces a full retune (reuse returns 1; caller retunes).
+# <name>.auto.conf is the authoritative artifact; <name>.knobs.txt is an
+# optional psql-backed snapshot used only to cross-check an apply.
 bench_knob_cache_hit() {
     local state_dir="${1:-}"
     local name="${2:-tuned}"
     [ -n "${state_dir}" ] && [ -f "${state_dir}/${name}.done" ] \
-        && [ -f "${state_dir}/${name}.auto.conf" ] \
-        && [ -f "${state_dir}/${name}.knobs.txt" ]
+        && [ -f "${state_dir}/${name}.auto.conf" ]
+}
+
+# Best-effort knob snapshot. Writes the file only on success, so a DB that is
+# still in recovery leaves any existing snapshot untouched and never aborts.
+_bench_knobs_snapshot() {
+    local state_dir="$1"
+    local name="$2"
+    local tmp
+    tmp="$(mktemp)"
+    if python3 "${BENCH_ROOT}/tools/check_knobs.py" > "${tmp}"; then
+        mv "${tmp}" "${state_dir}/${name}.knobs.txt"
+        return 0
+    fi
+    rm -f "${tmp}"
+    return 1
 }
 
 bench_knobs_save() {
     local state_dir="${1:-}"
     local name="${2:-tuned}"
-    local pgdata
+    local pgdata tmp
     mkdir -p "${state_dir}"
     pgdata="$(docker exec "${BENCH_DB_CONTAINER}" printenv PGDATA)"
-    docker exec -u postgres "${BENCH_DB_CONTAINER}" cat "${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf" > "${state_dir}/${name}.auto.conf"
-    python3 "${BENCH_ROOT}/tools/check_knobs.py" > "${state_dir}/${name}.knobs.txt"
+    tmp="$(mktemp)"
+    if ! docker exec -u postgres "${BENCH_DB_CONTAINER}" cat "${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf" > "${tmp}"; then
+        rm -f "${tmp}"
+        return 1
+    fi
+    mv "${tmp}" "${state_dir}/${name}.auto.conf"
+    if ! _bench_knobs_snapshot "${state_dir}" "${name}"; then
+        echo "WARNING: knob snapshot unavailable (DB not ready); auto.conf saved as the authoritative artifact." >&2
+    fi
     touch "${state_dir}/${name}.done"
 }
 
 bench_knobs_apply() {
     local state_dir="${1:-}"
     local name="${2:-tuned}"
-    local pgdata applied
+    local pgdata applied saved snapshot verify rc=0
     pgdata="$(docker exec "${BENCH_DB_CONTAINER}" printenv PGDATA)"
-    if grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' "${state_dir}/${name}.auto.conf"; then
-        docker exec -i -u postgres "${BENCH_DB_CONTAINER}" sh -c "cat > '${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf'" < "${state_dir}/${name}.auto.conf"
+    saved="${state_dir}/${name}.auto.conf"
+    snapshot="${state_dir}/${name}.knobs.txt"
+    if grep -qE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_.]*[[:space:]]*=' "${saved}"; then
+        docker exec -i -u postgres "${BENCH_DB_CONTAINER}" sh -c "cat > '${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf'" < "${saved}"
         "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
         "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
     else
         restore_defaults
     fi
     applied="$(mktemp)"
-    python3 "${BENCH_ROOT}/tools/check_knobs.py" > "${applied}"
-    if ! diff -q "${state_dir}/${name}.knobs.txt" "${applied}" >/dev/null; then
-        echo "ERROR: re-applied knobs (${name}) differ from the saved snapshot:" >&2
-        diff -u "${state_dir}/${name}.knobs.txt" "${applied}" >&2 || true
+    verify="file"
+    if [ -s "${snapshot}" ] && [[ "$(head -n 1 "${snapshot}")" != ERROR* ]]; then
+        # Snapshot is usable; a failing psql on this run also drops to read-back.
+        if python3 "${BENCH_ROOT}/tools/check_knobs.py" > "${applied}"; then
+            verify="snapshot"
+        fi
+    fi
+    if [ "${verify}" = "snapshot" ]; then
+        if ! diff -q "${snapshot}" "${applied}" >/dev/null; then
+            echo "ERROR: re-applied knobs (${name}) differ from the saved snapshot:" >&2
+            diff -u "${snapshot}" "${applied}" >&2 || true
+            rc=1
+        fi
         rm -f "${applied}"
-        return 1
+        return "${rc}"
+    fi
+    # No usable snapshot (DB was not ready when saved): compare the applied
+    # file with the saved one, which needs no live tuple visibility.
+    docker exec -u postgres "${BENCH_DB_CONTAINER}" cat "${pgdata:-/var/lib/postgresql/data}/postgresql.auto.conf" > "${applied}"
+    if ! diff -q "${saved}" "${applied}" >/dev/null; then
+        echo "ERROR: re-applied knobs (${name}) differ from the saved auto.conf:" >&2
+        diff -u "${saved}" "${applied}" >&2 || true
+        rc=1
     fi
     rm -f "${applied}"
+    return "${rc}"
 }
 
 bench_knobs_reuse() {
