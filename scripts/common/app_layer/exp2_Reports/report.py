@@ -286,6 +286,10 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
                 'rate': calculate_median(rate_vals),
                 'p5_rate': calculate_percentile(rate_vals, 0.05),
                 'p95_rate': calculate_percentile(rate_vals, 0.95),
+                'p25_rate': calculate_percentile(rate_vals, 0.25),
+                'p75_rate': calculate_percentile(rate_vals, 0.75),
+                'min_rate': min(rate_vals) if rate_vals else None,
+                'max_rate': max(rate_vals) if rate_vals else None,
                 'iqr_rate': (q3 - q1) if q1 is not None and q3 is not None else None,
                 'time': calculate_median(time_vals),
                 'executed': calculate_median(exec_vals)
@@ -362,14 +366,16 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
     # TOTAL rate distribution across reps (p50 is already in the table above).
     lines.append("")
     hist = f"{'Arm':<20}"
-    for col in ("TOTAL (P50)", "TOTAL (P5)", "TOTAL (P95)", "IQR"):
+    for col in ("TOTAL (P50)", "TOTAL (P5)", "TOTAL (P95)", "TOTAL (P25)",
+                "TOTAL (P75)", "TOTAL (MIN)", "TOTAL (MAX)", "IQR"):
         hist += f"| {col:>12}"
     lines.append(hist)
     lines.append("-" * len(hist))
     for sys in [base_sys] + list(other_systems):
         name = system_display_names.get(sys, sys.capitalize())
         line = f"{name[:19]:<20}"
-        for col in ('rate', 'p5_rate', 'p95_rate', 'iqr_rate'):
+        for col in ('rate', 'p5_rate', 'p95_rate', 'p25_rate', 'p75_rate',
+                    'min_rate', 'max_rate', 'iqr_rate'):
             v = stats[sys].get('TOTAL', {}).get(col)
             line += f"| {f'{v:.2f}' if v is not None else '-':>12}"
         lines.append(line)
@@ -441,12 +447,13 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
 
         # Table 1b: TOTAL rate distribution across reps.
         md_lines.append("## TOTAL Rate Distribution (txn/s)\n")
-        md_lines.append("| Arm | TOTAL (P50) | TOTAL (P5) | TOTAL (P95) | IQR |")
-        md_lines.append("| :--- | ---: | ---: | ---: | ---: |")
+        md_lines.append("| Arm | TOTAL (P50) | TOTAL (P5) | TOTAL (P95) | TOTAL (P25) | TOTAL (P75) | TOTAL (MIN) | TOTAL (MAX) | IQR |")
+        md_lines.append("| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
         for sys in [base_sys] + list(other_systems):
             name = system_display_names.get(sys, sys.capitalize())
             cells = []
-            for col in ('rate', 'p5_rate', 'p95_rate', 'iqr_rate'):
+            for col in ('rate', 'p5_rate', 'p95_rate', 'p25_rate', 'p75_rate',
+                        'min_rate', 'max_rate', 'iqr_rate'):
                 v = stats[sys].get('TOTAL', {}).get(col)
                 cells.append(f"**{v:.2f}**" if v is not None else "-")
             md_lines.append(f"| {name} | " + " | ".join(cells) + " |")
