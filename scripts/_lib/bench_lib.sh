@@ -19,7 +19,7 @@ BENCH_DB_SERVICE="${BENCH_DB_SERVICE:-pgdb}"
 # file, so both sides of the run agree) > the defaults below. One-off values go
 # in .env as plain KEY=value; remove the line to get the default back.
 _bench_env_kept=()
-for _bench_env_var in CPU_CORES MEMORY_GB REPS TPCC_DURATION TPCC_WARMUP TPCC_WAREHOUSES TPCC_CLIENTS SETTLE_SECS DBMS SMALLBANK_CLIENTS SMALLBANK_SEED SMALLBANK_ACCOUNTS SMALLBANK_DURATION SMALLBANK_WARMUP TPCH_SCALE; do
+for _bench_env_var in CPU_CORES MEMORY_GB REPS ROBUSTNESS_REPS TPCC_DURATION TPCC_WARMUP TPCC_WAREHOUSES TPCC_CLIENTS SETTLE_SECS DBMS SMALLBANK_CLIENTS SMALLBANK_SEED SMALLBANK_ACCOUNTS SMALLBANK_DURATION SMALLBANK_WARMUP TPCH_SCALE; do
     if [ -n "${!_bench_env_var+set}" ]; then
         _bench_env_kept+=("${_bench_env_var}=${!_bench_env_var}")
     fi

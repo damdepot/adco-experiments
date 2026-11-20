@@ -4,7 +4,9 @@
 # Usage: run_arm_robustness.sh <tpcc|smallbank> <arm> [runs] [dbms=postgres] [model]
 #   arm: naive-llm | naive-llm-agenttune | agenttune-naive-llm | aco | adco | py-dbridge
 #
-# Defaults: naive-llm 10 runs, stacked arms 10, aco 10, adco 10, py-dbridge 1.
+# Defaults: naive-llm 10 runs, stacked arms 10, aco 10, adco 10, py-dbridge 1
+# (ROBUSTNESS_REPS from .env overrides those defaults; positional [runs] wins.
+#  py-dbridge is always 1 run regardless.)
 # Uses only the small verify seed, created once and reused. RESEED=1 rebuilds
 # it. The performance seed is only touched with FULL_SCALE=1, which also
 # defaults to 1 run and passes VERIFY_ALLOW_PERF_SEED=1 where the verifier
@@ -66,7 +68,11 @@ FULL_SCALE="${FULL_SCALE:-0}"
 if [ "${FULL_SCALE}" = "1" ]; then
     DEFAULT_RUNS=1
 fi
-RUNS="${3:-${DEFAULT_RUNS}}"
+RUNS="${3:-${ROBUSTNESS_REPS:-${DEFAULT_RUNS}}}"
+# Py-DBridge rewriting is deterministic: always a single run.
+if [ "${ARM}" = "py-dbridge" ]; then
+    RUNS=1
+fi
 DBMS="${4:-postgres}"
 MODEL_ARG="${5:-${MODEL:-gemini-3.5-flash-lite}}"
 # Sampling temperature for the rewrite (naive-llm only); unset = CLI default 0.
