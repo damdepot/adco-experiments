@@ -95,6 +95,7 @@ Overall FAIL if any check fails; WARN/drift never fail.
 ./run/tpcc/run_verify.sh                        # all arms (baseline,aco,adco,py-dbridge,naive-llm)
 ./run/tpcc/run_verify.sh postgres aco,adco      # subset (lone arm name as $1 also works)
 REVERIFY=1 ./run/tpcc/run_verify.sh             # re-run even when verify_*.json is fresh (<24h)
+./run/tpcc/run_all_verify.sh                    # verify every rewrite tree that exists (always re-runs)
 VERIFY_DURATION=30 ./run/tpcc/run_verify.sh     # smoke seconds per arm (default 20)
 ```
 
@@ -157,7 +158,7 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
 ./run/tpcc/run_agenttune-naive-llm-robustness.sh  [runs=10]
 
 # generic form
-./run/tpcc/run_robustness.sh <arm> [runs] [dbms=postgres] [model]
+./run/tpcc/run_all_robustness.sh <arm> [runs] [dbms=postgres] [model]
 ```
 
 Each iteration: generate a fresh tree with the arm's own pipeline, verify that

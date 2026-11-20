@@ -17,7 +17,7 @@ bench_timer "tpcc/run_${ARM}" "results/tpcc/${ARM}" "${ARM}"
 rm -rf "results/tpcc/${ARM}"
 mkdir -p "results/tpcc/${ARM}/benchmarks"
 
-rm -rf "${NAIVE_REWRITE_ROOT}"
+rm -rf "${NAIVE_REWRITE_ROOT}/Rewrite/postgres/tpcc-NaiveLLM"
 mkdir -p "${NAIVE_REWRITE_ROOT}"
 
 export result_output_path="${NAIVE_REWRITE_ROOT}"

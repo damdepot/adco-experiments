@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """Robustness-only report: one table across every arm sweep.
 
-Reads results/tpcc/robustness/<arm>/latest.json (written by run_arm_robustness.sh)
-and writes reports/tpcc/robustness.md. Arms without a sweep are not listed.
-The terminal gets an aligned plain-text table; the file gets markdown.
+Reads results/<workload>/robustness/<arm>/latest.json (written by each
+workload's run_arm_robustness.sh) and writes reports/<workload>/robustness.md.
+Arms without a sweep are not listed. The terminal gets an aligned plain-text
+table; the file gets markdown.
+
+    report_robustness.py [--workload tpcc|smallbank]
+
+Lives under scripts/tpcc/ because the TPC-C harness created it; it is shared
+with SmallBank via the workload table below.
 """
 
+import argparse
 import glob
 import json
 import os
@@ -13,20 +20,34 @@ import sys
 from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-RESULTS = os.path.join(ROOT, "results", "tpcc", "robustness")
-OUT_DIR = os.path.join(ROOT, "reports", "tpcc")
-OUT_FILE = os.path.join(OUT_DIR, "robustness.md")
 
-ORDER = ["naive-llm", "naive-llm-agenttune", "agenttune-naive-llm", "aco", "adco", "py-dbridge"]
-DISPLAY = {"naive-llm": "Naive-LLM", "naive-llm-agenttune": "Naive-LLM + AgentTune",
-           "agenttune-naive-llm": "AgentTune + Naive-LLM", "aco": "ACo", "adco": "ADCo",
-           "py-dbridge": "Py-DBridge"}
+WORKLOADS = {
+    "tpcc": {
+        "title": "TPC-C",
+        "order": ["naive-llm", "naive-llm-agenttune", "agenttune-naive-llm", "aco", "adco", "py-dbridge"],
+        "display": {"naive-llm": "Naive-LLM", "naive-llm-agenttune": "Naive-LLM + AgentTune",
+                    "agenttune-naive-llm": "AgentTune + Naive-LLM", "aco": "ACo", "adco": "ADCo",
+                    "py-dbridge": "Py-DBridge"},
+        "scale_key": "verify_warehouses",
+        "scale_label": "wh",
+    },
+    "smallbank": {
+        "title": "SmallBank",
+        "order": ["naive-llm", "aco", "adco", "py-dbridge"],
+        "display": {"naive-llm": "Naive-LLM", "aco": "ACo", "adco": "ADCo",
+                    "py-dbridge": "Py-DBridge"},
+        "scale_key": "verify_accounts",
+        "scale_label": "accounts",
+    },
+}
 SYMBOL = {"PASS": "✓", "FAIL": "✗", "WARN": "!", "UNVERIFIED": "?"}
 
 
-def load():
+def load(workload):
+    results = os.path.join(ROOT, "results", workload, "robustness")
+    spec = WORKLOADS[workload]
     docs = []
-    for path in sorted(glob.glob(os.path.join(RESULTS, "*", "latest.json"))):
+    for path in sorted(glob.glob(os.path.join(results, "*", "latest.json"))):
         try:
             with open(path, encoding="utf-8") as handle:
                 doc = json.load(handle)
@@ -34,12 +55,13 @@ def load():
             continue
         if isinstance(doc, dict) and doc.get("arm"):
             docs.append(doc)
-    docs.sort(key=lambda d: (ORDER.index(d["arm"]) if d["arm"] in ORDER else len(ORDER), d["arm"]))
+    docs.sort(key=lambda d: (spec["order"].index(d["arm"]) if d["arm"] in spec["order"]
+                             else len(spec["order"]), d["arm"]))
     return docs
 
 
-def display(doc):
-    return DISPLAY.get(doc["arm"], doc["arm"])
+def display(doc, spec):
+    return spec["display"].get(doc["arm"], doc["arm"])
 
 
 def counts(doc):
@@ -52,18 +74,20 @@ def failed_runs(doc):
     return [f.get("run") for f in (doc.get("failures") or [])]
 
 
-def fmt_duration(seconds):
-    return f"{seconds}s" if seconds is not None else "-"
+def scale_text(doc, spec):
+    value = doc.get(spec["scale_key"])
+    return str(value) if value not in (None, "") else "-"
 
 
-def text_report(docs):
+def text_report(docs, workload):
+    spec = WORKLOADS[workload]
     rows = []
     for doc in docs:
         passed, failed, warn, unverified = counts(doc)
         total = int(doc.get("runs_completed") or 0)
         rate = f"{100 * passed / total:.0f}%" if total else "-"
         fails = ", ".join(str(r) for r in failed_runs(doc)) or "-"
-        rows.append((display(doc), total, passed, failed, warn + unverified, rate,
+        rows.append((display(doc, spec), total, passed, failed, warn + unverified, rate,
                      doc.get("status") or "UNVERIFIED", fails))
 
     headers = ("Arm", "Runs", "Pass", "Fail", "Other", "Rate", "Status", "Failed runs")
@@ -78,10 +102,10 @@ def text_report(docs):
 
     out = []
     seeds = sorted({str(d.get("verify_seed_db") or "-") for d in docs})
-    scales = sorted({str(d.get("verify_warehouses") or "-") for d in docs})
-    out.append("TPC-C Robustness Report")
-    out.append(f"seed: {', '.join(seeds)}   scale: {', '.join(s + ' wh' for s in scales)}"
-               if len(scales) > 1 else f"seed: {seeds[0] if seeds else '-'}   scale: {scales[0] if scales else '-'} wh")
+    scales = sorted({scale_text(d, spec) for d in docs})
+    out.append(f"{spec['title']} Robustness Report")
+    out.append(f"seed: {', '.join(seeds)}   scale: {', '.join(s + ' ' + spec['scale_label'] for s in scales)}"
+               if len(scales) > 1 else f"seed: {seeds[0] if seeds else '-'}   scale: {scales[0] if scales else '-'} {spec['scale_label']}")
     out.append("")
     out.append(line(headers))
     out.append(line(["-" * w for w in widths]))
@@ -99,7 +123,7 @@ def text_report(docs):
                 runs = doc.get("runs") or []
                 state = runs[i].get("verify_status") if i < len(runs) else None
                 marks.append((SYMBOL.get(str(state).upper(), "-") if state else "-").rjust(4))
-            out.append(display(doc).ljust(label_width) + "  " + "  ".join(marks))
+            out.append(display(doc, spec).ljust(label_width) + "  " + "  ".join(marks))
     out.append("")
 
     failures = [(doc, f) for doc in docs for f in (doc.get("failures") or [])]
@@ -109,26 +133,27 @@ def text_report(docs):
             checks = "; ".join(" ".join(str(c).split()) for c in (failure.get("failed_checks") or []))
             if len(checks) > 140:
                 checks = checks[:137] + "..."
-            out.append(f"  {display(doc)} run {failure.get('run', '?')}: "
+            out.append(f"  {display(doc, spec)} run {failure.get('run', '?')}: "
                        f"{failure.get('status', '?')} — {checks or 'no detail'}")
         out.append("")
 
     out.append("Sweeps:")
     for doc in docs:
         pieces = [f"seed {doc.get('verify_seed_db') or '-'}",
-                  f"scale {doc.get('verify_warehouses') or '-'}",
+                  f"scale {scale_text(doc, spec)}",
                   f"model {doc.get('model') or '-'}"]
         if doc.get("tree_name"):
             pieces.append(f"tree {doc['tree_name']}")
         pieces.append(f"at {doc.get('timestamp') or '-'}")
-        out.append(f"  {display(doc)}: " + ", ".join(pieces))
+        out.append(f"  {display(doc, spec)}: " + ", ".join(pieces))
     return "\n".join(out)
 
 
-def markdown_report(docs):
-    lines = ["# TPC-C Robustness Report", "",
+def markdown_report(docs, workload):
+    spec = WORKLOADS[workload]
+    lines = [f"# {spec['title']} Robustness Report", "",
              f"Generated {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')} "
-             "from `results/tpcc/robustness/*/latest.json`.", "",
+             f"from `results/{workload}/robustness/*/latest.json`.", "",
              "Legend: **PASS** all four gates, **FAIL** any gate failed, "
              "**SUSPECT** warnings only, **UNVERIFIED** no verdict.", "",
              "## Summary", "",
@@ -139,7 +164,7 @@ def markdown_report(docs):
         total = int(doc.get("runs_completed") or 0)
         rate = f"{100 * passed / total:.0f}%" if total else "-"
         fails = ", ".join(str(r) for r in failed_runs(doc)) or "-"
-        lines.append(f"| {display(doc)} | {total} | {passed} | {failed} | "
+        lines.append(f"| {display(doc, spec)} | {total} | {passed} | {failed} | "
                      f"{warn + unverified} | {rate} | {doc.get('status') or 'UNVERIFIED'} | {fails} |")
     lines.append("")
 
@@ -155,7 +180,7 @@ def markdown_report(docs):
             for i in range(max_runs):
                 state = runs[i].get("verify_status") if i < len(runs) else None
                 marks.append(SYMBOL.get(str(state).upper(), "-") if state else "-")
-            lines.append(f"| {display(doc)} | " + " | ".join(marks) + " |")
+            lines.append(f"| {display(doc, spec)} | " + " | ".join(marks) + " |")
         lines.append("")
 
     failures = [(doc, f) for doc in docs for f in (doc.get("failures") or [])]
@@ -164,7 +189,7 @@ def markdown_report(docs):
         lines.append("")
         for doc, failure in failures:
             checks = "; ".join(" ".join(str(c).split()) for c in (failure.get("failed_checks") or []))
-            lines.append(f"- **{display(doc)}** run {failure.get('run', '?')}: "
+            lines.append(f"- **{display(doc, spec)}** run {failure.get('run', '?')}: "
                          f"{failure.get('status', '?')} — {checks or 'no detail'}")
         lines.append("")
 
@@ -172,26 +197,33 @@ def markdown_report(docs):
     lines.append("")
     for doc in docs:
         pieces = [f"seed `{doc.get('verify_seed_db') or '-'}`",
-                  f"scale {doc.get('verify_warehouses') or '-'}",
+                  f"scale {scale_text(doc, spec)}",
                   f"model `{doc.get('model') or '-'}`"]
         if doc.get("tree_name"):
             pieces.append(f"tree `{doc['tree_name']}`")
         pieces.append(f"timestamp `{doc.get('timestamp') or '-'}`")
-        lines.append(f"- **{display(doc)}**: " + ", ".join(pieces))
+        lines.append(f"- **{display(doc, spec)}**: " + ", ".join(pieces))
     lines.append("")
     return "\n".join(lines)
 
 
 def main():
-    docs = load()
+    parser = argparse.ArgumentParser(description="Robustness-only report across arm sweeps.")
+    parser.add_argument("--workload", choices=sorted(WORKLOADS), default="tpcc",
+                        help="workload to report (default: tpcc)")
+    args = parser.parse_args()
+
+    docs = load(args.workload)
     if not docs:
-        print("No robustness summaries found under results/tpcc/robustness/.")
+        print(f"No robustness summaries found under results/{args.workload}/robustness/.")
         return 1
-    os.makedirs(OUT_DIR, exist_ok=True)
-    with open(OUT_FILE, "w", encoding="utf-8") as handle:
-        handle.write(markdown_report(docs))
-    print(text_report(docs))
-    print(f"\nreport: {os.path.relpath(OUT_FILE, ROOT)}")
+    out_dir = os.path.join(ROOT, "reports", args.workload)
+    out_file = os.path.join(out_dir, "robustness.md")
+    os.makedirs(out_dir, exist_ok=True)
+    with open(out_file, "w", encoding="utf-8") as handle:
+        handle.write(markdown_report(docs, args.workload))
+    print(text_report(docs, args.workload))
+    print(f"\nreport: {os.path.relpath(out_file, ROOT)}")
     return 0
 
 

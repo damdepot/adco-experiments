@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Clear TPC-C benchmark outputs so the next run starts empty.
+# Clear one workload's benchmark outputs so the next run starts empty.
 #
-# Scope: deletes the *contents* of results/tpcc/<arm>/benchmarks/ only
+# WORKLOAD=tpcc|smallbank (default tpcc). Shared by both run/ wrappers.
+#
+# Scope: deletes the *contents* of results/<workload>/<arm>/benchmarks/ only
 # (the dir itself is recreated empty).
 #
-# Never touched: results/tpcc/<arm>/state/ (knob caches), out/ rewrite
-# trees, results/tpcc/verify_*.json, results/tpcc/*.json.
+# Never touched: results/<workload>/<arm>/state/ (knob caches), out/ rewrite
+# trees, results/<workload>/verify_*.json, results/<workload>/*.json.
 #
-# Usage: ./run_clear_benchmarks.sh [arm ...]
+# Usage: clear_benchmark_results.sh [arm ...]
 #   no args  -> every arm under results/tpcc that has a benchmarks/ dir
 #   args     -> only the named arms (missing ones are skipped, not fatal)
 #   DRY_RUN=1 -> print what would be removed, change nothing
@@ -21,7 +23,8 @@ LIB="${EXP_PATH}/scripts/_lib/bench_lib.sh"
 # shellcheck disable=SC1090
 source "${LIB}"
 
-BASE="results/tpcc"
+WORKLOAD="${WORKLOAD:-tpcc}"
+BASE="results/${WORKLOAD}"
 DRY_RUN="${DRY_RUN:-0}"
 
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then

@@ -14,7 +14,7 @@ bench_timer "tpcc/run_py-dbridge" "results/tpcc/py-dbridge" "py-dbridge"
 rm -rf results/tpcc/py-dbridge
 mkdir -p results/tpcc/py-dbridge/benchmarks
 
-rm -rf out/app_layer/Py-DBridge-results
+rm -rf out/app_layer/Py-DBridge-results/Rewrite/postgres/tpcc-Py-DBridge
 mkdir -p out/app_layer/Py-DBridge-results
 
 export result_output_path="out/app_layer/Py-DBridge-results"

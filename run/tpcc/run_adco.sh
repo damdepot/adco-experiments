@@ -61,14 +61,14 @@ echo '-------------------<< ADCo (unified single run) >>-------------------'
 echo '-------------------<< Generating ADCo (ACo + DCo) for TPCC >>-------------------'
 if [ "${FORCE:-0}" = "1" ]; then
     rm -f "${STATE_DIR}/adco.done" "${STATE_DIR}/adco.auto.conf"
-    rm -rf out/app_layer/ADCo-results
+    rm -rf "out/app_layer/ADCo-results/Rewrite/postgres/tpcc-${model}"
 fi
 ADCO_OK=0
 if bench_knobs_reuse "${STATE_DIR}" "adco" && [ -f "${REWRITE_DRIVER}" ]; then
     echo "Reusing cached ADCo knobs + rewrite (FORCE=1 to regenerate)."
     ADCO_OK=1
 else
-    rm -rf out/app_layer/ADCo-results
+    rm -rf "out/app_layer/ADCo-results/Rewrite/postgres/tpcc-${model}"
     if $CMDADCoApp ADCo ${model} postgres tpcc; then
         bench_knobs_save "${STATE_DIR}" "adco"
         ADCO_OK=1

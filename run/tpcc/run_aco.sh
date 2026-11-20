@@ -38,14 +38,14 @@ bench_assert_fresh_knobs
 bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
 echo '-------------------<< Generating ACo rewrite for TPCC >>-------------------'
 if [ "${FORCE:-0}" = "1" ]; then
-    rm -rf out/app_layer/ACo-results
+    rm -rf "out/app_layer/ACo-results/Rewrite/postgres/tpcc-${model}"
 fi
 ACO_OK=0
 if [ "${FORCE:-0}" != "1" ] && [ -f "${REWRITE_DRIVER}" ]; then
     echo "Reusing cached ACo rewrite (FORCE=1 to regenerate)."
     ACO_OK=1
 else
-    rm -rf out/app_layer/ACo-results
+    rm -rf "out/app_layer/ACo-results/Rewrite/postgres/tpcc-${model}"
     if $CMDADCo ACo ${model} postgres tpcc; then
         ACO_OK=1
     else
