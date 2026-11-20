@@ -10,4 +10,4 @@ if [ -z "${ARM}" ]; then
     exit 2
 fi
 shift
-exec "${ROOT}/scripts/tpcc/exp3_Robustness/run_arm_robustness.sh" "${ARM}" "$@"
+exec "${ROOT}/scripts/common/app_layer/exp3_Robustness/run_arm_robustness.sh" tpcc "${ARM}" "$@"

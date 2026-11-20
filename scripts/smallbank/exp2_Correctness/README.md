@@ -94,7 +94,7 @@ aborts loudly (RESEED to fix).
 ## Robustness
 
 Repeated rewrites of one arm, each checked and then verified, live in
-`scripts/smallbank/exp3_Robustness/` (see its README). They reuse this verifier
+`scripts/common/app_layer/exp3_Robustness/` (see its README). They reuse this verifier
 through generic tree mode; this layer is unchanged by robustness runs.
 
 ```bash

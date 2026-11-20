@@ -1,33 +1,64 @@
 #!/usr/bin/env bash
-# TPC-C robustness for rewrite arms: generate -> verify -> record, N times.
+# App-layer robustness for rewrite arms: generate -> verify -> record, N times.
 #
-# Usage: run_arm_robustness.sh <arm> [runs] [dbms=postgres] [model]
-#   arm: naive-llm | aco | adco | py-dbridge
+# Usage: run_arm_robustness.sh <tpcc|smallbank> <arm> [runs] [dbms=postgres] [model]
+#   arm: naive-llm | naive-llm-agenttune | agenttune-naive-llm | aco | adco | py-dbridge
 #
-# Defaults: naive-llm 10 runs, aco 10, adco 10, py-dbridge 1.
-# Uses only the small verify seed (default 1 warehouse), created once and
-# reused. RESEED=1 rebuilds it. The performance seed (tpcc_seed) is never
-# touched here.
+# Defaults: naive-llm 10 runs, stacked arms 10, aco 10, adco 10, py-dbridge 1.
+# Uses only the small verify seed, created once and reused. RESEED=1 rebuilds
+# it. The performance seed is only touched with FULL_SCALE=1, which also
+# defaults to 1 run and passes VERIFY_ALLOW_PERF_SEED=1 where the verifier
+# needs it (SmallBank).
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 cd "${ROOT}"
 # shellcheck disable=SC1091
 source "${ROOT}/scripts/_lib/bench_lib.sh"
 
-ARM="${1:-}"
-DBMS="${3:-postgres}"
+WL="${1:-}"
+ARM="${2:-}"
+USAGE="Usage: $(basename "$0") <tpcc|smallbank> <naive-llm|naive-llm-agenttune|agenttune-naive-llm|aco|adco|py-dbridge> [runs] [dbms=postgres] [model]"
+
+case "${WL}" in
+    tpcc)
+        WL_TITLE="TPC-C"
+        SRC="workload/apps/tpcc"
+        ENTRY_FILE="tpcc.py"
+        CHECK_FILES=("drivers/postgresdriver.py" "tpcc.py")
+        VERIFY_SCRIPT="scripts/tpcc/exp2_Correctness/run_verify.sh"
+        GEN_DB_SCRIPT="scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
+        PERF_SEED="tpcc_seed"
+        DEFAULT_SEED="tpcc_verify_seed"
+        ROW_TABLE="warehouse"
+        ;;
+    smallbank)
+        WL_TITLE="SmallBank"
+        SRC="workload/apps/smallbank"
+        ENTRY_FILE="main.py"
+        CHECK_FILES=("drivers/postgresdriver.py" "main.py")
+        VERIFY_SCRIPT="scripts/smallbank/exp2_Correctness/run_verify.sh"
+        GEN_DB_SCRIPT="scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-Db.sh"
+        PERF_SEED="smallbank_seed"
+        DEFAULT_SEED="smallbank_verify_seed"
+        ROW_TABLE="accounts"
+        ;;
+    *)
+        echo "${USAGE}" >&2
+        exit 2
+        ;;
+esac
 
 NEEDS_TUNE=0
 case "${ARM}" in
-    naive-llm) DEFAULT_RUNS=10; TREE_NAME="tpcc-NaiveLLM" ;;
+    naive-llm) DEFAULT_RUNS=10; TREE_NAME="${WL}-NaiveLLM" ;;
     naive-llm-agenttune|agenttune-naive-llm)
-        DEFAULT_RUNS=10; TREE_NAME="tpcc-NaiveLLM"; NEEDS_TUNE=1 ;;
+        DEFAULT_RUNS=10; TREE_NAME="${WL}-NaiveLLM"; NEEDS_TUNE=1 ;;
     aco) DEFAULT_RUNS=10; TREE_NAME="ACo" ;;
     adco) DEFAULT_RUNS=10; TREE_NAME="ADCo" ;;
     py-dbridge) DEFAULT_RUNS=1; TREE_NAME="Py-DBridge" ;;
     *)
-        echo "Usage: $(basename "$0") <naive-llm|naive-llm-agenttune|agenttune-naive-llm|aco|adco|py-dbridge> [runs] [dbms=postgres] [model]" >&2
+        echo "${USAGE}" >&2
         exit 2
         ;;
 esac
@@ -35,8 +66,9 @@ FULL_SCALE="${FULL_SCALE:-0}"
 if [ "${FULL_SCALE}" = "1" ]; then
     DEFAULT_RUNS=1
 fi
-RUNS="${2:-${DEFAULT_RUNS}}"
-MODEL_ARG="${4:-${MODEL:-gemini-3.5-flash-lite}}"
+RUNS="${3:-${DEFAULT_RUNS}}"
+DBMS="${4:-postgres}"
+MODEL_ARG="${5:-${MODEL:-gemini-3.5-flash-lite}}"
 # Sampling temperature for the rewrite (naive-llm only); unset = CLI default 0.
 TEMP="${TEMP:-}"
 if [ -n "${TEMP}" ] && ! [[ "${TEMP}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
@@ -54,27 +86,49 @@ TUNED_OVERRIDES=0
 if [ "${NEEDS_TUNE}" = "1" ]; then
     TUNING="agenttune"
 fi
+
+# --- workload scale table --------------------------------------------------
 if [ "${FULL_SCALE}" = "1" ]; then
     MODE_DIR="robustness-full-scale"
-    VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_seed}"
-    VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-${TPCC_WAREHOUSES}}"
-    VERIFY_DURATION="${VERIFY_DURATION:-${TPCC_DURATION}}"
-    VERIFY_CLIENTS="${VERIFY_CLIENTS:-${TPCC_CLIENTS}}"
-    VERIFY_WARMUP="${VERIFY_WARMUP:-${TPCC_WARMUP}}"
+    VERIFY_SEED_DB="${VERIFY_SEED_DB:-${PERF_SEED}}"
     VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-1800}"
+    if [ "${WL}" = "tpcc" ]; then
+        VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-${TPCC_WAREHOUSES}}"
+        VERIFY_DURATION="${VERIFY_DURATION:-${TPCC_DURATION}}"
+        VERIFY_CLIENTS="${VERIFY_CLIENTS:-${TPCC_CLIENTS}}"
+        VERIFY_WARMUP="${VERIFY_WARMUP:-${TPCC_WARMUP}}"
+        VERIFY_ROWS="${VERIFY_WAREHOUSES}"
+        VERIFY_SCALE_TEXT="${VERIFY_WAREHOUSES} warehouses"
+    else
+        VERIFY_ACCOUNTS="${VERIFY_ACCOUNTS:-${SMALLBANK_ACCOUNTS}}"
+        VERIFY_TRANSACTIONS="${VERIFY_TRANSACTIONS:-${SMALLBANK_TRANSACTIONS}}"
+        VERIFY_CLIENTS="${VERIFY_CLIENTS:-${SMALLBANK_CLIENTS}}"
+        VERIFY_ROWS="${VERIFY_ACCOUNTS}"
+        VERIFY_SCALE_TEXT="${VERIFY_ACCOUNTS} accounts"
+    fi
 else
     MODE_DIR="robustness"
-    VERIFY_SEED_DB="${VERIFY_SEED_DB:-tpcc_verify_seed}"
-    VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-1}"
-    VERIFY_DURATION="${VERIFY_DURATION:-10}"
-    VERIFY_CLIENTS="${VERIFY_CLIENTS:-1}"
-    VERIFY_WARMUP="${VERIFY_WARMUP:-0}"
+    VERIFY_SEED_DB="${VERIFY_SEED_DB:-${DEFAULT_SEED}}"
     VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-300}"
+    if [ "${WL}" = "tpcc" ]; then
+        VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES:-1}"
+        VERIFY_DURATION="${VERIFY_DURATION:-10}"
+        VERIFY_CLIENTS="${VERIFY_CLIENTS:-1}"
+        VERIFY_WARMUP="${VERIFY_WARMUP:-0}"
+        VERIFY_ROWS="${VERIFY_WAREHOUSES}"
+        VERIFY_SCALE_TEXT="${VERIFY_WAREHOUSES} warehouses"
+    else
+        VERIFY_ACCOUNTS="${VERIFY_ACCOUNTS:-${SMALLBANK_VERIFY_ACCOUNTS:-100000}}"
+        VERIFY_TRANSACTIONS="${VERIFY_TRANSACTIONS:-${SMALLBANK_VERIFY_TRANSACTIONS:-2000}}"
+        VERIFY_CLIENTS="${VERIFY_CLIENTS:-1}"
+        VERIFY_ROWS="${VERIFY_ACCOUNTS}"
+        VERIFY_SCALE_TEXT="${VERIFY_ACCOUNTS} accounts"
+    fi
 fi
-REPORT_DIR="${ROBUSTNESS_REPORT_DIR:-results/tpcc/${MODE_DIR}/${ARM}}"
+REPORT_DIR="${ROBUSTNESS_REPORT_DIR:-results/${WL}/${MODE_DIR}/${ARM}}"
 
-if [ "${VERIFY_SEED_DB}" = "tpcc_seed" ] && [ "${FULL_SCALE}" != "1" ]; then
-    echo "ERROR: the robustness sweep must use the verify seed (e.g. tpcc_verify_seed), not the performance seed 'tpcc_seed'." >&2
+if [ "${VERIFY_SEED_DB}" = "${PERF_SEED}" ] && [ "${FULL_SCALE}" != "1" ]; then
+    echo "ERROR: the robustness sweep must use the verify seed (e.g. ${DEFAULT_SEED}), not the performance seed '${PERF_SEED}'." >&2
     exit 2
 fi
 if ! [[ "${RUNS}" =~ ^[1-9][0-9]*$ ]]; then
@@ -101,8 +155,8 @@ if [ "${ARM}" = "py-dbridge" ] && [ ! -x "${ROOT}/baselines/Py-DBridge/venv/bin/
     echo "ERROR: Py-DBridge venv missing; run ./run/setup/app-setup-baselines.sh" >&2
     exit 1
 fi
-if [ ! -x "${ROOT}/workload/apps/tpcc/venv/bin/python" ]; then
-    echo "ERROR: TPC-C workload venv missing; run ./run/setup/app-setup-workloads.sh" >&2
+if [ ! -x "${ROOT}/${SRC}/venv/bin/python" ]; then
+    echo "ERROR: ${WL_TITLE} workload venv missing; run ./run/setup/app-setup-workloads.sh" >&2
     exit 1
 fi
 if ! grep -q "VERIFY_SKIP_SEED_ASSERT" "${ROOT}/scripts/_lib/bench_lib.sh"; then
@@ -112,23 +166,30 @@ if ! grep -q "VERIFY_SKIP_SEED_ASSERT" "${ROOT}/scripts/_lib/bench_lib.sh"; then
 fi
 
 bench_lock "${ROOT}"
-export BENCH_CMDRUNTPCC="${ROOT}/scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Db.sh"
-export SMOKE_SECS SMOKE_CLIENTS=1
+export BENCH_CMDRUNTPCC="${ROOT}/${GEN_DB_SCRIPT}"
 export TREE_NAME
+if [ "${WL}" = "tpcc" ]; then
+    export SMOKE_SECS SMOKE_CLIENTS=1
+    # Everything below runs at the verify scale: the arm's own smoke/benchmark
+    # and the verifier both hit the same database.
+    export TPCC_WAREHOUSES="${VERIFY_WAREHOUSES}"
+else
+    export SMALLBANK_ACCOUNTS="${VERIFY_ACCOUNTS}" \
+        SMALLBANK_TRANSACTIONS="${VERIFY_TRANSACTIONS}" \
+        SMALLBANK_CLIENTS="${VERIFY_CLIENTS}" \
+        SMALLBANK_WARMUP_TRANSACTIONS=0
+fi
 
 # --- one verify seed -------------------------------------------------------
-echo "----------------->> Seed ${VERIFY_SEED_DB} (${VERIFY_WAREHOUSES} warehouses) <<-----------------"
-# Everything below runs at the verify scale: the arm's own smoke/benchmark and
-# the verifier both hit the 1-warehouse database, so the scale must match.
-export TPCC_WAREHOUSES="${VERIFY_WAREHOUSES}"
+echo "----------------->> Seed ${VERIFY_SEED_DB} (${VERIFY_SCALE_TEXT}) <<-----------------"
 _seed_exists="$(psql -d postgres -tA -c "SELECT 1 FROM pg_database WHERE datname='${VERIFY_SEED_DB}'" 2>/dev/null || true)"
 if [ "${RESEED:-0}" = "1" ] || [[ "${_seed_exists}" != *1* ]]; then
-    echo "Loading ${VERIFY_WAREHOUSES}-warehouse seed ..."
-    bench_seed_once tpcc "${VERIFY_SEED_DB}"
+    echo "Loading ${VERIFY_SCALE_TEXT} seed ..."
+    bench_seed_once "${WL}" "${VERIFY_SEED_DB}"
 else
     echo "Reusing existing seed database '${VERIFY_SEED_DB}'."
 fi
-bench_assert_rows "${VERIFY_SEED_DB}" warehouse "${VERIFY_WAREHOUSES}"
+bench_assert_rows "${VERIFY_SEED_DB}" "${ROW_TABLE}" "${VERIFY_ROWS}"
 unset _seed_exists
 
 # --- loop ------------------------------------------------------------------
@@ -142,25 +203,25 @@ mkdir -p "${OUT_TS}"
 if [ "${NEEDS_TUNE}" = "1" ]; then
     echo "----------------->> AgentTune: tuning once <<-----------------"
     # Pin the shared config.ini (a TPC-H run leaves a different benchmark there).
-    python3 - "${ROOT}/baselines/AgentTune/config.ini" "${AGENTTUNE_ITERATIONS}" <<'PY'
+    python3 - "${ROOT}/baselines/AgentTune/config.ini" "${AGENTTUNE_ITERATIONS}" "${WL}" <<'PY'
 import configparser, sys
-cfg, iterations = sys.argv[1], sys.argv[2]
+cfg, iterations, workload = sys.argv[1], sys.argv[2], sys.argv[3]
 c = configparser.ConfigParser()
 c.optionxform = str
 c.read(cfg)
 rec = c['configuration recommender']
-rec['DB_Name'] = 'tpcc'
+rec['DB_Name'] = workload
 rec['benchmark'] = 'SYSBENCH'
 if iterations:
     rec['iteration'] = iterations
 with open(cfg, 'w') as f:
     c.write(f)
 PY
-    bench_restore "tpcc" "${VERIFY_SEED_DB}"
+    bench_restore "${WL}" "${VERIFY_SEED_DB}"
     tune_start="$(date +%s)"
     if ! timeout --kill-after=5 "${TUNE_TIMEOUT}" \
         bash "./scripts/common/db_layer/exp1_Baselines/runExperiment1-AgentTune.sh" \
-            "${DBMS}" tpcc >"${OUT_TS}/tune.log" 2>&1; then
+            "${DBMS}" "${WL}" >"${OUT_TS}/tune.log" 2>&1; then
         echo "ERROR: AgentTune tuning failed (see ${OUT_TS}/tune.log)." >&2
         exit 1
     fi
@@ -184,10 +245,16 @@ fi
     printf 'tree_name\t%s\n' "${TREE_NAME}"
     printf 'runs\t%s\n' "${RUNS}"
     printf 'verify_seed_db\t%s\n' "${VERIFY_SEED_DB}"
-    printf 'verify_warehouses\t%s\n' "${VERIFY_WAREHOUSES}"
-    printf 'verify_clients\t%s\n' "${VERIFY_CLIENTS}"
-    printf 'verify_warmup\t%s\n' "${VERIFY_WARMUP}"
-    printf 'verify_duration\t%s\n' "${VERIFY_DURATION}"
+    if [ "${WL}" = "tpcc" ]; then
+        printf 'verify_warehouses\t%s\n' "${VERIFY_WAREHOUSES}"
+        printf 'verify_clients\t%s\n' "${VERIFY_CLIENTS}"
+        printf 'verify_warmup\t%s\n' "${VERIFY_WARMUP}"
+        printf 'verify_duration\t%s\n' "${VERIFY_DURATION}"
+    else
+        printf 'verify_accounts\t%s\n' "${VERIFY_ACCOUNTS}"
+        printf 'verify_transactions\t%s\n' "${VERIFY_TRANSACTIONS}"
+        printf 'verify_clients\t%s\n' "${VERIFY_CLIENTS}"
+    fi
     printf 'full_scale\t%s\n' "${FULL_SCALE}"
     printf 'tuning\t%s\n' "${TUNING}"
     printf 'tune_seconds\t%s\n' "${TUNE_SECONDS}"
@@ -196,25 +263,39 @@ fi
 
 verify_tree() {
     local arm="$1" rewrite_root="$2" out_rel="$3"
+    local -a menv=(
+        BENCH_LOCK_HELD=1 REVERIFY=1
+        VERIFY_SKIP_SEED=1
+        VERIFY_SKIP_SEED_ASSERT=1
+        VERIFY_SEED_DB="${VERIFY_SEED_DB}"
+        VERIFY_CLIENTS="${VERIFY_CLIENTS}"
+        VERIFY_KEEP_KNOBS="${NEEDS_TUNE}"
+        RESTORE_RESTART=0
+        BENCH_SKIP_SETTLE=1
+        VERIFY_REWRITE_ROOT="${rewrite_root}"
+        VERIFY_CSV="${ROOT}/${out_rel}/smoke/${arm}.csv"
+        BENCH_RESULTS_DIR="${ROOT}/${out_rel}/smoke/benchmarks"
+        VERIFY_OUTPUT="${ROOT}/${out_rel}/verify.json"
+    )
+    if [ "${WL}" = "tpcc" ]; then
+        menv+=(
+            VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES}"
+            VERIFY_DURATION="${VERIFY_DURATION}"
+            VERIFY_WARMUP="${VERIFY_WARMUP}"
+        )
+    else
+        local allow_perf="0"
+        [ "${FULL_SCALE}" = "1" ] && allow_perf="1"
+        menv+=(
+            VERIFY_ALLOW_PERF_SEED="${allow_perf}"
+            VERIFY_ACCOUNTS="${VERIFY_ACCOUNTS}"
+            VERIFY_TRANSACTIONS="${VERIFY_TRANSACTIONS}"
+        )
+    fi
     mkdir -p "${ROOT}/${out_rel}/smoke/benchmarks"
     echo "----------------->> verifying ${arm} <<-----------------"
-    BENCH_LOCK_HELD=1 REVERIFY=1 \
-        VERIFY_SKIP_SEED=1 \
-        VERIFY_SKIP_SEED_ASSERT=1 \
-        VERIFY_SEED_DB="${VERIFY_SEED_DB}" \
-        VERIFY_WAREHOUSES="${VERIFY_WAREHOUSES}" \
-        VERIFY_DURATION="${VERIFY_DURATION}" \
-        VERIFY_CLIENTS="${VERIFY_CLIENTS}" \
-        VERIFY_WARMUP="${VERIFY_WARMUP}" \
-        VERIFY_KEEP_KNOBS="${NEEDS_TUNE}" \
-        RESTORE_RESTART=0 \
-        BENCH_SKIP_SETTLE=1 \
-        VERIFY_REWRITE_ROOT="${rewrite_root}" \
-        VERIFY_CSV="${ROOT}/${out_rel}/smoke/${arm}.csv" \
-        BENCH_RESULTS_DIR="${ROOT}/${out_rel}/smoke/benchmarks" \
-        VERIFY_OUTPUT="${ROOT}/${out_rel}/verify.json" \
-        timeout --kill-after=5 "${VERIFY_TIMEOUT}" \
-        bash "./scripts/tpcc/exp2_Correctness/run_verify.sh" "${DBMS}" "${arm}" \
+    env "${menv[@]}" timeout --kill-after=5 "${VERIFY_TIMEOUT}" \
+        bash "./${VERIFY_SCRIPT}" "${DBMS}" "${arm}" \
         2>&1 | tee "${ROOT}/${out_rel}/verify.log" || true
 }
 
@@ -240,31 +321,33 @@ generate_tree() {
             TEMPERATURE="${TEMP}" NAIVE_REWRITE_ROOT="${rel_run}" \
                 timeout --kill-after=5 "${GEN_TIMEOUT}" \
                 bash "./scripts/common/app_layer/exp1_Baselines/runExperiment1-NaiveLLM.sh" \
-                    workload/apps/tpcc "${DBMS}" tpcc "${MODEL_ARG}" \
+                    "${SRC}" "${DBMS}" "${WL}" "${MODEL_ARG}" \
                 >"${abs_run}/rewrite.log" 2>&1 || rc=$?
             rc_gen="${rc}"
             ;;
         aco|adco)
             out_dir="out/app_layer/${TREE_NAME}-results"
-            rm -rf "${ROOT}/${out_dir}"
+            src="${ROOT}/${out_dir}/Rewrite/${DBMS}/${WL}-${MODEL_ARG}"
+            # Fresh tree, but never wipe the shared results root (it also holds
+            # other workloads); remove only this benchmark subtree.
+            rm -rf "${src}"
             local op="ACo"
             [ "${ARM}" = "adco" ] && op="ADCo"
             timeout --kill-after=5 "${GEN_TIMEOUT}" \
                 bash "./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh" \
-                    "${op}" "${MODEL_ARG}" "${DBMS}" tpcc \
+                    "${op}" "${MODEL_ARG}" "${DBMS}" "${WL}" \
                 >"${abs_run}/rewrite.log" 2>&1 || rc=$?
             rc_gen="${rc}"
-            src="${ROOT}/${out_dir}/Rewrite/${DBMS}/tpcc-${MODEL_ARG}"
             ;;
         py-dbridge)
             out_dir="out/app_layer/Py-DBridge-results"
-            rm -rf "${ROOT}/${out_dir}"
+            src="${ROOT}/${out_dir}/Rewrite/${DBMS}/${WL}-Py-DBridge"
+            rm -rf "${src}"
             timeout --kill-after=5 "${GEN_TIMEOUT}" \
                 bash "./scripts/common/app_layer/exp1_Baselines/runExperiment1-Py-DBridge.sh" \
-                    workload/apps/tpcc drivers/postgresdriver.py "${DBMS}" tpcc \
+                    "${SRC}" drivers/postgresdriver.py "${DBMS}" "${WL}" \
                 >"${abs_run}/rewrite.log" 2>&1 || rc=$?
             rc_gen="${rc}"
-            src="${ROOT}/${out_dir}/Rewrite/${DBMS}/tpcc-Py-DBridge"
             ;;
     esac
 
@@ -292,10 +375,15 @@ for ((i = 1; i <= RUNS; i++)); do
     mkdir -p "${abs_run}/smoke/benchmarks"
     echo "=================>> Run ${i}/${RUNS}: ${ARM} generate + verify <<================="
 
-    # Fresh, consistent database for generation; never the performance seed.
+    # Fresh, consistent database for generation; never the performance seed
+    # unless FULL_SCALE=1 (then the seed is the performance seed by design).
     BENCH_SKIP_SETTLE=1 RESTORE_RESTART=0 \
-        bench_restore tpcc "${VERIFY_SEED_DB}" >"${abs_run}/restore.log" 2>&1 || true
-    restore_defaults >>"${abs_run}/restore.log" 2>&1 || true
+        bench_restore "${WL}" "${VERIFY_SEED_DB}" >"${abs_run}/restore.log" 2>&1 || true
+    # Stacked arms verify under the knobs tuned once above; resetting here would
+    # silently throw that away before VERIFY_KEEP_KNOBS=1 gets a chance.
+    if [ "${NEEDS_TUNE}" != "1" ]; then
+        restore_defaults >>"${abs_run}/restore.log" 2>&1 || true
+    fi
 
     started="$(date +%s)"
     rc=0
@@ -313,7 +401,7 @@ for ((i = 1; i <= RUNS; i++)); do
     rw_status="ok"
     rw_check=""
     if [ -f "${ROOT}/${tree_rel}/drivers/postgresdriver.py" ]; then
-        sha="$(cat "${ROOT}/${tree_rel}/drivers/postgresdriver.py" "${ROOT}/${tree_rel}/tpcc.py" 2>/dev/null | sha256sum | awk '{print $1}')"
+        sha="$(cat "${ROOT}/${tree_rel}/drivers/postgresdriver.py" "${ROOT}/${tree_rel}/${ENTRY_FILE}" 2>/dev/null | sha256sum | awk '{print $1}')"
     fi
     if [ "${rc}" -ne 0 ]; then
         rw_status="failed"; rw_check="generation failed"
@@ -321,8 +409,8 @@ for ((i = 1; i <= RUNS; i++)); do
         rw_status="missing"; rw_check="no rewrite tree"
     else
         rw_rc=0
-        python3 "${ROOT}/scripts/tpcc/exp3_Robustness/check_rewrite.py" \
-            "${ROOT}/${tree_rel}" "${ROOT}/workload/apps/tpcc" || rw_rc=$?
+        python3 "${ROOT}/scripts/common/app_layer/exp3_Robustness/check_rewrite.py" \
+            "${ROOT}/${tree_rel}" "${ROOT}/${SRC}" "${CHECK_FILES[@]}" || rw_rc=$?
         case "${rw_rc}" in
             0) rw_check="substantive" ;;
             1) rw_status="unchanged"; rw_check="no substantive change" ;;
@@ -345,10 +433,10 @@ for ((i = 1; i <= RUNS; i++)); do
 done
 
 # --- report ----------------------------------------------------------------
-python3 - "${OUT_TS}" "${REPORT_DIR}" "${ARM}" <<'PY'
+python3 - "${OUT_TS}" "${REPORT_DIR}" "${ARM}" "${WL}" "${WL_TITLE}" <<'PY'
 import json, os, shutil, sys
 
-ts_dir, report_dir, arm = sys.argv[1:4]
+ts_dir, report_dir, arm, workload, title = sys.argv[1:6]
 
 
 def kv(path):
@@ -412,7 +500,7 @@ failures = [{"run": r["run"], "status": r["status"],
 
 summary = {
     "arm": arm,
-    "workload": "tpcc",
+    "workload": workload,
     "timestamp": cfg.get("timestamp", ""),
     "model": cfg.get("model", ""),
     "temperature": cfg.get("temperature", ""),
@@ -422,16 +510,29 @@ summary = {
     "status": status,
     "failures": failures,
     "verify_seed_db": cfg.get("verify_seed_db", ""),
-    "verify_warehouses": int(cfg.get("verify_warehouses") or 0),
-    "verify_clients": int(cfg.get("verify_clients") or 0),
-    "verify_warmup": int(cfg.get("verify_warmup") or 0),
-    "verify_duration": int(cfg.get("verify_duration") or 0),
+}
+if workload == "tpcc":
+    summary.update({
+        "verify_warehouses": int(cfg.get("verify_warehouses") or 0),
+        "verify_clients": int(cfg.get("verify_clients") or 0),
+        "verify_warmup": int(cfg.get("verify_warmup") or 0),
+        "verify_duration": int(cfg.get("verify_duration") or 0),
+    })
+    scale_text = f"{summary['verify_warehouses']} warehouses"
+else:
+    summary.update({
+        "verify_accounts": int(cfg.get("verify_accounts") or 0),
+        "verify_transactions": int(cfg.get("verify_transactions") or 0),
+        "verify_clients": int(cfg.get("verify_clients") or 0),
+    })
+    scale_text = f"{summary['verify_accounts']} accounts"
+summary.update({
     "full_scale": cfg.get("full_scale") == "1",
     "tuning": cfg.get("tuning", ""),
     "tune_seconds": int(cfg.get("tune_seconds") or 0),
     "tuned_overrides": int(cfg.get("tuned_overrides") or 0),
     "runs": runs,
-}
+})
 with open(os.path.join(ts_dir, "summary.json"), "w") as f:
     json.dump(summary, f, indent=2)
     f.write("\n")
@@ -440,8 +541,8 @@ shutil.copyfile(os.path.join(ts_dir, "summary.json"), os.path.join(report_dir, "
 
 headline = (f"PASS {counts['pass']}/{len(runs)}  FAIL {counts['fail']}/{len(runs)}  "
             f"UNVERIFIED {counts['unverified']}/{len(runs)}  (seed {summary['verify_seed_db']}, "
-            f"{summary['verify_warehouses']} warehouses)")
-lines = [f"# {arm} TPC-C robustness — {summary['timestamp']}", "", headline, "",
+            f"{scale_text})")
+lines = [f"# {arm} {title} robustness — {summary['timestamp']}", "", headline, "",
          "| run | rewrite | verify | seconds | failed checks |",
          "| --- | --- | --- | --- | --- |"]
 for r in runs:

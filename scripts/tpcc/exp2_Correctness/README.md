@@ -164,11 +164,12 @@ BENCH_LOCK_HELD=1 REVERIFY=1 \
 Each iteration: generate a fresh tree with the arm's own pipeline, verify that
 tree, record. A run whose rewrite failed, is missing, is unchanged, or is
 cosmetic only (same AST, e.g. comments/formatting) is recorded as `FAIL` and is
-not verified; `exp3_Robustness/check_rewrite.py` does the comparison. Default runs: `naive-llm 10`, `naive-llm-agenttune 10`,
+not verified; `scripts/common/app_layer/exp3_Robustness/check_rewrite.py` does the comparison. Default runs: `naive-llm 10`, `naive-llm-agenttune 10`,
 `agenttune-naive-llm 10`, `aco 10`, `adco 10`, `py-dbridge 1`.
 - `naive-llm`: one unguided rewrite.
 - `aco` / `adco`: `runExperiment0.sh ACo|ADCo` (ADCo includes its tuner); the
-  sandbox is deleted first so repeated runs are independent.
+  generated `<workload>-<model>` subtree is deleted first so repeated runs are
+  independent.
 - `py-dbridge`: one deterministic transpile.
 - `naive-llm-agenttune` / `agenttune-naive-llm`: the rewrite phase of the
   stacked arm. AgentTune runs once per sweep (same order the arm uses) and the

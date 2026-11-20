@@ -6,4 +6,4 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 export FULL_SCALE=1
-exec "${ROOT}/scripts/tpcc/exp3_Robustness/run_arm_robustness.sh" adco "$@"
+exec "${ROOT}/scripts/common/app_layer/exp3_Robustness/run_arm_robustness.sh" tpcc adco "$@"

@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${ROOT}/scripts/_lib/bench_lib.sh"
-bench_timer "smallbank/run_reports" "results/smallbank" "run_reports"
+bench_timer "smallbank/run_report_performance" "results/smallbank" "run_report_performance"
 
 rm -rf "${ROOT}/reports/smallbank"
 mkdir -p "${ROOT}/reports/smallbank"

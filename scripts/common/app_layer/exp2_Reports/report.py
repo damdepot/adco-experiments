@@ -319,7 +319,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
     if warning_lines:
         lines.append("")
     if verify_statuses and verify_warning_lines:
-        for w in verify_warning_lines(verify_statuses, system_display_names):
+        for w in verify_warning_lines(verify_statuses, system_display_names, f"run/{workload}/run_verify.sh"):
             lines.append(w)
         if any(_arm_status(s) != "PASS" for s in verify_statuses.values()):
             lines.append("")
@@ -409,7 +409,7 @@ def generate_workload_report(data, raw_records, workload, dbms, systems, system_
             md_lines.extend(correctness_rows(systems, system_display_names, verify_statuses))
             md_lines.append("")
             if verify_warning_lines:
-                warnings = verify_warning_lines(verify_statuses, system_display_names)
+                warnings = verify_warning_lines(verify_statuses, system_display_names, f"run/{workload}/run_verify.sh")
                 if warnings:
                     for warning in warnings:
                         md_lines.append(f"> {warning}")

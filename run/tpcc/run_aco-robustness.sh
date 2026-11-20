@@ -4,4 +4,4 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-exec "${ROOT}/scripts/tpcc/exp3_Robustness/run_arm_robustness.sh" aco "$@"
+exec "${ROOT}/scripts/common/app_layer/exp3_Robustness/run_arm_robustness.sh" tpcc aco "$@"

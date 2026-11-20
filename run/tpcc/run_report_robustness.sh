@@ -3,4 +3,4 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-exec python3 "${ROOT}/scripts/tpcc/exp3_Robustness/report_robustness.py" "$@"
+exec python3 "${ROOT}/scripts/common/app_layer/exp3_Robustness/report_robustness.py" "$@"

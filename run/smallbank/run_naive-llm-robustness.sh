@@ -4,4 +4,4 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-exec "${ROOT}/scripts/smallbank/exp3_Robustness/run_arm_robustness.sh" naive-llm "$@"
+exec "${ROOT}/scripts/common/app_layer/exp3_Robustness/run_arm_robustness.sh" smallbank naive-llm "$@"

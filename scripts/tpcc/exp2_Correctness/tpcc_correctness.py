@@ -404,7 +404,7 @@ def correctness_cell(info):
     return f"{st} {_as_int((info.get('counts') or {}).get(bucket))}/{runs}"
 
 
-def verify_warning_lines(statuses, display_names=None):
+def verify_warning_lines(statuses, display_names=None, hint="run/tpcc/run_verify.sh"):
     """Warning lines for arms that failed, warned, or were never verified.
     Accepts loader structs from load_correctness_statuses or plain status strings."""
     names = display_names or {}
@@ -426,7 +426,7 @@ def verify_warning_lines(statuses, display_names=None):
             lines.append(f"SUSPECT: arm '{disp}' raised correctness warnings "
                          f"(see {where}) -- treat its speedup with caution.")
         elif st == "UNVERIFIED":
-            lines.append(f"UNVERIFIED: no correctness result for arm '{disp}' -- run run/tpcc/run_verify.sh.")
+            lines.append(f"UNVERIFIED: no correctness result for arm '{disp}' -- run {hint}.")
     return lines
 
 

@@ -7,9 +7,6 @@ Arms without a sweep are not listed. The terminal gets an aligned plain-text
 table; the file gets markdown.
 
     report_robustness.py [--workload tpcc|smallbank]
-
-Lives under scripts/tpcc/ because the TPC-C harness created it; it is shared
-with SmallBank via the workload table below.
 """
 
 import argparse
@@ -19,7 +16,8 @@ import os
 import sys
 from datetime import datetime, timezone
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))))))
 
 WORKLOADS = {
     "tpcc": {
@@ -33,8 +31,9 @@ WORKLOADS = {
     },
     "smallbank": {
         "title": "SmallBank",
-        "order": ["naive-llm", "aco", "adco", "py-dbridge"],
-        "display": {"naive-llm": "Naive-LLM", "aco": "ACo", "adco": "ADCo",
+        "order": ["naive-llm", "naive-llm-agenttune", "agenttune-naive-llm", "aco", "adco", "py-dbridge"],
+        "display": {"naive-llm": "Naive-LLM", "naive-llm-agenttune": "Naive-LLM + AgentTune",
+                    "agenttune-naive-llm": "AgentTune + Naive-LLM", "aco": "ACo", "adco": "ADCo",
                     "py-dbridge": "Py-DBridge"},
         "scale_key": "verify_accounts",
         "scale_label": "accounts",
