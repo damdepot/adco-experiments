@@ -10,18 +10,18 @@ source "${ROOT}/scripts/_lib/bench_lib.sh"
 bench_lock "${ROOT}"
 bench_timer "smallbank/run_aco" "results/smallbank/aco" "aco"
 
+model="${MODEL:-gemini-3.5-flash-lite}"
+
 # Clean results and output directories (aco only)
 rm -rf results/smallbank/aco
 mkdir -p results/smallbank/aco/benchmarks
-rm -rf out/app_layer/ACo-results
+rm -rf "out/app_layer/ACo-results/Rewrite/postgres/smallbank-${model}"
 mkdir -p out/app_layer/ACo-results
 
 # Define variables and command paths
 CMDADCo=./scripts/common/app_layer/exp0_ADCo/runExperiment0.sh
 CMDRunSmallbank=./scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh
 CMDReport=./scripts/common/app_layer/exp2_Reports/run_report.sh
-
-model="${MODEL:-gemini-3.5-flash-lite}"
 
 SEED_DB_SMALLBANK="smallbank_seed"
 export BENCH_REP_DB="smallbank" BENCH_REP_SEED="${SEED_DB_SMALLBANK}"

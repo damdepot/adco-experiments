@@ -14,7 +14,7 @@ bench_timer "smallbank/run_py-dbridge" "results/smallbank/py-dbridge" "py-dbridg
 rm -rf results/smallbank/py-dbridge
 mkdir -p results/smallbank/py-dbridge/benchmarks
 
-rm -rf out/app_layer/Py-DBridge-results
+rm -rf out/app_layer/Py-DBridge-results/Rewrite/postgres/smallbank-Py-DBridge
 mkdir -p out/app_layer/Py-DBridge-results
 
 export result_output_path="out/app_layer/Py-DBridge-results"

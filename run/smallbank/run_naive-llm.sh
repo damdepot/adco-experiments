@@ -17,7 +17,7 @@ bench_timer "smallbank/run_${ARM}" "results/smallbank/${ARM}" "${ARM}"
 rm -rf "results/smallbank/${ARM}"
 mkdir -p "results/smallbank/${ARM}/benchmarks"
 
-rm -rf "${NAIVE_REWRITE_ROOT}"
+rm -rf "${NAIVE_REWRITE_ROOT}/Rewrite/postgres/smallbank-NaiveLLM"
 mkdir -p "${NAIVE_REWRITE_ROOT}"
 
 export result_output_path="${NAIVE_REWRITE_ROOT}"

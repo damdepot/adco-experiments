@@ -67,12 +67,15 @@ mkdir -p "${SMALLBANK_RESULTS}"
 export RESULTS_DIR="${SMALLBANK_RESULTS}"
 SEED_DB_SMALLBANK="smallbank_seed"
 export BENCH_REP_DB="smallbank" BENCH_REP_SEED="${SEED_DB_SMALLBANK}"
+STATE_DIR="${EXP_PATH}/results/smallbank/dco/state"
+mkdir -p "${STATE_DIR}"
 
 run_dco_smallbank_tool() {
     if ! "$CMDADCo" DCo "${MODEL}" "${DBMS}" smallbank; then
         echo "ERROR: DCo tuning failed; skipping post-DCo SmallBank measurement and CSV." >&2
         return 1
     fi
+    bench_knobs_save "${STATE_DIR}" "dco"
 }
 
 echo "----------------->> Seed smallbank (load once + snapshot) <<-----------------"
@@ -80,12 +83,19 @@ bench_ensure_seed "smallbank" "${SEED_DB_SMALLBANK}"
 bench_assert_seed "${SEED_DB_SMALLBANK}"
 
 echo "----------------->> DCo smallbank <<-----------------"
-bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
-# Fresh data + default knobs verified before tool (abort on failure).
-restore_defaults
-bench_assert_fresh_knobs
-bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
-run_dco_smallbank_tool
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/dco.done" "${STATE_DIR}/dco.auto.conf"
+fi
+if bench_knobs_reuse "${STATE_DIR}" "dco"; then
+    echo "Reusing cached DCo knobs (FORCE=1 to retune)."
+else
+    bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
+    # Fresh data + default knobs verified before tool (abort on failure).
+    restore_defaults
+    bench_assert_fresh_knobs
+    bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
+    run_dco_smallbank_tool
+fi
 bench_restore "smallbank" "${SEED_DB_SMALLBANK}"
 "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
 "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"

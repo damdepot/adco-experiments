@@ -31,7 +31,7 @@ exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
 source "${exp_path}/scripts/_lib/bench_lib.sh"
 benchmarks_dir="${BENCH_RESULTS_DIR:-${exp_path}/results/smallbank/${arm}/benchmarks}"
 base_log_fname="${benchmarks_dir}/runExperiment1-smallbank-${dbms}"
-rewrite_dir="${exp_path}/${rewrite_root}/Rewrite/${dbms}/smallbank-NaiveLLM"
+rewrite_dir="${exp_path}/${rewrite_root}/Rewrite/${dbms}/${TREE_NAME:-smallbank-NaiveLLM}"
 
 cd "${exp_path}/workload/apps/smallbank"
 source venv/bin/activate
