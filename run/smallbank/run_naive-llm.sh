@@ -58,7 +58,7 @@ if $CMDNaive workload/apps/smallbank postgres smallbank ${model}; then
     bench_assert_fresh_knobs
     bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
     bench_settle
-    PHASE=execute $CMDRunSmallbank postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank "${ARM}"
+    PHASE=execute $CMDRunSmallbank postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank "${ARM}"
 else
     echo 'WARNING: Naive-LLM Smallbank rewrite failed; skipping its measurement.' >&2
 fi

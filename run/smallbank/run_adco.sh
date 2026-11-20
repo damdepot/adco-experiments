@@ -75,6 +75,6 @@ if [ "${ADCO_OK}" = "1" ]; then
     BENCH_LOCK_HELD=1 REVERIFY=1 VERIFY_KEEP_KNOBS=1 ./run/smallbank/run_verify.sh adco
     echo '-------------------<< Running ADCo Smallbank workload >>-------------------'
     measure_prep
-    PHASE=execute $CMDRunSmallbankApp ${model} postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank adco
+    PHASE=execute $CMDRunSmallbankApp ${model} postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank adco
 fi
 

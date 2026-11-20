@@ -48,8 +48,9 @@ if [ "${VERIFY_SEED_DB}" = "${SEED_DB_SMALLBANK}" ] && [ "${VERIFY_ALLOW_PERF_SE
     exit 2
 fi
 VERIFY_ACCOUNTS="${VERIFY_ACCOUNTS:-${SMALLBANK_VERIFY_ACCOUNTS:-100000}}"
-VERIFY_TRANSACTIONS="${VERIFY_TRANSACTIONS:-${SMALLBANK_VERIFY_TRANSACTIONS:-2000}}"
-echo "----------------->> Verify seed/scale: seed='${VERIFY_SEED_DB}' accounts='${VERIFY_ACCOUNTS}' transactions='${VERIFY_TRANSACTIONS}' <<-----------------"
+VERIFY_DURATION="${VERIFY_DURATION:-20}"
+VERIFY_WARMUP="${VERIFY_WARMUP:-0}"
+echo "----------------->> Verify seed/scale: seed='${VERIFY_SEED_DB}' accounts='${VERIFY_ACCOUNTS}' duration='${VERIFY_DURATION}s' warmup='${VERIFY_WARMUP}s' <<-----------------"
 CHECKER="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/smallbank_correctness.py"
 BASELINE_DRIVER="${ROOT}/workload/apps/smallbank/drivers/postgresdriver.py"
 
@@ -62,12 +63,12 @@ export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
 # Never let a restore/check query wait forever on a lock or a stalled server.
 export PGOPTIONS="${PGOPTIONS:--c statement_timeout=300000 -c lock_timeout=60000}"
 
-# Fixed-work tiny smoke: one client, one rep, no warmup, verify-scale data.
+# Time-based tiny smoke: one client, one rep, no warmup, verify-scale data.
 VERIFY_CLIENTS="${VERIFY_CLIENTS:-1}"
 export SMALLBANK_ACCOUNTS="${VERIFY_ACCOUNTS}" \
-    SMALLBANK_TRANSACTIONS="${VERIFY_TRANSACTIONS}" \
+    SMALLBANK_DURATION="${VERIFY_DURATION}" \
+    SMALLBANK_WARMUP="${VERIFY_WARMUP}" \
     SMALLBANK_CLIENTS="${VERIFY_CLIENTS}" \
-    SMALLBANK_WARMUP_TRANSACTIONS=0 \
     REPS=1 PHASE=execute
 
 # Keep the verify seed separate from the performance seed. Creating it loads
@@ -86,16 +87,16 @@ fi
 # With VERIFY_REWRITE_ROOT set, any arm name maps to that tree.
 arm_spec() {
     if [ -n "${VERIFY_REWRITE_ROOT:-}" ]; then
-        echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_TRANSACTIONS} smallbank ${1} ${VERIFY_REWRITE_ROOT}|${ROOT}/${VERIFY_REWRITE_ROOT}/Rewrite/${DBMS}/${TREE_NAME}/drivers/postgresdriver.py|${VERIFY_CSV}"
+        echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_DURATION} smallbank ${1} ${VERIFY_REWRITE_ROOT}|${ROOT}/${VERIFY_REWRITE_ROOT}/Rewrite/${DBMS}/${TREE_NAME}/drivers/postgresdriver.py|${VERIFY_CSV}"
         return 0
     fi
     case "$1" in
-        baseline) echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-App.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_TRANSACTIONS}|${BASELINE_DRIVER}|results/smallbank/baseline/benchmarks/runExperiment1-smallbank-${DBMS}" ;;
-        aco) echo "scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh|${model} ${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_TRANSACTIONS} smallbank aco|${ROOT}/out/app_layer/ACo-results/Rewrite/${DBMS}/smallbank-${model}/drivers/postgresdriver.py|results/smallbank/aco/benchmarks/aco.csv" ;;
-        adco) echo "scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh|${model} ${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_TRANSACTIONS} smallbank adco|${ROOT}/out/app_layer/ADCo-results/Rewrite/${DBMS}/smallbank-${model}/drivers/postgresdriver.py|results/smallbank/adco/benchmarks/adco.csv" ;;
-        py-dbridge) echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-Py-DBridge.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_TRANSACTIONS} smallbank|${ROOT}/out/app_layer/Py-DBridge-results/Rewrite/${DBMS}/smallbank-Py-DBridge/drivers/postgresdriver.py|results/smallbank/py-dbridge/benchmarks/py-dbridge.csv" ;;
-        naive-llm) echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_TRANSACTIONS} smallbank naive-llm|${ROOT}/out/app_layer/NaiveLLM-results/Rewrite/${DBMS}/smallbank-NaiveLLM/drivers/postgresdriver.py|results/smallbank/naive-llm/benchmarks/naive-llm.csv" ;;
-        naive-llm-agenttune|agenttune-naive-llm) echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_TRANSACTIONS} smallbank ${1} out/app_layer/NaiveLLM-results/${1}|${ROOT}/out/app_layer/NaiveLLM-results/${1}/Rewrite/${DBMS}/smallbank-NaiveLLM/drivers/postgresdriver.py|results/smallbank/${1}/benchmarks/${1}.csv" ;;
+        baseline) echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-App.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_DURATION}|${BASELINE_DRIVER}|results/smallbank/baseline/benchmarks/runExperiment1-smallbank-${DBMS}" ;;
+        aco) echo "scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh|${model} ${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_DURATION} smallbank aco|${ROOT}/out/app_layer/ACo-results/Rewrite/${DBMS}/smallbank-${model}/drivers/postgresdriver.py|results/smallbank/aco/benchmarks/aco.csv" ;;
+        adco) echo "scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh|${model} ${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_DURATION} smallbank adco|${ROOT}/out/app_layer/ADCo-results/Rewrite/${DBMS}/smallbank-${model}/drivers/postgresdriver.py|results/smallbank/adco/benchmarks/adco.csv" ;;
+        py-dbridge) echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-Py-DBridge.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_DURATION} smallbank|${ROOT}/out/app_layer/Py-DBridge-results/Rewrite/${DBMS}/smallbank-Py-DBridge/drivers/postgresdriver.py|results/smallbank/py-dbridge/benchmarks/py-dbridge.csv" ;;
+        naive-llm) echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_DURATION} smallbank naive-llm|${ROOT}/out/app_layer/NaiveLLM-results/Rewrite/${DBMS}/smallbank-NaiveLLM/drivers/postgresdriver.py|results/smallbank/naive-llm/benchmarks/naive-llm.csv" ;;
+        naive-llm-agenttune|agenttune-naive-llm) echo "scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh|${DBMS} ${VERIFY_ACCOUNTS} ${VERIFY_DURATION} smallbank ${1} out/app_layer/NaiveLLM-results/${1}|${ROOT}/out/app_layer/NaiveLLM-results/${1}/Rewrite/${DBMS}/smallbank-NaiveLLM/drivers/postgresdriver.py|results/smallbank/${1}/benchmarks/${1}.csv" ;;
         *) echo "UNKNOWN" ;;
     esac
 }
@@ -184,7 +185,7 @@ verify_one_arm() {
         arm_tree="$(cd "$(dirname "${driver}")/.." && pwd)"
         (cd "${arm_tree}" && timeout "${PROBE_TIMEOUT:-180}" "${VENV_PY}" "${PROBE}" --dbms "${DBMS}" --config "${DBCONFIG}" >"${probe_arm}" 2>"${tmp}/probe_arm.err") || echo "WARNING: rewrite read probe failed for '${arm}'." >&2
     fi
-    echo "----------------->> ${arm}: smoke (${VERIFY_TRANSACTIONS} txns, ${VERIFY_CLIENTS} client(s)) <<-----------------"
+    echo "----------------->> ${arm}: smoke (${VERIFY_DURATION}s, ${VERIFY_CLIENTS} client(s)) <<-----------------"
     # shellcheck disable=SC2086
     timeout "${VERIFY_SMOKE_TIMEOUT:-600}" ./"${runner}" ${rargs} >"${tmp}/smoke.log" 2>&1 || echo "WARNING: smoke run failed for '${arm}' (see ${out})." >&2
     smoke_csv="${csv}"

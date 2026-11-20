@@ -45,7 +45,7 @@ if $CMDADCo ACo ${model} postgres smallbank; then
     "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
     "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
     bench_settle
-    PHASE=execute $CMDRunSmallbank ${model} postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank aco
+    PHASE=execute $CMDRunSmallbank ${model} postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank aco
 else
     echo 'WARNING: ACo Smallbank rewrite failed; skipping its measurement.' >&2
 fi

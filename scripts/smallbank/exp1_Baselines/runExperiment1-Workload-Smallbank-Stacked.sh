@@ -192,4 +192,4 @@ BENCH_LOCK_HELD=1 REVERIFY=1 VERIFY_KEEP_KNOBS=1 \
     VERIFY_CSV="results/smallbank/${STACK_ARM}/benchmarks/${STACK_ARM}.csv" \
     "${EXP_PATH}/run/smallbank/run_verify.sh" "${STACK_ARM}"
 measure_prep
-PHASE=execute "$CMDRUNSMALLBANK" postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank "${STACK_ARM}" "${NAIVE_REWRITE_ROOT}"
+PHASE=execute "$CMDRUNSMALLBANK" postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank "${STACK_ARM}" "${NAIVE_REWRITE_ROOT}"

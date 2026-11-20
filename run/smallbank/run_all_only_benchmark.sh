@@ -159,20 +159,20 @@ measure_arm() {
             legacy_sync "${results}" "${arm}" smallbank "${suffix}" ;;
         aco)
             measure_prep
-            PHASE=execute scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh "${MODEL}" postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank aco ;;
+            PHASE=execute scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh "${MODEL}" postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank aco ;;
         naive-llm)
             measure_prep
-            PHASE=execute scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank naive-llm out/app_layer/NaiveLLM-results ;;
+            PHASE=execute scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank naive-llm out/app_layer/NaiveLLM-results ;;
         naive-llm-agenttune|agenttune-naive-llm)
             bench_restore smallbank smallbank_seed
             bench_knobs_apply "results/smallbank/${arm}/state" agenttune
             "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
             "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
             bench_settle
-            PHASE=execute scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank "${arm}" "out/app_layer/NaiveLLM-results/${arm}" ;;
+            PHASE=execute scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-NaiveLLM.sh postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank "${arm}" "out/app_layer/NaiveLLM-results/${arm}" ;;
         py-dbridge)
             measure_prep
-            PHASE=execute scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-Py-DBridge.sh postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank ;;
+            PHASE=execute scripts/smallbank/exp1_Baselines/runExperiment1-Workload-Smallbank-Py-DBridge.sh postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank ;;
         dco)
             export BENCH_CMDRUNTPCC="${ROOT}/scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-Db-ADCo.sh"
             results="${ROOT}/results/smallbank/dco/benchmarks"
@@ -190,7 +190,7 @@ measure_arm() {
             "${BENCH_CMDDOCKER}" Restart "${BENCH_DB_CONTAINER}"
             "${BENCH_CMDDOCKER}" WaitFor "${BENCH_DB_CONTAINER}"
             bench_settle
-            PHASE=execute scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh "${MODEL}" postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank adco ;;
+            PHASE=execute scripts/smallbank/exp0_ADCo/runExperiment0-Workload-Smallbank-App-ADCo.sh "${MODEL}" postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank adco ;;
     esac
 }
 

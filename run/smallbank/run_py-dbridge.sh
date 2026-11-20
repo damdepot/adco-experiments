@@ -44,7 +44,7 @@ if $CMDPyDBridge ${workload_path} ${source_file} postgres smallbank; then
     bench_assert_fresh_knobs
     bench_assert_rows "smallbank" "accounts" "${SMALLBANK_ACCOUNTS}"
     bench_settle
-    PHASE=execute $CMDRunSmallbank postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_TRANSACTIONS}" smallbank
+    PHASE=execute $CMDRunSmallbank postgres "${SMALLBANK_ACCOUNTS}" "${SMALLBANK_DURATION}" smallbank
 else
     echo 'WARNING: Py-DBridge Smallbank rewrite failed; skipping its measurement.' >&2
 fi

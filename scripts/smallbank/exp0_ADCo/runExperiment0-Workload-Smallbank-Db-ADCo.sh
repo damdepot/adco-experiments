@@ -3,10 +3,10 @@
 # Canonical SmallBank workload runner (ADCo/DCo).
 #
 # Canonical (bench_lib): <dir> <file> [reps], PHASE=load|execute (default execute).
-# Legacy: <model> <dbms> <accounts> <transactions> <benchmark> <dir_name>
+# Legacy: <model> <dbms> <accounts> <duration> <benchmark> <dir_name>
 #   (all positional args optional; env overrides win for scale).
 # Scale defaults to benchmarks scale, env-overridable:
-#   SMALLBANK_ACCOUNTS=5000000 SMALLBANK_TRANSACTIONS=60000 LOAD_THREADS=4 REPS=2
+#   SMALLBANK_ACCOUNTS=5000000 SMALLBANK_DURATION=180 SMALLBANK_WARMUP=15 LOAD_THREADS=4 REPS=2
 #
 set -euo pipefail
 
@@ -17,7 +17,8 @@ source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/smallbank"
 
 SMALLBANK_ACCOUNTS="${SMALLBANK_ACCOUNTS:-5000000}"
-SMALLBANK_TRANSACTIONS="${SMALLBANK_TRANSACTIONS:-60000}"
+SMALLBANK_DURATION="${SMALLBANK_DURATION:-180}"
+SMALLBANK_WARMUP="${SMALLBANK_WARMUP:-15}"
 LOAD_THREADS="${LOAD_THREADS:-4}"
 REPS_DEFAULT="${REPS:-2}"
 
@@ -28,7 +29,7 @@ if [[ "${2:-}" == *.csv* ]]; then
     phase="${PHASE:-execute}"
     dbms="${DBMS:-postgres}"
     accounts="${SMALLBANK_ACCOUNTS}"
-    transactions="${SMALLBANK_TRANSACTIONS}"
+    duration="${SMALLBANK_DURATION}"
 
     case "${phase}" in
         load|execute) ;;
@@ -59,16 +60,6 @@ if [[ "${2:-}" == *.csv* ]]; then
     fi
     echo "------->>${workdir}<<-------"
 
-    # Single warmup to avoid coldstart; measured reps follow.
-    cd "${workdir}"
-    if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
-        echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
-        python main.py run --driver "${dbms}" \
-            --clients "${SMALLBANK_CLIENTS:-1}" \
-            --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
-            --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
-    fi
-    cd "${workload_path}"
     if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
     for (( rep = 1; rep <= reps; rep++ )); do
         if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
@@ -86,7 +77,9 @@ if [[ "${2:-}" == *.csv* ]]; then
             --clients "${SMALLBANK_CLIENTS:-1}" \
             --driver "${dbms}" \
             --accounts "${accounts}" \
-            --transactions "${transactions}" \
+            --time "${duration}" \
+            --warmup "${SMALLBANK_WARMUP}" \
+            --rate unlimited \
             --output-path "${log_fname}"
         cd "${workload_path}"
     done
@@ -97,7 +90,7 @@ fi
 llm_model="${1:-${MODEL:-gemini-3.5-flash-lite}}"
 dbms="${2:-${DBMS:-postgres}}"
 accounts="${3:-${SMALLBANK_ACCOUNTS}}"
-transactions="${4:-${SMALLBANK_TRANSACTIONS}}"
+duration="${4:-${SMALLBANK_DURATION}}"
 benchmark="${5:-smallbank}"
 dir_name="${6:-${ADCO_TOOL:-adco}}"
 phase="${PHASE:-test}"
@@ -120,14 +113,6 @@ case "${phase}" in
             --reset
         ;;
     execute)
-        # Single warmup to avoid coldstart; measured reps follow.
-        if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
-            echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
-            python main.py run --driver "${dbms}" \
-                --clients "${SMALLBANK_CLIENTS:-1}" \
-                --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
-                --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
-        fi
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then
                 out="${log_fname}"
@@ -138,7 +123,9 @@ case "${phase}" in
                 --clients "${SMALLBANK_CLIENTS:-1}" \
                 --driver "${dbms}" \
                 --accounts "${accounts}" \
-                --transactions "${transactions}" \
+                --time "${duration}" \
+                --warmup "${SMALLBANK_WARMUP}" \
+                --rate unlimited \
                 --output-path "${out}"
         done
         if [ "${reps}" -gt 1 ]; then
@@ -157,7 +144,9 @@ case "${phase}" in
                 --driver "${dbms}" \
                 --threads "${LOAD_THREADS}" \
                 --accounts "${accounts}" \
-                --transactions "${transactions}" \
+                --time "${duration}" \
+                --warmup "${SMALLBANK_WARMUP}" \
+                --rate unlimited \
                 --output-path "${out}"
         done
         if [ "${reps}" -gt 1 ]; then

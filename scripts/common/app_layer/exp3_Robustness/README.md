@@ -57,19 +57,19 @@ not verified. `check_rewrite.py` does the comparison.
 ## Scale
 
 Default verify scale: TPC-C `tpcc_verify_seed` at 1 warehouse, 10 s, 1 client;
-SmallBank `smallbank_verify_seed` at 100000 accounts, 2000 transactions, 1
+SmallBank `smallbank_verify_seed` at 100000 accounts, 20 s, 1
 client. The seed is created once and reused; `RESEED=1` rebuilds it. The
 performance seeds (`tpcc_seed`, `smallbank_seed`) are refused unless
 `FULL_SCALE=1`.
 
 Full scale passes the performance seed/load (`TPCC_WAREHOUSES`,
 `TPCC_CLIENTS`, `TPCC_DURATION`, `TPCC_WARMUP`; `SMALLBANK_ACCOUNTS`,
-`SMALLBANK_TRANSACTIONS`, `SMALLBANK_CLIENTS`) and records under
+`SMALLBANK_DURATION`, `SMALLBANK_WARMUP`, `SMALLBANK_CLIENTS`) and records under
 `results/<workload>/robustness-full-scale/<arm>/`. The SmallBank verifier gets
 `VERIFY_ALLOW_PERF_SEED=1`; that is the only place it is set.
 
 Overrides: `VERIFY_SEED_DB`, `VERIFY_WAREHOUSES`, `VERIFY_ACCOUNTS`,
-`VERIFY_TRANSACTIONS`, `VERIFY_DURATION`, `VERIFY_CLIENTS`, `VERIFY_WARMUP`,
+`VERIFY_DURATION`, `VERIFY_CLIENTS`, `VERIFY_WARMUP`,
 `VERIFY_TIMEOUT`, `ROBUSTNESS_REPORT_DIR`, `TEMP`/`TEMPERATURE`, `GEN_TIMEOUT`
 (default 1800 s), `TUNE_TIMEOUT` (3600 s), `AGENTTUNE_ITERATIONS`, `RESEED`,
 `VERBOSE`.

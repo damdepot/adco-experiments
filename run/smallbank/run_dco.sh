@@ -9,7 +9,7 @@
 #
 # Resource/workload contract: scripts/_lib/bench_lib.sh (single place).
 # Smallbank-only knobs, still env-overridable:
-#   SMALLBANK_ACCOUNTS=5000000 SMALLBANK_TRANSACTIONS=60000
+#   SMALLBANK_ACCOUNTS=5000000 SMALLBANK_DURATION=180
 #
 # Post-tool restore: data mutations from tuning runs are scrubbed by restoring
 # from seed before measuring, followed by Restart/WaitFor/settle. Knob settings

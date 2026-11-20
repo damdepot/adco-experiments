@@ -15,7 +15,7 @@ results.
 
 | File | Purpose |
 |------|---------|
-| `run_verify.sh` | Verify driver. Restores pristine `smallbank_verify_seed`, runs a tiny single-client smoke per arm (seed scale, 1 client, `SMALLBANK_VERIFY_TRANSACTIONS`, 1 rep, no warmup), runs every check below, writes `results/smallbank/verify_<arm>.json` (or `VERIFY_OUTPUT`). Called by thin entry point `run/smallbank/run_verify.sh`. Also supports generic tree mode for arbitrary rewrite trees. Never deletes real results (benchmark dirs are moved aside during smoke and restored after). |
+| `run_verify.sh` | Verify driver. Restores pristine `smallbank_verify_seed`, runs a tiny single-client smoke per arm (seed scale, 1 client, `VERIFY_DURATION` seconds, 1 rep, no warmup), runs every check below, writes `results/smallbank/verify_<arm>.json` (or `VERIFY_OUTPUT`). Called by thin entry point `run/smallbank/run_verify.sh`. Also supports generic tree mode for arbitrary rewrite trees. Never deletes real results (benchmark dirs are moved aside during smoke and restored after). |
 | `smallbank_correctness.py` | Pure checker (no DB writes). Static guard, smoke CSV/log gate, invariant verdicts, read equivalence, verdict aggregation. Also usable standalone per arm (see CLI). |
 | `read_probe.py` | Probe worker: runs deterministic read-only `BALANCE` calls (custids 1..200) through one tree's driver, prints normalized JSON. Run twice (baseline tree, rewrite tree) on the same snapshot; outputs diffed as the `reads` check. |
 | `test_smallbank_correctness.py` | Spec-only unit tests: static pass/fail cases, smoke gate, invariant verdicts, read equivalence, report-loader contract. No DB, no arm dirs. |
@@ -33,7 +33,7 @@ constants and simple concatenation; parameter placeholders and literal SET
 values are normalized, so formatting and bound-value choices do not matter.
 Catches broken edits before spending DB time.
 
-**T1 — smoke (fixed-work run).** All six transaction types + TOTAL must execute
+**T1 — smoke (time-based run).** All six transaction types + TOTAL must execute
 with `executed > 0`, no traceback, and failed attempts at/below 1% of executed.
 SmallBank's runner prints failures as an `ERROR` row in the console table and
 excludes them from the CSV; `ABORT` is a legitimate business abort
@@ -84,7 +84,7 @@ Statuses land in `results/smallbank/verify_<arm>.json` (plus
 `scripts/common/app_layer/exp2_Reports/report.py` (same schema as TPC-C's
 verdicts). Arms with no rewrite dir get `UNVERIFIED` and are skipped.
 
-Defaults: `smallbank_verify_seed` at 100000 accounts, 2000 transactions, 1
+Defaults: `smallbank_verify_seed` at 100000 accounts, 20 s, 1
 client. The performance seed `smallbank_seed` is never used by verification;
 `VERIFY_SEED_DB=smallbank_seed` is refused unless `VERIFY_ALLOW_PERF_SEED=1`
 (set only by full-scale robustness). The verify seed is created once and
@@ -124,7 +124,8 @@ the robustness harness.
 | `VERIFY_SKIP_SEED_ASSERT=1` | no | caller asserted the seed; skip the seed check |
 | `VERIFY_SEED_DB` | no | seed to restore from (default `smallbank_verify_seed`; `smallbank_seed` is refused) |
 | `VERIFY_ACCOUNTS` | no | account scale of the verify seed (default `SMALLBANK_VERIFY_ACCOUNTS`, 100000) |
-| `VERIFY_TRANSACTIONS` | no | smoke transactions per arm (default `SMALLBANK_VERIFY_TRANSACTIONS`, 2000) |
+| `VERIFY_DURATION` | no | smoke seconds per arm (default 20) |
+| `VERIFY_WARMUP` | no | smoke warmup seconds per arm (default 0) |
 | `VERIFY_CLIENTS` | no | verifier smoke clients (default 1) |
 | `VERIFY_SMOKE_TIMEOUT` | no | smoke-run wall-clock cap in seconds (default 600) |
 | `BENCH_SKIP_SETTLE=1` | no | skip settle/VACUUM in verification |

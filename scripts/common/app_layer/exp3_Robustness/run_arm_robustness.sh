@@ -101,8 +101,9 @@ if [ "${FULL_SCALE}" = "1" ]; then
         VERIFY_SCALE_TEXT="${VERIFY_WAREHOUSES} warehouses"
     else
         VERIFY_ACCOUNTS="${VERIFY_ACCOUNTS:-${SMALLBANK_ACCOUNTS}}"
-        VERIFY_TRANSACTIONS="${VERIFY_TRANSACTIONS:-${SMALLBANK_TRANSACTIONS}}"
         VERIFY_CLIENTS="${VERIFY_CLIENTS:-${SMALLBANK_CLIENTS}}"
+        VERIFY_WARMUP="${VERIFY_WARMUP:-${SMALLBANK_WARMUP}}"
+        VERIFY_DURATION="${VERIFY_DURATION:-${SMALLBANK_DURATION}}"
         VERIFY_ROWS="${VERIFY_ACCOUNTS}"
         VERIFY_SCALE_TEXT="${VERIFY_ACCOUNTS} accounts"
     fi
@@ -119,8 +120,9 @@ else
         VERIFY_SCALE_TEXT="${VERIFY_WAREHOUSES} warehouses"
     else
         VERIFY_ACCOUNTS="${VERIFY_ACCOUNTS:-${SMALLBANK_VERIFY_ACCOUNTS:-100000}}"
-        VERIFY_TRANSACTIONS="${VERIFY_TRANSACTIONS:-${SMALLBANK_VERIFY_TRANSACTIONS:-2000}}"
+        VERIFY_DURATION="${VERIFY_DURATION:-20}"
         VERIFY_CLIENTS="${VERIFY_CLIENTS:-1}"
+        VERIFY_WARMUP="${VERIFY_WARMUP:-0}"
         VERIFY_ROWS="${VERIFY_ACCOUNTS}"
         VERIFY_SCALE_TEXT="${VERIFY_ACCOUNTS} accounts"
     fi
@@ -175,9 +177,9 @@ if [ "${WL}" = "tpcc" ]; then
     export TPCC_WAREHOUSES="${VERIFY_WAREHOUSES}"
 else
     export SMALLBANK_ACCOUNTS="${VERIFY_ACCOUNTS}" \
-        SMALLBANK_TRANSACTIONS="${VERIFY_TRANSACTIONS}" \
+        SMALLBANK_DURATION="${VERIFY_DURATION}" \
         SMALLBANK_CLIENTS="${VERIFY_CLIENTS}" \
-        SMALLBANK_WARMUP_TRANSACTIONS=0
+        SMALLBANK_WARMUP="${VERIFY_WARMUP}"
 fi
 
 # --- one verify seed -------------------------------------------------------
@@ -252,8 +254,9 @@ fi
         printf 'verify_duration\t%s\n' "${VERIFY_DURATION}"
     else
         printf 'verify_accounts\t%s\n' "${VERIFY_ACCOUNTS}"
-        printf 'verify_transactions\t%s\n' "${VERIFY_TRANSACTIONS}"
         printf 'verify_clients\t%s\n' "${VERIFY_CLIENTS}"
+        printf 'verify_warmup\t%s\n' "${VERIFY_WARMUP}"
+        printf 'verify_duration\t%s\n' "${VERIFY_DURATION}"
     fi
     printf 'full_scale\t%s\n' "${FULL_SCALE}"
     printf 'tuning\t%s\n' "${TUNING}"
@@ -289,7 +292,8 @@ verify_tree() {
         menv+=(
             VERIFY_ALLOW_PERF_SEED="${allow_perf}"
             VERIFY_ACCOUNTS="${VERIFY_ACCOUNTS}"
-            VERIFY_TRANSACTIONS="${VERIFY_TRANSACTIONS}"
+            VERIFY_DURATION="${VERIFY_DURATION}"
+            VERIFY_WARMUP="${VERIFY_WARMUP}"
         )
     fi
     mkdir -p "${ROOT}/${out_rel}/smoke/benchmarks"
@@ -522,8 +526,9 @@ if workload == "tpcc":
 else:
     summary.update({
         "verify_accounts": int(cfg.get("verify_accounts") or 0),
-        "verify_transactions": int(cfg.get("verify_transactions") or 0),
         "verify_clients": int(cfg.get("verify_clients") or 0),
+        "verify_warmup": int(cfg.get("verify_warmup") or 0),
+        "verify_duration": int(cfg.get("verify_duration") or 0),
     })
     scale_text = f"{summary['verify_accounts']} accounts"
 summary.update({

@@ -9,9 +9,9 @@
 #     <dir> is 'baseline' or an out/<dir> rewritten app (sandbox switch).
 #     <file> is the CSV name; reps default to $REPS (benchmarks scale: 2).
 #     Scale defaults to benchmarks scale, env-overridable:
-#       SMALLBANK_ACCOUNTS=5000000 SMALLBANK_TRANSACTIONS=60000 LOAD_THREADS=4 REPS=2
+#       SMALLBANK_ACCOUNTS=5000000 SMALLBANK_DURATION=180 SMALLBANK_WARMUP=15 LOAD_THREADS=4 REPS=2
 #   Legacy (standalone):
-#     runExperiment1-Workload-Smallbank.sh <dbms> <accounts> <transactions>
+#     runExperiment1-Workload-Smallbank.sh <dbms> <accounts> <duration>
 #     PHASE unset => legacy `test` (reset+load+run) with reps loop + CHECKPOINT.
 #     PHASE=load|execute forces that phase only.
 #
@@ -24,7 +24,8 @@ source "${exp_path}/scripts/_lib/bench_lib.sh"
 workload_path="${exp_path}/workload/apps/smallbank"
 
 SMALLBANK_ACCOUNTS="${SMALLBANK_ACCOUNTS:-5000000}"
-SMALLBANK_TRANSACTIONS="${SMALLBANK_TRANSACTIONS:-60000}"
+SMALLBANK_DURATION="${SMALLBANK_DURATION:-180}"
+SMALLBANK_WARMUP="${SMALLBANK_WARMUP:-15}"
 LOAD_THREADS="${LOAD_THREADS:-4}"
 REPS_DEFAULT="${REPS:-2}"
 
@@ -36,7 +37,7 @@ if [[ "${2:-}" == *.csv* ]]; then
     phase="${PHASE:-execute}"
     dbms="${DBMS:-postgres}"
     accounts="${SMALLBANK_ACCOUNTS}"
-    transactions="${SMALLBANK_TRANSACTIONS}"
+    duration="${SMALLBANK_DURATION}"
 
     case "${phase}" in
         load|execute) ;;
@@ -67,16 +68,6 @@ if [[ "${2:-}" == *.csv* ]]; then
     fi
     echo "------->>${workdir}<<-------"
 
-    # Single warmup to avoid coldstart; measured reps follow.
-    cd "${workdir}"
-    if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
-        echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
-        python main.py run --driver "${dbms}" \
-            --clients "${SMALLBANK_CLIENTS:-1}" \
-            --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
-            --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
-    fi
-    cd "${workload_path}"
     if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
     for (( rep = 1; rep <= reps; rep++ )); do
         if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
@@ -94,17 +85,19 @@ if [[ "${2:-}" == *.csv* ]]; then
             --clients "${SMALLBANK_CLIENTS:-1}" \
             --driver "${dbms}" \
             --accounts "${accounts}" \
-            --transactions "${transactions}" \
+            --time "${duration}" \
+            --warmup "${SMALLBANK_WARMUP}" \
+            --rate unlimited \
             --output-path "${log_fname}"
         cd "${workload_path}"
     done
     exit 0
 fi
 
-# ── Legacy mode: <dbms> <accounts> <transactions> ─────────────────────────
+# ── Legacy mode: <dbms> <accounts> <duration> ─────────────────────────
 dbms="${1:-${DBMS:-postgres}}"
 accounts="${2:-${SMALLBANK_ACCOUNTS}}"
-transactions="${3:-${SMALLBANK_TRANSACTIONS}}"
+duration="${3:-${SMALLBANK_DURATION}}"
 phase="${PHASE:-test}"
 
 results_dir="${result_benchmark_path:-${exp_path}/results/smallbank/baseline/benchmarks}"
@@ -125,14 +118,6 @@ case "${phase}" in
             --reset
         ;;
     execute)
-        # Single warmup to avoid coldstart; measured reps follow.
-        if [ "${SMALLBANK_WARMUP_TRANSACTIONS:-0}" -gt 0 ]; then
-            echo "----------------->> Smallbank warmup (once before ${reps} reps) <<-----------------"
-            python main.py run --driver "${dbms}" \
-                --clients "${SMALLBANK_CLIENTS:-1}" \
-                --accounts "${SMALLBANK_WARMUP_ACCOUNTS:-${accounts}}" \
-                --transactions "${SMALLBANK_WARMUP_TRANSACTIONS}"
-        fi
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then
                 rep_file="runExperiment1-smallbank-${dbms}"
@@ -144,7 +129,9 @@ case "${phase}" in
                 --clients "${SMALLBANK_CLIENTS:-1}" \
                 --driver "${dbms}" \
                 --accounts "${accounts}" \
-                --transactions "${transactions}" \
+                --time "${duration}" \
+                --warmup "${SMALLBANK_WARMUP}" \
+                --rate unlimited \
                 --output-path "${results_dir}/${rep_file}"
         done
         cp "${results_dir}/runExperiment1-smallbank-${dbms}_r${reps}" "${log_fname}" 2>/dev/null || true
@@ -162,7 +149,9 @@ case "${phase}" in
                 --driver "${dbms}" \
                 --threads "${LOAD_THREADS}" \
                 --accounts "${accounts}" \
-                --transactions "${transactions}" \
+                --time "${duration}" \
+                --warmup "${SMALLBANK_WARMUP}" \
+                --rate unlimited \
                 --output-path "${out}"
         done
         if [ "${reps}" -gt 1 ]; then
