@@ -68,6 +68,14 @@ if [[ "${2:-}" == *.csv* ]]; then
     fi
     echo "------->>${workdir}<<-------"
 
+    # Single warmup to avoid coldstart; measured reps follow.
+    cd "${workdir}"
+    if [ "${SMALLBANK_WARMUP}" -gt 0 ]; then
+        echo "----------------->> Smallbank warmup ${SMALLBANK_WARMUP}s (once before ${reps} reps) <<-----------------"
+        python main.py run --driver "${dbms}" --clients "${SMALLBANK_CLIENTS:-1}" \
+            --accounts "${accounts}" --time "${SMALLBANK_WARMUP}" --rate unlimited
+    fi
+    cd "${workload_path}"
     if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
     for (( rep = 1; rep <= reps; rep++ )); do
         if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
@@ -86,7 +94,6 @@ if [[ "${2:-}" == *.csv* ]]; then
             --driver "${dbms}" \
             --accounts "${accounts}" \
             --time "${duration}" \
-            --warmup "${SMALLBANK_WARMUP}" \
             --rate unlimited \
             --output-path "${log_fname}"
         cd "${workload_path}"
@@ -118,6 +125,12 @@ case "${phase}" in
             --reset
         ;;
     execute)
+        # Single warmup to avoid coldstart; measured reps follow.
+        if [ "${SMALLBANK_WARMUP}" -gt 0 ]; then
+            echo "----------------->> Smallbank warmup ${SMALLBANK_WARMUP}s (once before ${reps} reps) <<-----------------"
+            python main.py run --driver "${dbms}" --clients "${SMALLBANK_CLIENTS:-1}" \
+                --accounts "${accounts}" --time "${SMALLBANK_WARMUP}" --rate unlimited
+        fi
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then
                 rep_file="runExperiment1-smallbank-${dbms}"
@@ -130,7 +143,6 @@ case "${phase}" in
                 --driver "${dbms}" \
                 --accounts "${accounts}" \
                 --time "${duration}" \
-                --warmup "${SMALLBANK_WARMUP}" \
                 --rate unlimited \
                 --output-path "${results_dir}/${rep_file}"
         done
@@ -150,7 +162,6 @@ case "${phase}" in
                 --threads "${LOAD_THREADS}" \
                 --accounts "${accounts}" \
                 --time "${duration}" \
-                --warmup "${SMALLBANK_WARMUP}" \
                 --rate unlimited \
                 --output-path "${out}"
         done

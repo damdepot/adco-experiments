@@ -48,6 +48,14 @@ if [[ "${2:-}" == *.csv* ]]; then
         workdir="${workload_path}"
     fi
     echo "------->>${workdir}<<-------"
+    # Single warmup to avoid coldstart; measured reps follow.
+    cd "${workdir}"
+    if [ "${SMALLBANK_WARMUP}" -gt 0 ]; then
+        echo "----------------->> Smallbank warmup ${SMALLBANK_WARMUP}s (once before ${reps} reps) <<-----------------"
+        python main.py run --driver "${dbms}" --clients "${SMALLBANK_CLIENTS:-1}" \
+            --accounts "${accounts}" --time "${SMALLBANK_WARMUP}" --rate unlimited
+    fi
+    cd "${workload_path}"
     if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
     for (( rep = 1; rep <= reps; rep++ )); do
         if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
@@ -63,7 +71,7 @@ if [[ "${2:-}" == *.csv* ]]; then
         cd "${workdir}"
         python main.py run --driver "${dbms}" --accounts "${accounts}" \
             --clients "${SMALLBANK_CLIENTS:-1}" \
-            --time "${duration}" --warmup "${SMALLBANK_WARMUP}" --rate unlimited \
+            --time "${duration}" --rate unlimited \
             --output-path "${log_fname}"
         cd "${workload_path}"
     done
@@ -88,11 +96,17 @@ case "${phase}" in
             --accounts "${accounts}" --reset
         ;;
     execute)
+        # Single warmup to avoid coldstart; measured reps follow.
+        if [ "${SMALLBANK_WARMUP}" -gt 0 ]; then
+            echo "----------------->> Smallbank warmup ${SMALLBANK_WARMUP}s (once before ${reps} reps) <<-----------------"
+            python main.py run --driver "${dbms}" --clients "${SMALLBANK_CLIENTS:-1}" \
+                --accounts "${accounts}" --time "${SMALLBANK_WARMUP}" --rate unlimited
+        fi
         for (( rep = 1; rep <= reps; rep++ )); do
             if [ "${reps}" -eq 1 ]; then out="${log_fname}"; else out="${log_fname}_r${rep}"; fi
             python main.py run --driver "${dbms}" --accounts "${accounts}" \
                 --clients "${SMALLBANK_CLIENTS:-1}" \
-                --time "${duration}" --warmup "${SMALLBANK_WARMUP}" --rate unlimited \
+                --time "${duration}" --rate unlimited \
                 --output-path "${out}"
         done
         if [ "${reps}" -gt 1 ]; then cp "${log_fname}_r${reps}" "${log_fname}" 2>/dev/null || true; fi
@@ -102,7 +116,7 @@ case "${phase}" in
             if [ "${reps}" -eq 1 ]; then out="${log_fname}"; else out="${log_fname}_r${rep}"; fi
             python main.py test --driver "${dbms}" --threads "${LOAD_THREADS}" \
                 --clients "${SMALLBANK_CLIENTS:-1}" \
-                --accounts "${accounts}" --time "${duration}" --warmup "${SMALLBANK_WARMUP}" --rate unlimited \
+                --accounts "${accounts}" --time "${duration}" --rate unlimited \
                 --output-path "${out}"
         done
         if [ "${reps}" -gt 1 ]; then cp "${log_fname}_r${reps}" "${log_fname}" 2>/dev/null || true; fi
