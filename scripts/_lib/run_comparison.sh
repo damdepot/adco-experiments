@@ -11,7 +11,7 @@
 # logs/aliases stay ignored. For every
 # label the txn/s of column 4 is the median (p50) across reps, per
 # transaction type, and printed alongside the percentage change relative to
-# the first present label. TOTAL columns follow the txn columns: p50, p5,
+# the first present label. TOTAL columns follow the txn columns: p50,
 # p25, p75, min, max (nearest-rank percentiles / extremes of the TOTAL rate
 # across reps) and IQR (nearest-rank Q3 - Q1 spread). Higher is better.
 #
@@ -126,13 +126,6 @@ def _median(xs):
     return (s[n // 2 - 1] + s[n // 2]) / 2.0
 
 
-def _p5(xs):
-    s = sorted(xs)
-    n = len(s)
-    k = max(0, (5 * n + 99) // 100 - 1)
-    return s[k]
-
-
 def _p25(xs):
     s = sorted(xs)
     n = len(s)
@@ -155,7 +148,6 @@ def _iqr(xs):
     return s[q3] - s[q1]
 
 
-p5 = {}
 p25 = {}
 p75 = {}
 minv = {}
@@ -191,7 +183,6 @@ for label in labels:
                 if txn not in order:
                     order.append(txn)
     data[label] = {t: _median(vals[t]) for t in vals} if vals else None
-    p5[label] = _p5(totals[label]) if totals.get(label) else None
     p25[label] = _p25(totals[label]) if totals.get(label) else None
     p75[label] = _p75(totals[label]) if totals.get(label) else None
     minv[label] = min(totals[label]) if totals.get(label) else None
@@ -270,7 +261,7 @@ for label in present:
 
 print()
 hist = f"{'ARM':<14}"
-for col in ("TOTAL (P50)", "TOTAL (P5)", "TOTAL (P25)", "TOTAL (P75)",
+for col in ("TOTAL (P50)", "TOTAL (P25)", "TOTAL (P75)",
             "TOTAL (MIN)", "TOTAL (MAX)", "IQR"):
     hist += f"|{col:>14}"
 print(hist)
@@ -281,7 +272,6 @@ for label in present:
     p50 = data[label].get('TOTAL')
     for v, base_v in (
         (p50, data[ref].get('TOTAL')),
-        (p5.get(label), p5.get(ref)),
         (p25.get(label), p25.get(ref)),
         (p75.get(label), p75.get(ref)),
         (minv.get(label), minv.get(ref)),
@@ -300,5 +290,5 @@ for label in present:
 
 print()
 print(f"Note: higher is better; percentages are relative to {disp(ref)}.")
-print("p50 = median TOTAL txn/s across reps; p5/p25/p75 = nearest-rank percentiles; min/max = smallest/largest rep; IQR = nearest-rank Q3 - Q1 (spread, lower = more stable); 1 rep → all equal.")
+print("p50 = median TOTAL txn/s across reps; p25/p75 = nearest-rank percentiles; min/max = smallest/largest rep; IQR = nearest-rank Q3 - Q1 (spread, lower = more stable); 1 rep → all equal.")
 PY
