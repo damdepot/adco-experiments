@@ -158,6 +158,67 @@ def _sql_signature(text):
     return None
 
 
+def _assignment_pairs(detail):
+    """Split a normalized SET clause into (column, rhs) pairs.
+
+    Only top-level commas split, so coalesce(bal, 0) stays one assignment.
+    """
+    chunks, depth, start = [], 0, 0
+    for i, ch in enumerate(detail):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            chunks.append(detail[start:i])
+            start = i + 1
+    chunks.append(detail[start:])
+    pairs = []
+    for chunk in chunks:
+        m = re.match(r"^\s*([a-z_]\w*)\s*=\s*(.+?)\s*$", chunk, re.S)
+        if m:
+            pairs.append((m.group(1), m.group(2)))
+    return pairs
+
+
+def _delta(assignment):
+    """(column, first operator) when the RHS adjusts its own column in SQL."""
+    column, rhs = assignment
+    if not re.search(r"\b%s\b" % re.escape(column), rhs):
+        return None
+    # "=" inside a CASE is a comparison, not arithmetic.
+    m = re.search(r"[+\-*/]", rhs)
+    if m is None:
+        return None
+    return (column, m.group(0))
+
+
+def _covers(base_sig, src_sigs):
+    """True when a rewrite statement still performs the baseline write.
+
+    A baseline delta (bal = bal + ?) may change shape as long as some rewrite
+    assignment adjusts the same column with the same operator: merged CASE,
+    casts and coalesce() are formatting. Absolute writes must still match.
+    """
+    if base_sig in src_sigs:
+        return True
+    op, table, detail = base_sig
+    if op != "update":
+        return False
+    pairs = _assignment_pairs(detail)
+    deltas = {_delta(p) for p in pairs} - {None}
+    if not deltas:
+        return False
+    absolutes = {p for p in pairs if _delta(p) is None}
+    for sig in src_sigs:
+        if sig[0] != "update" or sig[1] != table:
+            continue
+        src_pairs = _assignment_pairs(sig[2])
+        if deltas <= {_delta(p) for p in src_pairs} and absolutes <= set(src_pairs):
+            return True
+    return False
+
+
 def _driver_sites(tree):
     """Per-function write signatures and commit/rollback call sites."""
     consts = _string_consts(tree)
@@ -239,7 +300,7 @@ def check_static(source_text, baseline_text=None):
 
     for func in REQUIRED_FUNCS:
         for sig in sorted(base_writes.get(func, ())):
-            if sig not in src_writes.get(func, set()):
+            if not _covers(sig, src_writes.get(func, set())):
                 op, table, detail = sig
                 issues.append(
                     f"write coverage: {func}() lost {op} on {table}"

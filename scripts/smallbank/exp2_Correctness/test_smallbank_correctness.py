@@ -107,6 +107,57 @@ def test_static_merged_multi_statement_execute_passes():
     assert check_static(BASE.replace(pair, merged, 1), BASE)["status"] == "PASS"
 
 
+def test_static_merged_case_delta_passes():
+    # Two UPDATEs merged into one in-SQL CASE delta: no Python-side
+    # read-modify-write, and the same column/operator adjustment survives.
+    old = (
+        '    # Debt\n'
+        '    cursor.execute(\n'
+        '        f"UPDATE {TABLENAME_CHECKING} SET bal = bal + %s WHERE custid = %s",\n'
+        '        (amount * -1, send_acct),\n'
+        '    )\n'
+        '    # Credit\n'
+        '    cursor.execute(\n'
+        '        f"UPDATE {TABLENAME_CHECKING} SET bal = bal + %s WHERE custid = %s",\n'
+        '        (amount, dest_acct),\n'
+        '    )'
+    )
+    new = (
+        '    cursor.execute(\n'
+        '        f"UPDATE {TABLENAME_CHECKING} SET bal = bal + CASE WHEN custid = %s'
+        ' THEN %s ELSE %s END WHERE custid IN (%s, %s)",\n'
+        '        (send_acct, amount * -1, amount, send_acct, dest_acct),\n'
+        '    )'
+    )
+    assert old in BASE
+    assert check_static(BASE.replace(old, new, 1), BASE)["status"] == "PASS"
+
+
+def test_static_absolute_balance_write_fails():
+    # Overwriting the balance loses the delta; an assignment shape is not a
+    # delta just because it targets the same column.
+    src = BASE.replace(
+        _DEPOSIT_SQL,
+        'f"UPDATE {TABLENAME_CHECKING} SET bal = %s WHERE custid = %s"',
+        1,
+    )
+    r = check_static(src, BASE)
+    assert r["status"] == "FAIL"
+    assert any("deposit_checking() lost update on checking" in i for i in r["issues"])
+
+
+def test_static_delta_sign_flip_fails():
+    # bal - ? is still an in-SQL delta, but it moves money the wrong way.
+    src = BASE.replace(
+        _DEPOSIT_SQL,
+        'f"UPDATE {TABLENAME_CHECKING} SET bal = bal - %s WHERE custid = %s"',
+        1,
+    )
+    r = check_static(src, BASE)
+    assert r["status"] == "FAIL"
+    assert any("lost update on checking" in i for i in r["issues"])
+
+
 def test_static_update_from_returning_passes():
     # SELECT+UPDATE fused into UPDATE ... FROM ... RETURNING with an alias:
     # same write target and shape, one round trip instead of two.
