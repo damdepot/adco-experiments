@@ -22,6 +22,9 @@ class Workload(object):
 
         self.results_lock = threading.Lock()
         self.log = LogWorkloadResults()
+        self.total = queries.qsize()
+        self.completed = 0
+        self.run_start = None
 
     # Worker function for threads
     def _worker(self):
@@ -31,13 +34,25 @@ class Workload(object):
             except queue.Empty:
                 break
 
+            failed = False
+            query_start = time.time()
             try:
                 thread_name = threading.current_thread().name
                 self._run_queries(query, thread_name)
             except Exception as e:
-                print(f"Error executing query {query} on {thread_name}: {e}")
+                failed = True
+                print(f"Error executing query {query} on {thread_name}: {e}", flush=True)
             finally:
                 self.queries.task_done()
+                query_ms = (time.time() - query_start) * 1000
+                with self.results_lock:
+                    self.completed += 1
+                    left = self.total - self.completed
+                    elapsed = time.time() - self.run_start if self.run_start else 0
+                    status = "FAILED" if failed else "done"
+                    print(f"[run {self.iteration}] {status} {self.completed}/{self.total} "
+                          f"({left} left) | {query} in {query_ms:.0f}ms | elapsed {elapsed:.0f}s",
+                          flush=True)
 
     def _run_queries(self, query, thread_name):
         pass
@@ -66,6 +81,8 @@ class WorkloadPG(Workload):
 
     def run(self, iteration: int):
         self.iteration = iteration
+        self.run_start = time.time()
+        print(f"[run {iteration}] starting 0/{self.total} queries with {self.threads} threads...", flush=True)
         number_threads = self.threads
 
         # Create and start threads
@@ -89,6 +106,7 @@ class WorkloadPG(Workload):
             for thread_name, (pg, conn, cursor) in list(self.connections.items()):
                 pg.close_connect(conn=conn, cursor=cursor)
 
+        print(f"[run {self.iteration}] finished {self.completed}/{self.total} in {time.time() - self.run_start:.0f}s", flush=True)
         self.log.save_results(f"{self.output_path}-{iteration}.dat")
 
 class WorkloadDuckDB(Workload):
@@ -111,6 +129,8 @@ class WorkloadDuckDB(Workload):
 
     def run(self, iteration: int):
         self.iteration = iteration
+        self.run_start = time.time()
+        print(f"[run {iteration}] starting 0/{self.total} queries with {self.threads} threads...", flush=True)
         number_threads = self.threads
 
         # Create and start threads
@@ -134,6 +154,7 @@ class WorkloadDuckDB(Workload):
             for thread_name, (ddb, conn) in list(self.connections.items()):
                 ddb.close_connect(conn=conn)
 
+        print(f"[run {self.iteration}] finished {self.completed}/{self.total} in {time.time() - self.run_start:.0f}s", flush=True)
         self.log.save_results(f"{self.output_path}-{iteration}.dat")
 
 
@@ -157,6 +178,8 @@ class WorkloadMySQL(Workload):
 
     def run(self, iteration: int):
         self.iteration = iteration
+        self.run_start = time.time()
+        print(f"[run {iteration}] starting 0/{self.total} queries with {self.threads} threads...", flush=True)
         number_threads = self.threads
 
         # Create and start threads
@@ -180,4 +203,5 @@ class WorkloadMySQL(Workload):
             for thread_name, (mysql, conn, cursor) in list(self.connections.items()):
                 mysql.close_connect(conn=conn, cursor=cursor)
 
+        print(f"[run {self.iteration}] finished {self.completed}/{self.total} in {time.time() - self.run_start:.0f}s", flush=True)
         self.log.save_results(f"{self.output_path}-{iteration}.dat")

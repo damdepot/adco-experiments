@@ -113,6 +113,14 @@ def load_work_load_queries(dataset_name: str = None, workload_path: str = None):
             query_ids.append(f"query{i}")
             query_ids_verify.append(f"query{i}")
 
+    elif dataset_name in {"tpcc"}:
+        query_ids = [f"query{i}" for i in range(1, 13)]
+        query_ids_verify = list(query_ids)
+
+    elif dataset_name in {"smallbank"}:
+        query_ids = [f"query{i}" for i in range(1, 7)]
+        query_ids_verify = list(query_ids)
+
     elif dataset_name in {"tpch_s1", "tpch_s2", "tpch_s3", "tpch_s4", "tpch_s5", "tpch_s6", "tpch_s7", "tpch_s8", "tpch_s9", "tpch_s10"}:
         query_ids = ["query18", "query17","query13","query20","query1","query22"]
         query_ids_verify = ["query18", "query17","query13","query20","query1","query22"]

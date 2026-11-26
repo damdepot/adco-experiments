@@ -1,0 +1,1 @@
+SELECT custid FROM ACCOUNTS WHERE custid = 100;

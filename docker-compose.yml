@@ -3,21 +3,45 @@ services:
     image: postgres:17
     container_name: adcoexp-db
     restart: unless-stopped
+    # Command-line floor for connections: beats any stale
+    # postgresql.auto.conf left in the pgdata volume by a tuning arm
+    # (Down/Up preserves the volume; restore_defaults only runs later).
+    command: postgres -c max_connections=200
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
+      TZ: Asia/Bangkok
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Localhost-only: never expose Postgres to the network. A 0.0.0.0
+      # binding invited brute-force attacks (rogue superusers, locked-out
+      # postgres role). The harness talks to pgdb over the compose network.
+      - "127.0.0.1:5432:5432"
     platform: linux/amd64
+    # Host-specific core pinning (DB_CPUSET/CLIENT_CPUSET in .env). Pinning the
+    # DB to CPU_CORES cores keeps the quota as the tuner contract but makes it
+    # non-binding, so CFS throttling stops (it was 21% of periods on the
+    # 8-vCPU server). Empty = no pinning.
+    cpuset: "${DB_CPUSET:-}"
     deploy:
       resources:
         limits:
-          cpus: "2"
-          memory: 2g
+          cpus: "${CPU_CORES:-4}"
+          memory: ${MEMORY_GB:-8}g
     shm_size: 2g
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Pilot-only: throttle DB storage to HDD-like rates so the default
+    # config becomes I/O-bound. Both arms share this throttle; remove after.
+    # blkio_config:
+    #   device_read_bps:
+    #     - { path: /dev/vda, rate: '100mb' }
+    #   device_write_bps:
+    #     - { path: /dev/vda, rate: '50mb' }
+    #   device_read_iops:
+    #     - { path: /dev/vda, rate: 3000 }
+    #   device_write_iops:
+    #     - { path: /dev/vda, rate: 2000 }
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -36,6 +60,7 @@ services:
       PGUSER: postgres
       PGPASSWORD: postgres
       PGDATABASE: postgres
+      TZ: Asia/Bangkok
     depends_on:
       pgdb:
         condition: service_healthy
@@ -47,6 +72,7 @@ services:
           SELECT 'CREATE DATABASE gptuner' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'gptuner')\gexec
           SELECT 'CREATE DATABASE smallbank' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'smallbank')\gexec
           SELECT 'CREATE DATABASE tpcc' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'tpcc')\gexec
+          SELECT 'CREATE DATABASE tpch' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'tpcc')\gexec
           SELECT 'CREATE DATABASE adcodb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'adcodb')\gexec
           SELECT 'CREATE DATABASE baselinedb' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'baselinedb')\gexec
         EOSQL
@@ -56,20 +82,47 @@ services:
     image: adcoexp-image
     container_name: adcoexp
     restart: unless-stopped
+    # Keep the TPC-C client and harness off the DB's pinned cores (empty = no
+    # pinning; 4-7 needs an 8-vCPU host).
+    cpuset: "${CLIENT_CPUSET:-}"
+    environment:
+      TZ: Asia/Bangkok
+      GOOGLE_APPLICATION_CREDENTIALS: /var/run/secrets/google/application_default_credentials.json
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_API_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY must be set}
+      OPENAI_API_BASE: http://litellm:4000/v1
+      OPENAI_API_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY must be set}
     volumes:
       - .:/app # root-level download and experiment scripts
       - /var/run/docker.sock:/var/run/docker.sock 
+      - ${HOME}/.config/gcloud/application_default_credentials.json:/var/run/secrets/google/application_default_credentials.json:ro
     depends_on:
       pgdb:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+      litellm:
+        condition: service_healthy
 
-volumes:
-  postgres_data:
-  adcodb_data:
-  agenttunedb_data:
-  baselinedb_data:
+  litellm:
+    image: ghcr.io/berriai/litellm:1.99.1
+    container_name: adcoexp-litellm
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /var/run/secrets/google/application_default_credentials.json
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:?GOOGLE_CLOUD_PROJECT must be set}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY must be set}
+    volumes:
+      - ./docker/litellm-config.yaml:/app/config.yaml:ro
+      - ${HOME}/.config/gcloud/application_default_credentials.json:/var/run/secrets/google/application_default_credentials.json:ro
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
 networks:
   default:
@@ -77,3 +130,6 @@ networks:
     driver_opts:
       com.docker.network.enable_ipv4: "true"
       com.docker.network.enable_ipv6: "false"
+
+volumes:
+  pgdata:

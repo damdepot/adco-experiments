@@ -1,0 +1,74 @@
+#!/bin/bash
+set -euo pipefail
+
+dbms="${1:-postgres}"
+accounts="${2:-${SMALLBANK_ACCOUNTS:-5000000}}"
+duration="${3:-${SMALLBANK_DURATION:-180}}"
+benchmark="${4:-smallbank}"
+arm="${5:-${ARM:-naive-llm}}"
+rewrite_root="${6:-${NAIVE_REWRITE_ROOT:-out/app_layer/NaiveLLM-results}}"
+
+# Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.
+phase="${PHASE:-execute}"
+case "${phase}" in
+    load|execute) ;;
+    *)
+        echo "Usage: PHASE must be 'load' or 'execute' (got '${phase}')" >&2
+        exit 2
+        ;;
+esac
+reps="${REPS:-2}"
+if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
+    exit 2
+fi
+# Benchmarks-scale load parallelism, env-overridable (canonical bench protocol).
+load_threads="${LOAD_THREADS:-4}"
+
+exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+# Per-rep measurement hygiene (shared): reset DB state before each measured rep.
+# shellcheck disable=SC1091
+source "${exp_path}/scripts/_lib/bench_lib.sh"
+benchmarks_dir="${BENCH_RESULTS_DIR:-${exp_path}/results/smallbank/${arm}/benchmarks}"
+base_log_fname="${benchmarks_dir}/runExperiment1-smallbank-${dbms}"
+rewrite_dir="${exp_path}/${rewrite_root}/Rewrite/${dbms}/${TREE_NAME:-smallbank-NaiveLLM}"
+
+cd "${exp_path}/workload/apps/smallbank"
+source venv/bin/activate
+
+cd "${rewrite_dir}"
+
+if [ "${phase}" = "load" ]; then
+    python main.py load \
+                    --driver "${dbms}" \
+                    --threads "${load_threads}" \
+                    --accounts "${accounts}" \
+                    --reset
+else
+    # Single warmup to avoid coldstart; measured reps follow.
+    if [ "${SMALLBANK_WARMUP}" -gt 0 ]; then
+        echo "----------------->> Smallbank warmup ${SMALLBANK_WARMUP}s (once before ${reps} reps) <<-----------------"
+        python main.py run --driver "${dbms}" --clients "${SMALLBANK_CLIENTS:-1}" \
+            --accounts "${accounts}" --time "${SMALLBANK_WARMUP}" --rate unlimited
+    fi
+    if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle "smallbank"; fi
+    for (( rep = 1; rep <= reps; rep++ )); do
+        if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
+        if [ "${reps}" -eq 1 ]; then
+            log_fname="${base_log_fname}"
+            primary_fname="${benchmarks_dir}/${arm}.csv"
+        else
+            log_fname="${base_log_fname}_r${rep}"
+            primary_fname="${benchmarks_dir}/${arm}_r${rep}.csv"
+        fi
+        echo "----------------->> Smallbank/Naive-LLM rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
+        python main.py run \
+                        --clients "${SMALLBANK_CLIENTS:-1}" \
+                        --driver "${dbms}" \
+                        --accounts "${accounts}" \
+                        --time "${duration}" \
+                        --rate unlimited \
+                        --output-path "${primary_fname}"
+        cp "${primary_fname}" "${log_fname}"
+    done
+fi

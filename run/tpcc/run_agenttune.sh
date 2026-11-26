@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+#
+# AgentTune experiments — canonical seed-once + bench_arm_from_seed pattern
+# (cf. benchmarks/run0_smallbank.sh).
+#
+# bench_lock, SEED_DB, bench_ensure_seed, per-arm bench_arm_from_seed
+# with tool fns, comparison call per benchmark.
+#
+# Baseline compat: the existing
+#   scripts/common/db_layer/exp1_Baselines/runExperiment1-AgentTune.sh
+# entrypoint is kept callable standalone AND is invoked as the tool fn here.
+# Post-tool bench_restore scrubs tool screening writes; Restart/WaitFor gives
+# cold buffers before measure. The optimized arm runs the baseline app path
+# (knob-only delta).
+#
+# NOTE on comparison: scripts/_lib/run_comparison.sh tabulates its default
+# labels (baseline/aco/dco/adco); the `agenttune` tag is therefore not shown
+# there — use scripts/common/db_layer/exp2_Reports for the cross-tool view. The
+# comparison call below still runs (baseline arm) and exits 0.
+#
+# Canonical rep CSVs: results/<benchmark>/agenttune/benchmarks/
+#   <tag>.csv (tags: baseline, agenttune)
+# Single-file aliases (report.py compat): results/<benchmark>/agenttune/
+#   benchmarks/runExperiment1-<bm>-postgres-<model>
+#
+set -euo pipefail
+
+EXP_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+LIB="${EXP_PATH}/scripts/_lib/bench_lib.sh"
+
+MODEL="${MODEL:-gemini-3.5-flash-lite}"
+
+# shellcheck disable=SC1090
+source "${LIB}"
+
+TPCC_TOOL_BASE="${EXP_PATH}/results/tpcc/agenttune/benchmarks"
+mkdir -p "${TPCC_TOOL_BASE}"
+mkdir -p "${EXP_PATH}/out/db_layer/AgentTune-results"
+
+bench_lock "${EXP_PATH}"
+bench_timer "tpcc/run_agenttune" "results/tpcc/agenttune" "agenttune"
+
+CMDAgentTune="${EXP_PATH}/scripts/common/db_layer/exp1_Baselines/runExperiment1-AgentTune.sh"
+
+legacy_sync() {
+    local subdir="$1" tag="$2" benchmark="$3"
+    local prefix="${subdir}/runExperiment1-${benchmark}-${DBMS}-${MODEL}"
+    local f last=""
+    for f in "${subdir}/${tag}.csv"; do
+        if [ ! -e "$f" ]; then
+            continue
+        fi
+        cp "$f" "${prefix}-$(basename "$f" .csv).csv"
+        last="$f"
+    done
+    if [ -n "${last}" ]; then
+        cp "${last}" "${prefix}"
+    fi
+}
+
+# ── TPC-C ─────────────────────────────────────────────────────────────────
+export BENCH_CMDRUNTPCC="${EXP_PATH}/scripts/tpcc/exp1_Baselines/runExperiment0-Workload-TPCC-AgentTune.sh"
+TPCC_RESULTS="${TPCC_TOOL_BASE}"
+mkdir -p "${TPCC_RESULTS}"
+export RESULTS_DIR="${TPCC_RESULTS}"
+SEED_DB_TPCC="tpcc_seed"
+STATE_DIR="${EXP_PATH}/results/tpcc/agenttune/state"
+mkdir -p "${STATE_DIR}"
+
+run_agenttune_tpcc_tool() {
+    # baselines/AgentTune/config.ini is shared state: a TPCH run leaves
+    # DB_Name=tpch/benchmark=JOB behind, and setup leaves agenttune/SYSBENCH.
+    # Pin the tpcc values here at launch (cf. run/smallbank/run_agenttune.sh).
+    # benchmark stays SYSBENCH: AgentTune tunes via its sysbench proxy
+    # workload (no tpcc branch exists in its benchmark switch); the tuned
+    # knobs are then measured with the real TPC-C workload.
+    python3 - "${EXP_PATH}/baselines/AgentTune/config.ini" "${AGENTTUNE_ITERATIONS:-}" <<'PY'
+import configparser, sys
+cfg, iterations = sys.argv[1], sys.argv[2]
+c = configparser.ConfigParser()
+c.optionxform = str
+c.read(cfg)
+rec = c['configuration recommender']
+rec['DB_Name'] = 'tpcc'
+rec['benchmark'] = 'SYSBENCH'
+if iterations:
+    rec['iteration'] = iterations
+with open(cfg, 'w') as f:
+    c.write(f)
+print('AgentTune config.ini: DB_Name=%s benchmark=%s iteration=%s'
+      % (rec['DB_Name'], rec['benchmark'], rec.get('iteration')))
+PY
+    if ! "$CMDAgentTune" "${DBMS}" tpcc; then
+        echo "ERROR: AgentTune tuning failed; skipping post-AgentTune TPCC measurement and CSV." >&2
+        return 1
+    fi
+    bench_knobs_save "${STATE_DIR}" "agenttune"
+}
+
+echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
+bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
+bench_assert_seed "${SEED_DB_TPCC}"
+bench_assert_rows "${SEED_DB_TPCC}" "warehouse" "${TPCC_WAREHOUSES}"
+
+echo "----------------->> AgentTune tpcc <<-----------------"
+if [ "${FORCE:-0}" = "1" ]; then
+    rm -f "${STATE_DIR}/agenttune.done" "${STATE_DIR}/agenttune.auto.conf"
+fi
+if bench_knobs_reuse "${STATE_DIR}" "agenttune"; then
+    echo "Reusing cached AgentTune knobs (FORCE=1 to retune)."
+    bench_arm_from_seed "agenttune" "baseline" "tpcc" "${SEED_DB_TPCC}"
+else
+    bench_arm_from_seed "agenttune" "baseline" "tpcc" "${SEED_DB_TPCC}" run_agenttune_tpcc_tool
+fi
+legacy_sync "${TPCC_RESULTS}" "agenttune" "tpcc"
+
+

@@ -1,0 +1,82 @@
+#!/bin/bash
+set -euo pipefail
+
+dbms="${1:-postgres}"
+warehouses="${2:-${TPCC_WAREHOUSES:-32}}"
+clients="${3:-${TPCC_CLIENTS:-8}}"
+benchmark="${4:-tpcc}"
+duration="${TPCC_DURATION:-180}"
+
+# Harness contract (benchmarks scale, env-overridable). Legacy CLI above wins.
+phase="${PHASE:-execute}"
+case "${phase}" in
+    load|execute) ;;
+    *)
+        echo "Usage: PHASE must be 'load' or 'execute' (got '${phase}')" >&2
+        exit 2
+        ;;
+esac
+reps="${REPS:-2}"
+if ! [[ "${reps}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Usage: REPS must be a positive integer (got '${reps}')" >&2
+    exit 2
+fi
+# Seconds of throwaway workload before measured reps; 0 disables
+# (canonical bench protocol).
+warmup="${TPCC_WARMUP:-30}"
+if ! [[ "${warmup}" =~ ^[0-9]+$ ]]; then
+    echo "Usage: warmup must be a non-negative integer (got '${warmup}')" >&2
+    exit 2
+fi
+exp_path="$(cd "$(dirname "$0")/../../.." && pwd)"
+# Per-rep measurement hygiene (shared): reset DB state before each measured rep.
+# shellcheck disable=SC1091
+source "${exp_path}/scripts/_lib/bench_lib.sh"
+workload_path="${exp_path}/workload/apps/${benchmark}"
+benchmarks_dir="${exp_path}/results/${benchmark}/py-dbridge/benchmarks"
+base_log_fname="${exp_path}/results/${benchmark}/py-dbridge/benchmarks/runExperiment1-${benchmark}-${dbms}"
+rewrite_dir="${exp_path}/out/app_layer/Py-DBridge-results/Rewrite/${dbms}/${benchmark}-Py-DBridge"
+
+cd "${workload_path}"
+source venv/bin/activate
+
+cd "${rewrite_dir}"
+
+if [ "${phase}" = "load" ]; then
+    python tpcc.py "${dbms}" \
+                --config="${workload_path}/db.config" \
+                --warehouses="${warehouses}" \
+                --reset \
+                --no-execute
+else
+    # Single warmup to avoid coldstart; measured reps follow.
+    if [ "${warmup}" -gt 0 ]; then
+        echo "----------------->> TPCC warmup ${warmup}s (once before ${reps} reps) <<-----------------"
+        python tpcc.py "${dbms}" \
+                    --config="${workload_path}/db.config" \
+                    --clients="${clients}" \
+                    --warehouses="${warehouses}" \
+                    --duration="${warmup}" \
+                    --no-load
+    fi
+    if declare -F bench_warmup_settle >/dev/null 2>&1; then bench_warmup_settle; fi
+    for (( rep = 1; rep <= reps; rep++ )); do
+        if declare -F bench_rep_prep >/dev/null 2>&1; then bench_rep_prep; fi
+        if [ "${reps}" -eq 1 ]; then
+            log_fname="${base_log_fname}"
+            primary_fname="${benchmarks_dir}/py-dbridge.csv"
+        else
+            log_fname="${base_log_fname}_r${rep}"
+            primary_fname="${benchmarks_dir}/py-dbridge_r${rep}.csv"
+        fi
+        echo "----------------->> TPCC/Py-DBridge rep ${rep}/${reps} (${log_fname##*/}) <<-----------------"
+        python tpcc.py "${dbms}" \
+                    --config="${workload_path}/db.config" \
+                    --clients="${clients}" \
+                    --warehouses="${warehouses}" \
+                    --duration="${duration}" \
+                    --output-path="${primary_fname}" \
+                    --no-load
+        cp "${primary_fname}" "${log_fname}"
+    done
+fi

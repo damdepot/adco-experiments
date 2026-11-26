@@ -1,0 +1,64 @@
+#!/bin/bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "${ROOT}"
+source "${ROOT}/scripts/_lib/bench_lib.sh"
+
+
+# Single-writer: never Restart the DB under a concurrent run.
+bench_lock "${ROOT}"
+bench_timer "tpcc/run_py-dbridge" "results/tpcc/py-dbridge" "py-dbridge"
+
+# clean original results
+rm -rf results/tpcc/py-dbridge
+mkdir -p results/tpcc/py-dbridge/benchmarks
+
+rm -rf out/app_layer/Py-DBridge-results/Rewrite/postgres/tpcc-Py-DBridge
+mkdir -p out/app_layer/Py-DBridge-results
+
+export result_output_path="out/app_layer/Py-DBridge-results"
+
+CMDPyDBridge=./scripts/common/app_layer/exp1_Baselines/runExperiment1-Py-DBridge.sh
+CMDRunTPCC=./scripts/tpcc/exp1_Baselines/runExperiment1-Workload-TPCC-Py-DBridge.sh
+CMDDocker=./scripts/_lib/docker.sh
+
+db_container="adcoexp-db"
+db_service="pgdb"
+
+# Restore (scrubs verify's smoke writes; rewrite is files on disk, unaffected), then cold
+# buffers + settled data before measure; execute uses existing data.
+measure_prep() {
+    bench_restore "tpcc" "${SEED_DB_TPCC}"
+    "${CMDDocker}" Restart "${db_container}" || "${CMDDocker}" Up "${db_container}" "${db_service}"
+    "${CMDDocker}" WaitFor "${db_container}"
+    bench_settle
+}
+
+SEED_DB_TPCC="tpcc_seed"
+export BENCH_REP_DB="tpcc" BENCH_REP_SEED="${SEED_DB_TPCC}"
+
+echo "----------------->> Seed tpcc (load once + snapshot) <<-----------------"
+bench_ensure_seed "tpcc" "${SEED_DB_TPCC}"
+bench_assert_seed "${SEED_DB_TPCC}"
+
+# Single restore for the run: fresh snapshot + default knobs before the rewrite.
+bench_restore "tpcc" "${SEED_DB_TPCC}"
+restore_defaults
+bench_assert_fresh_knobs
+bench_assert_rows "tpcc" "warehouse" "${TPCC_WAREHOUSES}"
+
+
+###  Rewrite + Workload: TPCC
+### **********
+echo '-------------------<< Generating rewrite app >>-------------------'
+workload_path="workload/apps/tpcc"
+source_file="drivers/postgresdriver.py"
+if $CMDPyDBridge ${workload_path} ${source_file} postgres tpcc; then
+    BENCH_LOCK_HELD=1 REVERIFY=1 ./run/tpcc/run_verify.sh py-dbridge
+    echo '-------------------<< Running the TPCC workload >>-------------------'
+    measure_prep
+    PHASE=execute $CMDRunTPCC postgres "${TPCC_WAREHOUSES}" "${TPCC_CLIENTS}" tpcc
+else
+    echo 'WARNING: Py-DBridge TPCC rewrite failed; skipping its measurement.' >&2
+fi

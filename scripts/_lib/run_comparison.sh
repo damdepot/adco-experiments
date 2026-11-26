@@ -1,0 +1,294 @@
+#!/usr/bin/env bash
+#
+# Compare OLTP results across labels.
+#
+# Files are fixed-name (each baseline runs once into a wiped method dir):
+# <label>/benchmarks/*.csv, or multi-rep <label>_r1.csv, _r2, ... (plus
+# legacy flat/stamped). Labels are
+# auto-discovered from <label>.csv / <label>_rN.csv files in RESULTS_DIR
+# (canonical column order, unrecognised labels last), falling back to
+# run-stamped <label>_<RUN_ID>[_rN].csv (latest run wins). runExperiment*
+# logs/aliases stay ignored. For every
+# label the txn/s of column 4 is the median (p50) across reps, per
+# transaction type, and printed alongside the percentage change relative to
+# the first present label. TOTAL columns follow the txn columns: p50,
+# p25, p75, min, max (nearest-rank percentiles / extremes of the TOTAL rate
+# across reps) and IQR (nearest-rank Q3 - Q1 spread). Higher is better.
+#
+# Usage:
+#   scripts/_lib/run_comparison.sh
+#
+# Results live in <repo>/results/<workload> (e.g. results/tpcc or
+# results/smallbank) unless RESULTS_DIR is set. Labels with no parseable
+# rows are skipped with a WARNING.
+# NOTE: RESULTS_DIR honors a caller-provided env override.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+RESULTS_DIR="${RESULTS_DIR:-${ROOT}/results/tpcc}"
+
+python3 - "${RESULTS_DIR}" <<'PY'
+import csv
+import glob
+import os
+import re
+import sys
+
+results_dir = sys.argv[1]
+
+
+def all_csvs():
+    # Layout: <RESULTS_DIR>/<label>/benchmarks/*.csv; also accept flat
+    # <RESULTS_DIR>/*.csv and legacy one-level <label>/*.csv (recursive).
+    return sorted(
+        set(glob.glob(os.path.join(results_dir, "**", "*.csv"), recursive=True))
+    )
+
+
+def label_of(basename):
+    # Fixed names (<label>.csv or <label>_rN.csv) plus run-stamped
+    # <label>_<RUN_ID>[_rN].csv fallback. runExperiment* logs never match.
+    if basename.startswith("runExperiment"):
+        return None
+    m = re.match(r"^([A-Za-z][A-Za-z0-9-]*?)(?:_r\d+)?\.csv$", basename)
+    if m:
+        return m.group(1)
+    m = re.match(r"^([A-Za-z][A-Za-z0-9-]*?)_(\d{8}_\d{6})(?:_r\d+)?\.csv$", basename)
+    if m:
+        return m.group(1)
+    return None
+
+
+def run_id_of(basename):
+    m = re.match(r"^[A-Za-z][A-Za-z0-9-]*?_(\d{8}_\d{6})(?:_r\d+)?\.csv$", basename)
+    return m.group(1) if m else ""
+
+
+def rep_files(label):
+    files = sorted(
+        glob.glob(os.path.join(results_dir, "**", f"{label}_r*.csv"), recursive=True)
+    )
+    files = [f for f in files if re.search(r"_r\d+\.csv$", f)]
+    if not files:
+        plains = sorted(
+            glob.glob(os.path.join(results_dir, "**", f"{label}.csv"), recursive=True)
+        )
+        if plains:
+            files = plains[:1]
+    if not files:
+        # Fallback: run-stamped <label>_<RUN_ID>[_rN].csv; latest run wins.
+        stamped = glob.glob(
+            os.path.join(results_dir, "**", f"{label}_*.csv"), recursive=True
+        )
+        by_run = {}
+        for f in stamped:
+            m = re.match(
+                r"^" + re.escape(label) + r"_(\d{8}_\d{6})(?:_r\d+)?\.csv$",
+                os.path.basename(f),
+            )
+            if m:
+                by_run.setdefault(m.group(1), []).append(f)
+        if by_run:
+            files = sorted(by_run[max(by_run)])
+    return files
+
+
+# Auto-discover labels from fixed-name CSVs.
+candidates = set()
+for path in all_csvs():
+    label = label_of(os.path.basename(path))
+    if label:
+        candidates.add(label)
+if not candidates:
+    sys.stderr.write(f"ERROR: no result CSVs found in {results_dir}.\n")
+    sys.exit(1)
+# Canonical column order (matches the report's --systems); unrecognised
+# labels follow, alphabetically.
+CANONICAL = [
+    "baseline", "py-dbridge", "naive-llm", "ottertune", "gptuner",
+    "agenttune", "naive-llm-agenttune", "agenttune-naive-llm", "aco", "dco", "adco",
+]
+labels = sorted(
+    candidates,
+    key=lambda l: (CANONICAL.index(l) if l in CANONICAL else len(CANONICAL), l),
+)
+
+data = {}
+order = []
+
+
+def _median(xs):
+    s = sorted(xs)
+    n = len(s)
+    if n % 2 == 1:
+        return s[n // 2]
+    return (s[n // 2 - 1] + s[n // 2]) / 2.0
+
+
+def _p25(xs):
+    s = sorted(xs)
+    n = len(s)
+    k = max(0, (25 * n + 99) // 100 - 1)
+    return s[k]
+
+
+def _p75(xs):
+    s = sorted(xs)
+    n = len(s)
+    k = max(0, (75 * n + 99) // 100 - 1)
+    return s[k]
+
+
+def _iqr(xs):
+    s = sorted(xs)
+    n = len(s)
+    q1 = max(0, (25 * n + 99) // 100 - 1)
+    q3 = max(0, (75 * n + 99) // 100 - 1)
+    return s[q3] - s[q1]
+
+
+p25 = {}
+p75 = {}
+minv = {}
+maxv = {}
+iqr = {}
+for label in labels:
+    files = rep_files(label)
+    if not files:
+        sys.stderr.write(
+            f"WARNING: missing {label}[_rN].csv (skipping '{label}')\n"
+        )
+        data[label] = None
+        continue
+    vals = {}
+    totals = {}
+    for path in files:
+        with open(path, newline="") as fh:
+            reader = csv.reader(fh)
+            next(reader, None)
+            for row in reader:
+                if len(row) < 4:
+                    continue
+                txn = row[0].strip()
+                if not txn or txn.lower() == "transaction":
+                    continue
+                try:
+                    rate = float(row[3])
+                except ValueError:
+                    continue
+                vals.setdefault(txn, []).append(rate)
+                if txn.upper() == "TOTAL":
+                    totals.setdefault(label, []).append(rate)
+                if txn not in order:
+                    order.append(txn)
+    data[label] = {t: _median(vals[t]) for t in vals} if vals else None
+    p25[label] = _p25(totals[label]) if totals.get(label) else None
+    p75[label] = _p75(totals[label]) if totals.get(label) else None
+    minv[label] = min(totals[label]) if totals.get(label) else None
+    maxv[label] = max(totals[label]) if totals.get(label) else None
+    iqr[label] = _iqr(totals[label]) if totals.get(label) else None
+    if data[label] is None:
+        sys.stderr.write(
+            f"WARNING: no parseable rows in {label} (skipping '{label}')\n"
+        )
+
+present = [label for label in labels if data[label] is not None]
+if not present:
+    sys.stderr.write(
+        f"ERROR: no result CSVs found in {results_dir}\n"
+    )
+    sys.exit(1)
+
+ref = present[0]
+base = data[ref]
+
+def disp(label):
+    return 'default' if label == 'baseline' else label
+
+# Geometric mean of per-transaction speedups vs ref (TOTAL excluded).
+geo = {}
+for label in present:
+    if label == ref:
+        geo[label] = None
+        continue
+    vals = []
+    for txn in order:
+        if txn.upper() == 'TOTAL':
+            continue
+        b = base.get(txn, 0.0)
+        r = data[label].get(txn)
+        if b and r:
+            vals.append(r / b)
+    if vals:
+        p = 1.0
+        for v in vals:
+            p *= v
+        geo[label] = p ** (1.0 / len(vals))
+    else:
+        geo[label] = 0.0
+
+print(f"OLTP txn/s vs {disp(ref)} (higher better)")
+print(f"Source: {results_dir}")
+print()
+
+header = f"{'ARM':<14}"
+for txn in order:
+    header += f"|{txn[:12]:>14}"
+header += f"|{'Geo Mean':>12}"
+print(header)
+print("-" * len(header))
+
+for label in present:
+    line = f"{disp(label)[:13]:<14}"
+    for txn in order:
+        rates = data[label]
+        if txn not in rates:
+            line += f"|{'-':^14}"
+        elif label == ref:
+            line += f"|{rates[txn]:>14.1f}"
+        else:
+            b = base.get(txn, 0.0)
+            pct = (rates[txn] - b) / b * 100 if b > 0 else 0.0
+            line += f"|{f'{rates[txn]:.1f} ({pct:+.0f}%)':>14}"
+    if label == ref:
+        g = "-"
+    else:
+        gg = geo.get(label, 0.0)
+        g = f"{gg:.2f}x" if gg > 0 else "N/A"
+    line += f"|{g:>12}"
+    print(line)
+
+print()
+hist = f"{'ARM':<14}"
+for col in ("TOTAL (P50)", "TOTAL (P25)", "TOTAL (P75)",
+            "TOTAL (MIN)", "TOTAL (MAX)", "IQR"):
+    hist += f"|{col:>14}"
+print(hist)
+print("-" * len(hist))
+
+for label in present:
+    line = f"{disp(label)[:13]:<14}"
+    p50 = data[label].get('TOTAL')
+    for v, base_v in (
+        (p50, data[ref].get('TOTAL')),
+        (p25.get(label), p25.get(ref)),
+        (p75.get(label), p75.get(ref)),
+        (minv.get(label), minv.get(ref)),
+        (maxv.get(label), maxv.get(ref)),
+    ):
+        if v is None:
+            line += f"|{'-':>14}"
+        elif label == ref:
+            line += f"|{v:>14.1f}"
+        else:
+            pct = (v - base_v) / base_v * 100 if base_v and base_v > 0 else 0.0
+            line += f"|{f'{v:.1f} ({pct:+.0f}%)':>14}"
+    v = iqr.get(label)
+    line += f"|{v:>14.1f}" if v is not None else f"|{'-':>14}"
+    print(line)
+
+print()
+print(f"Note: higher is better; percentages are relative to {disp(ref)}.")
+print("p50 = median TOTAL txn/s across reps; p25/p75 = nearest-rank percentiles; min/max = smallest/largest rep; IQR = nearest-rank Q3 - Q1 (spread, lower = more stable); 1 rep → all equal.")
+PY

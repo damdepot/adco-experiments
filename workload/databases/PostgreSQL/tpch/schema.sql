@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS "partsupp" (
   "ps_availqty"    INT,
   "ps_supplycost"  DECIMAL(15,2),
   "ps_comment"     VARCHAR(199),
-  PRIMARY KEY ("ps_partkey"));
+  PRIMARY KEY ("ps_partkey", "ps_suppkey"));
 
 -- orders
 CREATE TABLE IF NOT EXISTS "orders" (
